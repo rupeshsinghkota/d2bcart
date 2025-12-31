@@ -92,15 +92,36 @@ const ProductsContent = () => {
             .order('created_at', { ascending: false })
 
         if (selectedCategory) {
-            // First get category ID from slug
+            // 1. Get the selected category
             const { data: cat } = await supabase
                 .from('categories')
-                .select('id')
+                .select('id, parent_id')
                 .eq('slug', selectedCategory)
                 .single()
 
             if (cat) {
-                query = query.eq('category_id', (cat as any).id)
+                // 2. Get all subcategories (children) of this category
+                const { data }: any = await supabase.from('categories').select('id, parent_id')
+                const allCats = data as { id: string, parent_id: string | null }[] | null
+                const categoryId = (cat as any).id
+
+                if (allCats) {
+                    // Find all IDs that are descendants of categoryId
+                    const getDescendants = (parentId: string): string[] => {
+                        const children = allCats.filter(c => c.parent_id === parentId)
+                        let ids = children.map(c => c.id)
+                        children.forEach(child => {
+                            ids = [...ids, ...getDescendants(child.id)]
+                        })
+                        return ids
+                    }
+
+                    const targetIds = [categoryId, ...getDescendants(categoryId)]
+                    query = query.in('category_id', targetIds)
+                } else {
+                    // Fallback to just the category itself
+                    query = query.eq('category_id', categoryId)
+                }
             }
         }
 

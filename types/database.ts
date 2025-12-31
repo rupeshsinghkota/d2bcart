@@ -8,6 +8,8 @@ export interface Category {
     slug: string
     markup_percentage: number
     image_url?: string
+    parent_id?: string | null
+    level?: number
     created_at: string
 }
 

@@ -62,24 +62,64 @@ export default function CategoriesPage() {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {categories.map((category) => (
-                        <Link
-                            key={category.id}
-                            href={`/products?category=${category.slug}`}
-                            className="bg-white rounded-xl p-6 shadow-sm hover:shadow-lg transition-all group"
-                        >
-                            <div className="text-5xl mb-4">
-                                {categoryIcons[category.slug] || '📦'}
+                <div className="space-y-12">
+                    {/* Top Level Categories */}
+                    {categories.filter(c => !c.parent_id).map(parent => {
+                        const children = categories.filter(c => c.parent_id === parent.id)
+
+                        return (
+                            <div key={parent.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center text-4xl">
+                                            {parent.image_url ? (
+                                                <img src={parent.image_url} alt={parent.name} className="w-full h-full object-cover rounded-xl" />
+                                            ) : (
+                                                categoryIcons[parent.slug] || '📦'
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-gray-900">{parent.name}</h2>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-sm text-gray-500">Margin:</span>
+                                                <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                                                    +{parent.markup_percentage}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href={`/products?category=${parent.slug}`}
+                                        className="btn-secondary whitespace-nowrap"
+                                    >
+                                        View All {parent.name}
+                                    </Link>
+                                </div>
+
+                                {/* Subcategories Grid */}
+                                {children.length > 0 ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        {children.map(child => (
+                                            <Link
+                                                key={child.id}
+                                                href={`/products?category=${child.slug}`}
+                                                className="group p-4 rounded-xl bg-gray-50 hover:bg-emerald-50 transition-colors border border-transparent hover:border-emerald-100"
+                                            >
+                                                <div className="font-semibold text-gray-900 group-hover:text-emerald-700">
+                                                    {child.name}
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1 max-w-full truncate">
+                                                    Margin: <span className="font-medium text-emerald-600">+{child.markup_percentage}%</span>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-400 italic">No subcategories</div>
+                                )}
                             </div>
-                            <h2 className="text-xl font-semibold text-gray-900 group-hover:text-emerald-600 transition-colors">
-                                {category.name}
-                            </h2>
-                            <div className="mt-2 text-sm text-gray-500">
-                                Platform margin: <span className="font-medium text-emerald-600">+{category.markup_percentage}%</span>
-                            </div>
-                        </Link>
-                    ))}
+                        )
+                    })}
                 </div>
 
                 {categories.length === 0 && (
