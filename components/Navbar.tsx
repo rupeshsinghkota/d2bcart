@@ -23,6 +23,19 @@ export default function Navbar() {
 
     useEffect(() => {
         checkUser()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                checkUser()
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null)
+                useStore.getState().setUser(null)
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
     }, [])
 
     const checkUser = async () => {

@@ -12,6 +12,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
+    // No need to initialize store here, we use getState() below.
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -31,6 +32,12 @@ export default function LoginPage() {
                 .select('user_type')
                 .eq('id', data.user.id)
                 .single() as { data: { user_type: string } | null, error: any }
+
+            if (profile) {
+                // Update global store immediately
+                const { useStore } = await import('@/lib/store')
+                useStore.getState().setUser(profile as any)
+            }
 
             toast.success('Login successful!')
 
