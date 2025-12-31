@@ -66,7 +66,7 @@ export default function AdminPayoutsPage() {
                 amount: order.manufacturer_payout,
                 status: 'completed', // We assume admin did it instantly manually
                 payment_reference: 'MANUAL_ADMIN_TRANSFER'
-            })
+            } as any)
 
         if (error) {
             toast.error('Failed to record payout')

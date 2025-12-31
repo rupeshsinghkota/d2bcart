@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
             .rpc('toggle_verification', {
                 target_user_id: userId,
                 new_status: newStatus
-            })
+            } as any)
 
         if (error) {
             console.error('Update failed:', error)
