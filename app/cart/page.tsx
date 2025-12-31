@@ -230,10 +230,10 @@ export default function CartPage() {
                             {cart.map((item) => (
                                 <div
                                     key={item.product.id}
-                                    className="bg-white rounded-xl p-4 shadow-sm flex gap-4"
+                                    className="bg-white rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-4"
                                 >
                                     {/* Product Image */}
-                                    <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                    <div className="w-full sm:w-24 h-48 sm:h-24 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
                                         {item.product.images?.[0] ? (
                                             <img
                                                 src={item.product.images[0]}
@@ -287,10 +287,13 @@ export default function CartPage() {
                                     </div>
 
                                     {/* Item Total */}
-                                    <div className="text-right min-w-[100px]">
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {formatCurrency(item.product.display_price * item.quantity)}
-                                        </p>
+                                    <div className="text-left sm:text-right min-w-[100px] mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0">
+                                        <div className="flex justify-between sm:block items-center">
+                                            <span className="sm:hidden text-gray-500 font-medium">Subtotal</span>
+                                            <p className="text-lg font-bold text-gray-900">
+                                                {formatCurrency(item.product.display_price * item.quantity)}
+                                            </p>
+                                        </div>
                                         <p className="text-sm text-gray-500 mb-1">{item.quantity} units</p>
 
                                         {/* Shipping Selection */}
@@ -342,7 +345,7 @@ export default function CartPage() {
                         </div>
 
                         {/* Order Summary */}
-                        <div>
+                        < div >
                             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
                                 <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
 
@@ -390,6 +393,6 @@ export default function CartPage() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     )
 }

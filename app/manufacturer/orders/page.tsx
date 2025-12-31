@@ -194,12 +194,12 @@ const OrdersContent = () => {
                         <ArrowLeft className="w-5 h-5" />
                         Back to Dashboard
                     </Link>
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
                             <p className="text-gray-600">Manage and fulfill retail orders</p>
                         </div>
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-right">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-right w-full md:w-auto">
                             <div className="text-sm text-emerald-600">Pending Earnings</div>
                             <div className="text-xl font-bold text-emerald-700">{formatCurrency(pendingEarnings)}</div>
                         </div>

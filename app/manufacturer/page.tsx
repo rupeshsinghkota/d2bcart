@@ -165,29 +165,29 @@ export default function ManufacturerDashboard() {
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Manufacturer Dashboard</h1>
                         <p className="text-gray-600">Manage your products and orders</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
                         <Link
                             href="/manufacturer/profile"
-                            className="btn-secondary flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                            className="btn-secondary flex-1 md:flex-none justify-center flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                         >
                             <Building2 className="w-5 h-5" />
                             Profile
                         </Link>
                         <Link
                             href="/manufacturer/products/bulk"
-                            className="btn-secondary flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                            className="btn-secondary flex-1 md:flex-none justify-center flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                         >
                             <Upload className="w-5 h-5" />
-                            Bulk Upload
+                            Bulk
                         </Link>
                         <Link
                             href="/manufacturer/products/new"
-                            className="btn-primary flex items-center gap-2"
+                            className="btn-primary flex-1 md:flex-none justify-center flex items-center gap-2"
                         >
                             <Plus className="w-5 h-5" />
                             Add Product
