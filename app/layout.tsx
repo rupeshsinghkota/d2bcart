@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,9 +23,10 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning={true}>
         <Toaster position="top-right" />
         <Navbar />
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
           {children}
         </main>
+        <BottomNav />
       </body>
     </html>
   );
