@@ -67,9 +67,9 @@ export default function ManufacturerOrdersPage() {
             updates.delivered_at = new Date().toISOString()
         }
 
-        const { error } = await supabase
-            .from('orders')
-            .update(updates as any)
+        const { error } = await (supabase
+            .from('orders') as any)
+            .update(updates)
             .eq('id', orderId)
 
         if (error) {
