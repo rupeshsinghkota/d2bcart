@@ -28,7 +28,7 @@ export default function AdminPayoutsPage() {
         // For MVP, let's assume if it's not in 'payouts' table, it's pending.
 
         // 1. Get all payouts to filter out paid orders
-        const { data: payouts } = await supabase.from('payouts').select('order_id')
+        const { data: payouts } = await supabase.from('payouts').select('order_id') as { data: { order_id: string }[] | null }
         const paidOrderIds = new Set(payouts?.map(p => p.order_id))
 
         // 2. Get completed orders
