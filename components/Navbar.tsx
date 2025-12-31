@@ -60,9 +60,9 @@ export default function Navbar() {
     }
 
     const getDashboardLink = () => {
-        if (!user) return '/login'
+        if (!user) return '/'
         if (user.email === 'rupeshsingh1103@gmail.com') return '/admin'
-        return `/${user.user_type}`
+        return '/' // Handled by app/page.tsx dynamic rendering
     }
 
     return (
