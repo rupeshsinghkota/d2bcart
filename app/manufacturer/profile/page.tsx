@@ -78,7 +78,7 @@ export default function ManufacturerProfile() {
             .from('users')
             .select('*')
             .eq('id', user.id)
-            .single()
+            .single() as { data: any, error: any }
 
         if (error) {
             console.error('Error fetching profile:', error)
@@ -112,8 +112,8 @@ export default function ManufacturerProfile() {
         setMessage(null)
 
         try {
-            const { error } = await supabase
-                .from('users')
+            const { error } = await (supabase
+                .from('users') as any)
                 .update({
                     business_name: profile.business_name,
                     phone: profile.phone,
@@ -147,7 +147,7 @@ export default function ManufacturerProfile() {
                     .getPublicUrl(fileName)
 
                 // Update user with URL
-                await supabase.from('users').update({ id_proof_url: publicUrl }).eq('id', profile.id)
+                await (supabase.from('users') as any).update({ id_proof_url: publicUrl }).eq('id', profile.id)
             }
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' })

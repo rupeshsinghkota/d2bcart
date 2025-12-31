@@ -63,7 +63,7 @@ export default function NewProductPage() {
             const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
             const margin = displayPrice - basePrice
 
-            const { error } = await supabase.from('products').insert({
+            const { error } = await (supabase.from('products') as any).insert({
                 manufacturer_id: user.id,
                 category_id: formData.category_id,
                 name: formData.name,

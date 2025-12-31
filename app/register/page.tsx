@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { Factory, Store, Mail, Lock, Building, Phone, MapPin, ArrowRight, Check 
 
 type UserType = 'manufacturer' | 'retailer'
 
-export default function RegisterPage() {
+const RegisterContent = () => {
     const searchParams = useSearchParams()
     const [userType, setUserType] = useState<UserType>('retailer')
     const [step, setStep] = useState(1)
@@ -48,7 +48,7 @@ export default function RegisterPage() {
             if (authError) throw authError
 
             // 2. Create user profile
-            const { error: profileError } = await supabase.from('users').insert({
+            const { error: profileError } = await (supabase.from('users') as any).insert({
                 id: authData.user?.id,
                 email: formData.email,
                 user_type: userType,
@@ -102,8 +102,8 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => setUserType('retailer')}
                             className={`flex-1 p-4 rounded-xl border-2 transition-all ${userType === 'retailer'
-                                    ? 'border-emerald-600 bg-emerald-50'
-                                    : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-emerald-600 bg-emerald-50'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                         >
                             <Store className={`w-8 h-8 mx-auto mb-2 ${userType === 'retailer' ? 'text-emerald-600' : 'text-gray-400'
@@ -120,8 +120,8 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() => setUserType('manufacturer')}
                             className={`flex-1 p-4 rounded-xl border-2 transition-all ${userType === 'manufacturer'
-                                    ? 'border-emerald-600 bg-emerald-50'
-                                    : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-emerald-600 bg-emerald-50'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                         >
                             <Factory className={`w-8 h-8 mx-auto mb-2 ${userType === 'manufacturer' ? 'text-emerald-600' : 'text-gray-400'
@@ -317,5 +317,13 @@ export default function RegisterPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <RegisterContent />
+        </Suspense>
     )
 }

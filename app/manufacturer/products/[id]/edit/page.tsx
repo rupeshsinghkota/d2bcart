@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Category } from '@/types'
+import { Category, Product } from '@/types'
 import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Package, Info, Save } from 'lucide-react'
@@ -51,9 +51,10 @@ export default function EditProductPage() {
                 .from('products')
                 .select('*')
                 .eq('id', id)
-                .single()
+                .single() as { data: Product | null, error: any }
 
             if (error) throw error
+            if (!product) throw new Error('Product not found')
 
             setFormData({
                 name: product.name,
@@ -109,7 +110,7 @@ export default function EditProductPage() {
             const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
             const margin = displayPrice - basePrice
 
-            const { error } = await supabase.from('products').update({
+            const { error } = await (supabase.from('products') as any).update({
                 category_id: formData.category_id,
                 name: formData.name,
                 description: formData.description,

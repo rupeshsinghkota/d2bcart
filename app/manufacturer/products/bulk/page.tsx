@@ -57,7 +57,7 @@ export default function BulkUploadPage() {
         }
 
         // Fetch category map to convert slug to ID
-        const { data: categories } = await supabase.from('categories').select('id, slug')
+        const { data: categories } = await supabase.from('categories').select('id, slug') as { data: { id: string, slug: string }[] | null }
         const categoryMap = new Map(categories?.map(c => [c.slug, c.id]))
 
         let success = 0
@@ -71,7 +71,7 @@ export default function BulkUploadPage() {
                 continue
             }
 
-            const { error } = await supabase.from('products').insert({
+            const { error } = await (supabase.from('products') as any).insert({
                 manufacturer_id: user.id,
                 category_id: categoryId,
                 name: row.name,

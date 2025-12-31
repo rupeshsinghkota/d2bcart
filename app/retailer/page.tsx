@@ -66,9 +66,9 @@ export default function RetailerDashboard() {
             setOrders(ordersData as Order[])
 
             // Calculate stats
-            const pending = ordersData.filter(o => ['pending', 'paid', 'confirmed'].includes(o.status)).length
-            const delivered = ordersData.filter(o => o.status === 'delivered').length
-            const totalSpent = ordersData.reduce((sum, o) => sum + o.total_amount, 0)
+            const pending = (ordersData as any[]).filter(o => ['pending', 'paid', 'confirmed'].includes(o.status)).length
+            const delivered = (ordersData as any[]).filter(o => o.status === 'delivered').length
+            const totalSpent = (ordersData as any[]).reduce((sum, o) => sum + o.total_amount, 0)
 
             setStats({
                 totalOrders: ordersData.length,

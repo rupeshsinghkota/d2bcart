@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Search, Filter, Package, MapPin, Heart } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-export default function ProductsPage() {
+const ProductsContent = () => {
     const searchParams = useSearchParams()
     const [products, setProducts] = useState<Product[]>([])
     const [categories, setCategories] = useState<Category[]>([])
@@ -35,7 +35,7 @@ export default function ProductsPage() {
             .select('product_id')
             .eq('user_id', user.id)
 
-        if (data) setWishlist(data.map(w => w.product_id))
+        if (data) setWishlist((data as any[]).map(w => w.product_id))
     }
 
     const toggleWishlist = async (e: React.MouseEvent, productId: string) => {
@@ -59,8 +59,7 @@ export default function ProductsPage() {
             }
         } else {
             // Add
-            const { error } = await supabase
-                .from('wishlists')
+            const { error } = await (supabase.from('wishlists') as any)
                 .insert({ user_id: user.id, product_id: productId })
 
             if (!error) {
@@ -101,7 +100,7 @@ export default function ProductsPage() {
                 .single()
 
             if (cat) {
-                query = query.eq('category_id', cat.id)
+                query = query.eq('category_id', (cat as any).id)
             }
         }
 
@@ -268,5 +267,13 @@ export default function ProductsPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function ProductsPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Loading products...</div>}>
+            <ProductsContent />
+        </Suspense>
     )
 }

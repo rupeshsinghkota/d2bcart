@@ -58,7 +58,7 @@ export default function RetailerProfile() {
             .from('users')
             .select('*')
             .eq('id', user.id)
-            .single()
+            .single() as { data: any, error: any }
 
         if (error) {
             console.error('Error fetching profile:', error)
@@ -85,17 +85,15 @@ export default function RetailerProfile() {
         setMessage(null)
 
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
-                    business_name: profile.business_name,
-                    phone: profile.phone,
-                    address: profile.address,
-                    city: profile.city,
-                    state: profile.state,
-                    pincode: profile.pincode,
-                    gst_number: profile.gst_number
-                })
+            const { error } = await (supabase.from('users') as any).update({
+                business_name: profile.business_name,
+                phone: profile.phone,
+                address: profile.address,
+                city: profile.city,
+                state: profile.state,
+                pincode: profile.pincode,
+                gst_number: profile.gst_number
+            })
                 .eq('id', profile.id)
 
             if (error) throw error

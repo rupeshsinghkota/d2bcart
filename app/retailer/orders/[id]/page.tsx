@@ -13,6 +13,7 @@ import {
     ExternalLink
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { Order } from '@/types'
 
 export default function RetailerOrderDetails() {
     const params = useParams()
@@ -31,8 +32,8 @@ export default function RetailerOrderDetails() {
                 product:products(name, images, base_price),
                 manufacturer:users!orders_manufacturer_id_fkey(business_name, email, phone, address, city, state, pincode)
             `)
-            .eq('id', params.id)
-            .single()
+            .eq('id', params.id as string)
+            .single() as { data: Order | null, error: any }
 
         if (data) {
             setOrder(data)

@@ -62,8 +62,8 @@ export default function ProductDetailPage() {
             return
         }
 
-        const { error } = await supabase
-            .from('stock_requests')
+        const { error } = await (supabase
+            .from('stock_requests') as any)
             .insert({
                 user_id: user.id,
                 product_id: product?.id,
@@ -92,7 +92,7 @@ export default function ProductDetailPage() {
 
         if (data) {
             setProduct(data as Product)
-            setQuantity(data.moq || 1)
+            setQuantity((data as Product).moq || 1)
         }
         setLoading(false)
     }

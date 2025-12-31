@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
@@ -19,7 +19,7 @@ import {
     FileText
 } from 'lucide-react'
 
-export default function ManufacturerOrdersPage() {
+const OrdersContent = () => {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [orders, setOrders] = useState<Order[]>([])
@@ -417,5 +417,13 @@ export default function ManufacturerOrdersPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function ManufacturerOrdersPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Loading orders...</div>}>
+            <OrdersContent />
+        </Suspense>
     )
 }
