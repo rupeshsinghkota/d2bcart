@@ -120,9 +120,9 @@ export default function ManufacturerOrderDetails() {
         if (!confirm('Are you sure you want to mark this order as Delivered? This will enable payout pending status.')) return
 
         try {
-            const { error } = await supabase
-                .from('orders')
-                .update({ status: 'delivered' } as any)
+            const { error } = await (supabase
+                .from('orders') as any)
+                .update({ status: 'delivered' })
                 .eq('id', order.id)
 
             if (error) throw error
