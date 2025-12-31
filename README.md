@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# D2BCart - B2B Marketplace Platform
 
-## Getting Started
+A B2B marketplace connecting manufacturers/importers directly with retail businesses, using an arbitrage/markup model.
 
-First, run the development server:
+## 🚀 Quick Start
 
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Setup Supabase
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to SQL Editor and run the schema from `supabase-schema.sql`
+3. Copy your project URL and anon key from Settings > API
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Configure Environment
+Create a `.env.local` file:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run Development Server
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+d2bcart/
+├── app/
+│   ├── page.tsx                    # Homepage
+│   ├── login/page.tsx              # Login page
+│   ├── register/page.tsx           # Registration (manufacturer/retailer)
+│   ├── products/
+│   │   ├── page.tsx                # Browse products
+│   │   └── [id]/page.tsx           # Product detail
+│   ├── manufacturer/
+│   │   ├── page.tsx                # Manufacturer dashboard
+│   │   └── products/new/page.tsx   # Add new product
+│   └── admin/page.tsx              # Admin dashboard
+├── components/
+│   └── Navbar.tsx                  # Navigation bar
+├── lib/
+│   ├── supabase.ts                 # Supabase client
+│   ├── store.ts                    # Zustand state store
+│   └── utils.ts                    # Utility functions
+├── types/
+│   └── database.ts                 # TypeScript types
+└── supabase-schema.sql             # Database schema
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 💰 Business Model (Arbitrage)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Entity | Flow |
+|--------|------|
+| **Manufacturer** | Lists product at ₹100 (base price) |
+| **Platform** | Adds 15% markup (category-based) |
+| **Retailer** | Sees and pays ₹115 |
+| **Your Profit** | ₹15 per unit sold |
+
+### Category Markups
+| Category | Markup |
+|----------|--------|
+| Electronics | 12% |
+| Mobile Accessories | 20% |
+| Fashion | 25% |
+| FMCG | 10% |
+| Hardware | 18% |
+| Stationery | 30% |
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Database:** Supabase (PostgreSQL)
+- **Auth:** Supabase Auth
+- **Styling:** Tailwind CSS
+- **State:** Zustand
+- **Icons:** Lucide React
+
+---
+
+## 📋 Features
+
+### ✅ Implemented
+- [x] Homepage with hero, features, categories
+- [x] User registration (manufacturer/retailer)
+- [x] User login with role-based redirect
+- [x] Product browsing with search and filters
+- [x] Product detail page with quantity selector
+- [x] Manufacturer dashboard
+- [x] Add product with dynamic pricing preview
+- [x] Admin dashboard with profit tracking
+- [x] Database schema with RLS policies
+
+### 🔄 Coming Soon
+- [ ] Razorpay payment integration
+- [ ] Order management
+- [ ] Cart functionality
+- [ ] Image upload (Cloudinary)
+- [ ] Order tracking
+- [ ] Payout management
+- [ ] Email notifications
+
+---
+
+## 🚀 Deployment
+
+### Deploy to Vercel
+1. Push code to GitHub
+2. Connect repository to Vercel
+3. Add environment variables
+4. Deploy!
+
+---
+
+## 📞 Support
+
+Built with ❤️ for B2B commerce.
