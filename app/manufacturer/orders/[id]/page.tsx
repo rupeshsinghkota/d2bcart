@@ -133,168 +133,167 @@ export default function ManufacturerOrderDetails() {
             alert('Error: ' + error.message)
         }
 
-    })
 
-    if (loading) return <div className="p-8 text-center">Loading...</div>
-    if (!order) return <div className="p-8 text-center">Order not found</div>
+        if (loading) return <div className="p-8 text-center">Loading...</div>
+        if (!order) return <div className="p-8 text-center">Order not found</div>
 
-    const getStatusColor = (status: string) => {
-        const colors: Record<string, string> = {
-            pending: 'bg-yellow-100 text-yellow-800',
-            confirmed: 'bg-blue-100 text-blue-800',
-            shipped: 'bg-purple-100 text-purple-800',
-            delivered: 'bg-green-100 text-green-800',
-            cancelled: 'bg-red-100 text-red-800'
+        const getStatusColor = (status: string) => {
+            const colors: Record<string, string> = {
+                pending: 'bg-yellow-100 text-yellow-800',
+                confirmed: 'bg-blue-100 text-blue-800',
+                shipped: 'bg-purple-100 text-purple-800',
+                delivered: 'bg-green-100 text-green-800',
+                cancelled: 'bg-red-100 text-red-800'
+            }
+            return colors[status] || 'bg-gray-100 text-gray-800'
         }
-        return colors[status] || 'bg-gray-100 text-gray-800'
-    }
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-4xl mx-auto">
-                <Link href="/manufacturer/orders" className="flex items-center text-gray-500 hover:text-gray-900 mb-6">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Orders
-                </Link>
+        return (
+            <div className="min-h-screen bg-gray-50 p-8">
+                <div className="max-w-4xl mx-auto">
+                    <Link href="/manufacturer/orders" className="flex items-center text-gray-500 hover:text-gray-900 mb-6">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Orders
+                    </Link>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Header */}
-                    <div className="p-6 border-b bg-gray-50 flex justify-between items-start">
-                        <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-2xl font-bold text-gray-900">Order #{order.order_number}</h1>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                                    {order.status.toUpperCase()}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <span className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    {formatDate(order.created_at)}
-                                </span>
-                                {order.awb_code && (
-                                    <span className="flex items-center gap-1 font-mono text-xs bg-gray-200 px-2 py-1 rounded">
-                                        AWB: {order.awb_code}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        {/* Header */}
+                        <div className="p-6 border-b bg-gray-50 flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h1 className="text-2xl font-bold text-gray-900">Order #{order.order_number}</h1>
+                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                                        {order.status.toUpperCase()}
                                     </span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <Calendar className="w-4 h-4" />
+                                        {formatDate(order.created_at)}
+                                    </span>
+                                    {order.awb_code && (
+                                        <span className="flex items-center gap-1 font-mono text-xs bg-gray-200 px-2 py-1 rounded">
+                                            AWB: {order.awb_code}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => generateInvoice(order)}
+                                    className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Invoice
+                                </button>
+                                {['confirmed', 'paid', 'pending'].includes(order.status) && !order.awb_code && (
+                                    <div className="flex items-center gap-3">
+                                        {order.courier_name && (
+                                            <div className="text-right">
+                                                <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">Retailer Selected</div>
+                                                <div className="text-sm font-semibold text-emerald-600">{order.courier_name}</div>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => handleCreateShipment()}
+                                            disabled={generatingLabel}
+                                            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 font-medium shadow-sm transition-all"
+                                        >
+                                            {generatingLabel ? (
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <Truck className="w-4 h-4" />
+                                            )}
+                                            Ship & Request Pickup
+                                        </button>
+                                    </div>
+                                )}
+
+                                {order.awb_code && (
+                                    <>
+                                        <button
+                                            onClick={downloadLabel}
+                                            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            Download Label
+                                        </button>
+                                        <a
+                                            href={`https://shiprocket.co/tracking/${order.awb_code}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                                        >
+                                            <Truck className="w-4 h-4" />
+                                            Track Shipment
+                                            <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    </>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => generateInvoice(order)}
-                                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-                            >
-                                <FileText className="w-4 h-4" />
-                                Invoice
-                            </button>
-                            {['confirmed', 'paid', 'pending'].includes(order.status) && !order.awb_code && (
-                                <div className="flex items-center gap-3">
-                                    {order.courier_name && (
-                                        <div className="text-right">
-                                            <div className="text-xs text-gray-500 uppercase font-bold tracking-wider">Retailer Selected</div>
-                                            <div className="text-sm font-semibold text-emerald-600">{order.courier_name}</div>
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={() => handleCreateShipment()}
-                                        disabled={generatingLabel}
-                                        className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 font-medium shadow-sm transition-all"
-                                    >
-                                        {generatingLabel ? (
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        ) : (
-                                            <Truck className="w-4 h-4" />
+                        <div className="grid md:grid-cols-3 gap-8 p-8">
+                            {/* Product Details */}
+                            <div className="md:col-span-2 space-y-6">
+                                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                                    <Package className="w-5 h-5 text-gray-400" />
+                                    Product Details
+                                </h2>
+                                <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
+                                    <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border">
+                                        {order.product?.images?.[0] && (
+                                            <img src={order.product.images[0]} className="w-full h-full object-cover" />
                                         )}
-                                        Ship & Request Pickup
-                                    </button>
-                                </div>
-                            )}
-
-                            {order.awb_code && (
-                                <>
-                                    <button
-                                        onClick={downloadLabel}
-                                        className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-                                    >
-                                        <FileText className="w-4 h-4" />
-                                        Download Label
-                                    </button>
-                                    <a
-                                        href={`https://shiprocket.co/tracking/${order.awb_code}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                                    >
-                                        <Truck className="w-4 h-4" />
-                                        Track Shipment
-                                        <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8 p-8">
-                        {/* Product Details */}
-                        <div className="md:col-span-2 space-y-6">
-                            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                                <Package className="w-5 h-5 text-gray-400" />
-                                Product Details
-                            </h2>
-                            <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border">
-                                    {order.product?.images?.[0] && (
-                                        <img src={order.product.images[0]} className="w-full h-full object-cover" />
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="font-medium text-gray-900">{order.product?.name}</h3>
-                                    <div className="text-sm text-gray-500 mt-1">
-                                        Quantity: <span className="font-semibold text-gray-900">{order.quantity} units</span>
                                     </div>
-                                    <div className="text-sm text-gray-500">
-                                        Unit Price: {formatCurrency(order.unit_price)}
+                                    <div>
+                                        <h3 className="font-medium text-gray-900">{order.product?.name}</h3>
+                                        <div className="text-sm text-gray-500 mt-1">
+                                            Quantity: <span className="font-semibold text-gray-900">{order.quantity} units</span>
+                                        </div>
+                                        <div className="text-sm text-gray-500">
+                                            Unit Price: {formatCurrency(order.unit_price)}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="ml-auto text-right">
-                                    <div className="text-sm text-gray-500">Total Payout</div>
-                                    <div className="text-xl font-bold text-emerald-600">
-                                        {formatCurrency(order.manufacturer_payout)}
+                                    <div className="ml-auto text-right">
+                                        <div className="text-sm text-gray-500">Total Payout</div>
+                                        <div className="text-xl font-bold text-emerald-600">
+                                            {formatCurrency(order.manufacturer_payout)}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Retailer / Shipping Details */}
-                        <div className="space-y-6">
-                            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                                <MapPin className="w-5 h-5 text-gray-400" />
-                                Shipping Address
-                            </h2>
-                            <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
-                                <div className="font-medium text-gray-900">{order.retailer?.business_name}</div>
-                                <div className="text-gray-600">
-                                    {order.retailer?.address}<br />
-                                    {order.retailer?.city}, {order.retailer?.state} - {order.retailer?.pincode}
-                                </div>
-                                <div className="pt-2 border-t border-gray-200 mt-2">
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">EMAIL</span>
-                                        {order.retailer?.email}
+                            {/* Retailer / Shipping Details */}
+                            <div className="space-y-6">
+                                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                                    <MapPin className="w-5 h-5 text-gray-400" />
+                                    Shipping Address
+                                </h2>
+                                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                                    <div className="font-medium text-gray-900">{order.retailer?.business_name}</div>
+                                    <div className="text-gray-600">
+                                        {order.retailer?.address}<br />
+                                        {order.retailer?.city}, {order.retailer?.state} - {order.retailer?.pincode}
                                     </div>
-                                    {/* Phone hidden for privacy if needed, or shown */}
-                                    {/* <div className="flex items-center gap-2 text-gray-600 mt-1">
+                                    <div className="pt-2 border-t border-gray-200 mt-2">
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">EMAIL</span>
+                                            {order.retailer?.email}
+                                        </div>
+                                        {/* Phone hidden for privacy if needed, or shown */}
+                                        {/* <div className="flex items-center gap-2 text-gray-600 mt-1">
                                         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">PHONE</span>
                                         {order.retailer?.phone}
                                     </div> */}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    )
-}
+        )
+    }
 }
