@@ -52,7 +52,7 @@ export default function ManufacturerDashboard() {
             .from('users')
             .select('is_verified')
             .eq('id', user.id)
-            .single()
+            .single() as { data: { is_verified: boolean } | null, error: any }
 
         if (profile) setIsVerified(profile.is_verified)
 
