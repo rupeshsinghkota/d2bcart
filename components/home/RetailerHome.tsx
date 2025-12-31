@@ -200,26 +200,73 @@ export default function RetailerHome() {
     )
 }
 
+// Category Icon mapping for fallback
+const categoryIcons: Record<string, string> = {
+    'electronics': '📱',
+    'fashion': '👕',
+    'clothing': '👔',
+    'fmcg': '🛒',
+    'grocery': '🍎',
+    'home': '🏠',
+    'kitchen': '🍳',
+    'beauty': '💄',
+    'cosmetics': '💅',
+    'sports': '⚽',
+    'fitness': '🏋️',
+    'toys': '🎮',
+    'games': '🎲',
+    'hardware': '🔧',
+    'tools': '🛠️',
+    'stationery': '📝',
+    'office': '💼',
+    'health': '💊',
+    'pharma': '💉',
+    'jewelry': '💎',
+    'footwear': '👟',
+    'bags': '👜',
+    'accessories': '⌚',
+    'auto': '🚗',
+    'automotive': '🔩',
+    'books': '📚',
+    'furniture': '🛋️',
+    'garden': '🌱',
+    'pet': '🐕',
+    'baby': '👶',
+    'food': '🍔',
+    'beverages': '🥤',
+}
+
+function getCategoryIcon(name: string): string {
+    const lowerName = name?.toLowerCase() || ''
+    for (const [key, icon] of Object.entries(categoryIcons)) {
+        if (lowerName.includes(key)) return icon
+    }
+    return '📦' // Default fallback
+}
+
 // Category Card Component
 function CategoryCard({ cat }: { cat: any }) {
+    const icon = getCategoryIcon(cat.name)
+
     return (
         <Link
             href={`/products?category=${cat.slug}`}
             className="flex flex-col items-center min-w-[80px] lg:min-w-0 snap-start group"
         >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl lg:rounded-3xl mb-2 lg:mb-3 overflow-hidden border-2 border-transparent group-hover:border-emerald-500 group-hover:shadow-xl transition-all flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl lg:rounded-3xl mb-2 lg:mb-3 overflow-hidden border-2 border-gray-100 group-hover:border-emerald-500 group-hover:shadow-xl group-hover:from-emerald-100 group-hover:to-teal-100 transition-all flex items-center justify-center">
                 {cat.image_url ? (
                     <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
                 ) : (
-                    <span className="text-2xl lg:text-3xl font-bold text-gray-400">{cat.name?.[0]?.toUpperCase() || '?'}</span>
+                    <span className="text-3xl sm:text-4xl lg:text-5xl">{icon}</span>
                 )}
             </div>
-            <span className="text-[11px] sm:text-xs lg:text-sm text-center text-gray-700 font-medium line-clamp-2 group-hover:text-emerald-600 transition-colors max-w-[80px] lg:max-w-full">
+            <span className="text-[11px] sm:text-xs lg:text-sm text-center text-gray-700 font-semibold line-clamp-2 group-hover:text-emerald-600 transition-colors max-w-[80px] lg:max-w-[100px]">
                 {cat.name}
             </span>
         </Link>
     )
 }
+
 
 // Product Card Component
 function ProductCard({ product }: { product: any }) {
