@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
+import { Order } from '@/types'
 import {
     TrendingUp,
     Package,
@@ -51,9 +52,10 @@ export default function AdminDashboard() {
             .select('*', { count: 'exact', head: true })
 
         // Fetch users count by type
+        // Fetch users count by type
         const { data: usersData } = await supabase
             .from('users')
-            .select('user_type')
+            .select('user_type') as { data: { user_type: string }[] | null }
 
         const manufacturers = usersData?.filter(u => u.user_type === 'manufacturer').length || 0
         const retailers = usersData?.filter(u => u.user_type === 'retailer').length || 0
@@ -62,12 +64,12 @@ export default function AdminDashboard() {
         const { data: ordersData } = await supabase
             .from('orders')
             .select(`
-        *,
-        product:products(name),
-        retailer:users!orders_retailer_id_fkey(business_name),
-        manufacturer:users!orders_manufacturer_id_fkey(business_name)
-      `)
-            .order('created_at', { ascending: false })
+                *,
+                product:products(name),
+                retailer:users!orders_retailer_id_fkey(business_name),
+                manufacturer:users!orders_manufacturer_id_fkey(business_name)
+            `)
+            .order('created_at', { ascending: false }) as { data: Order[] | null }
 
         const totalGMV = ordersData?.reduce((sum, o) => sum + o.total_amount, 0) || 0
         const platformProfit = ordersData?.reduce((sum, o) => sum + o.platform_profit, 0) || 0
@@ -249,7 +251,7 @@ export default function AdminDashboard() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <Link
-                                                href={`/admin/orders/${order.id}`}
+                                                href="/admin/orders"
                                                 className="text-emerald-600 hover:underline text-sm"
                                             >
                                                 View
