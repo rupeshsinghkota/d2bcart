@@ -1,4 +1,9 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import {
   ArrowRight,
   Factory,
@@ -12,6 +17,46 @@ import {
 } from 'lucide-react'
 
 export default function Home() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    checkUser()
+  }, [])
+
+  const checkUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (session?.user) {
+        // Fetch profile needed for role
+        const { data: profile } = await supabase
+          .from('users')
+          .select('user_type')
+          .eq('id', session.user.id)
+          .single() as { data: { user_type: string } | null, error: any }
+
+        if (profile) {
+          if (session.user.email === 'rupeshsingh1103@gmail.com' || profile.user_type === 'admin') {
+            router.push('/admin')
+          } else if (profile.user_type === 'manufacturer') {
+            router.push('/manufacturer')
+          } else {
+            router.push('/products')
+          }
+          return // Stop execution to prevent flashing content
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="min-h-screen bg-white" /> // Prevent flash of content
+  }
   const features = [
     {
       icon: Factory,

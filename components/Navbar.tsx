@@ -72,7 +72,7 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2">
+                    <Link href={getDashboardLink()} className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center">
                             <span className="text-white font-bold text-lg">D2B</span>
                         </div>
