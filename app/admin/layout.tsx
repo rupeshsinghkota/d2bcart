@@ -9,7 +9,8 @@ import {
     CreditCard,
     LogOut,
     Users,
-    Package
+    Package,
+    Folder
 } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: 'Orders', href: '/admin/orders', icon: Package },
         { name: 'Payouts', href: '/admin/payouts', icon: CreditCard },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Categories', href: '/admin/categories', icon: Folder },
     ]
 
     return (
