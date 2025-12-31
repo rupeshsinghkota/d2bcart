@@ -30,7 +30,9 @@ export default function EditProductPage() {
         weight: '0.5',
         length: '10',
         breadth: '10',
-        height: '10'
+        height: '10',
+        hsn_code: '',
+        tax_rate: '18'
     })
 
     useEffect(() => {
@@ -66,7 +68,9 @@ export default function EditProductPage() {
                 weight: product.weight?.toString() || '0.5',
                 length: product.length?.toString() || '10',
                 breadth: product.breadth?.toString() || '10',
-                height: product.height?.toString() || '10'
+                height: product.height?.toString() || '10',
+                hsn_code: product.hsn_code || '',
+                tax_rate: product.tax_rate?.toString() || '18'
             })
             setImages(product.images || [])
 
@@ -123,7 +127,9 @@ export default function EditProductPage() {
                 weight: parseFloat(formData.weight) || 0.5,
                 length: parseFloat(formData.length) || 10,
                 breadth: parseFloat(formData.breadth) || 10,
-                height: parseFloat(formData.height) || 10
+                height: parseFloat(formData.height) || 10,
+                hsn_code: formData.hsn_code,
+                tax_rate: parseFloat(formData.tax_rate) || 0
             }).eq('id', id).eq('manufacturer_id', user.id)
 
             if (error) throw error

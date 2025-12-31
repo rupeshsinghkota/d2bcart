@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Grid, User, ShoppingCart, Package } from 'lucide-react'
+import { Home, LayoutGrid, User, ShoppingCart, Package, Search } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { User as UserType } from '@/types'
@@ -29,67 +29,68 @@ export default function BottomNav() {
         }
     }
 
-    // Don't show on login/register pages or if not authenticated (optional, but requested for App feel)
-    // Actually, user said "web app feel", often bottoms navs are present even for guests
-    // But let's keep it simple for now, show for everyone but context aware.
+    // Don't show on login/register pages
     if (pathname === '/login' || pathname === '/register') return null
 
-    const isActive = (path: string) => pathname === path
+    const isActive = (path: string) => {
+        if (path === '/') return pathname === '/'
+        return pathname.startsWith(path)
+    }
+
+    const navItems = [
+        { href: '/', icon: Home, label: 'Home' },
+        { href: '/products', icon: Search, label: 'Browse' },
+        { href: '/categories', icon: LayoutGrid, label: 'Categories' },
+    ]
+
+    // Add role-specific item
+    if (user?.user_type === 'retailer') {
+        navItems.push({ href: '/cart', icon: ShoppingCart, label: 'Cart' })
+    } else if (user?.user_type === 'manufacturer') {
+        navItems.push({ href: '/manufacturer/orders', icon: Package, label: 'Orders' })
+    }
+
+    // Account link
+    const accountHref = user
+        ? (user.user_type === 'admin' ? '/admin' : `/${user.user_type}`)
+        : '/login'
+    navItems.push({ href: accountHref, icon: User, label: user ? 'Account' : 'Login' })
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 px-4 pb-safe pt-2">
-            <div className="flex justify-between items-center h-16">
-                <Link
-                    href="/"
-                    className={`flex flex-col items-center gap-1 min-w-[60px] ${isActive('/') ? 'text-emerald-600' : 'text-gray-500'}`}
-                >
-                    <Home className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">Home</span>
-                </Link>
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/80 z-50 safe-area-inset-bottom">
+            <div className="flex justify-around items-center h-16 px-2">
+                {navItems.map(item => {
+                    const active = isActive(item.href)
+                    const isCart = item.href === '/cart'
 
-                <Link
-                    href="/categories"
-                    className={`flex flex-col items-center gap-1 min-w-[60px] ${isActive('/categories') ? 'text-emerald-600' : 'text-gray-500'}`}
-                >
-                    <Grid className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">Categories</span>
-                </Link>
-
-                {user?.user_type === 'retailer' && (
-                    <Link
-                        href="/cart"
-                        className={`flex flex-col items-center gap-1 min-w-[60px] relative ${isActive('/cart') ? 'text-emerald-600' : 'text-gray-500'}`}
-                    >
-                        <div className="relative">
-                            <ShoppingCart className="w-6 h-6" />
-                            {cart.length > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                                    {cart.length}
-                                </span>
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative transition-colors ${active
+                                    ? 'text-emerald-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <div className="relative">
+                                <item.icon className={`w-5 h-5 ${active ? 'stroke-[2.5px]' : ''}`} />
+                                {isCart && cart.length > 0 && (
+                                    <span className="absolute -top-1.5 -right-2 bg-emerald-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                                        {cart.length > 9 ? '9+' : cart.length}
+                                    </span>
+                                )}
+                            </div>
+                            <span className={`text-[10px] font-medium ${active ? 'font-semibold' : ''}`}>
+                                {item.label}
+                            </span>
+                            {/* Active Indicator */}
+                            {active && (
+                                <div className="absolute -bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"></div>
                             )}
-                        </div>
-                        <span className="text-[10px] font-medium">Cart</span>
-                    </Link>
-                )}
-
-                {user?.user_type === 'manufacturer' && (
-                    <Link
-                        href="/manufacturer/orders"
-                        className={`flex flex-col items-center gap-1 min-w-[60px] ${isActive('/manufacturer/orders') ? 'text-emerald-600' : 'text-gray-500'}`}
-                    >
-                        <Package className="w-6 h-6" />
-                        <span className="text-[10px] font-medium">Orders</span>
-                    </Link>
-                )}
-
-                <Link
-                    href={user ? (user.user_type === 'admin' ? '/admin' : `/${user.user_type}`) : '/login'}
-                    className={`flex flex-col items-center gap-1 min-w-[60px] ${pathname.includes(user?.user_type || 'login') ? 'text-emerald-600' : 'text-gray-500'}`}
-                >
-                    <User className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">{user ? 'Account' : 'Login'}</span>
-                </Link>
+                        </Link>
+                    )
+                })}
             </div>
-        </div>
+        </nav>
     )
 }

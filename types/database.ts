@@ -51,6 +51,8 @@ export interface Product {
     length?: number
     breadth?: number
     height?: number
+    hsn_code?: string // Added GST/HSN
+    tax_rate?: number // Added GST Tax Rate
     // Joined fields
     manufacturer?: User
     category?: Category

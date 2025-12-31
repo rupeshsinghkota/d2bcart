@@ -60,3 +60,26 @@ body {
 .card {
   @apply bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow;
 }
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area for mobile devices */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth image loading */
+img {
+  @apply transition-opacity duration-300;
+}
