@@ -30,7 +30,7 @@ export default function LoginPage() {
                 .from('users')
                 .select('user_type')
                 .eq('id', data.user.id)
-                .single()
+                .single() as { data: { user_type: string } | null, error: any }
 
             toast.success('Login successful!')
 
