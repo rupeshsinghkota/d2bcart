@@ -36,6 +36,7 @@ export default function ProductDetailPage() {
     const [requested, setRequested] = useState(false)
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
+    const [manufacturerProducts, setManufacturerProducts] = useState<Product[]>([])
 
     const { user, addToCart } = useStore()
 
@@ -99,8 +100,32 @@ export default function ProductDetailPage() {
         if (data) {
             setProduct(data as Product)
             setQuantity((data as Product).moq || 1)
+            // Fetch other products by this manufacturer
+            if ((data as Product).manufacturer?.id) {
+                fetchManufacturerProducts((data as Product).manufacturer.id, (data as Product).id)
+            }
         }
         setLoading(false)
+    }
+
+    const fetchManufacturerProducts = async (manufacturerId: string, currentProductId: string) => {
+        const { data } = await supabase
+            .from('products')
+            .select(`
+                *,
+                manufacturer:users!products_manufacturer_id_fkey(
+                    id, business_name, is_verified
+                ),
+                category:categories!products_category_id_fkey(name, slug)
+            `)
+            .eq('manufacturer_id', manufacturerId)
+            .neq('id', currentProductId)
+            .eq('is_active', true)
+            .limit(6)
+
+        if (data) {
+            setManufacturerProducts(data as Product[])
+        }
     }
 
     const handleAddToCart = async () => {
@@ -402,6 +427,52 @@ export default function ProductDetailPage() {
                                             {product.manufacturer.city}, {product.manufacturer.state}
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* More Products from this Manufacturer */}
+                        {manufacturerProducts.length > 0 && product.manufacturer && (
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-semibold text-gray-900">
+                                        More from {product.manufacturer.business_name}
+                                    </h3>
+                                    <Link
+                                        href={`/products?manufacturer=${product.manufacturer.id}`}
+                                        className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                                    >
+                                        View All →
+                                    </Link>
+                                </div>
+                                <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
+                                    {manufacturerProducts.map((item) => (
+                                        <Link
+                                            key={item.id}
+                                            href={`/products/${item.id}`}
+                                            className="flex-shrink-0 w-32 group"
+                                        >
+                                            <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 mb-2 border border-gray-100 group-hover:border-emerald-300 transition-colors">
+                                                {item.images?.[0] ? (
+                                                    <img
+                                                        src={item.images[0]}
+                                                        alt={item.name}
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Package className="w-8 h-8 text-gray-300" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-medium text-gray-900 line-clamp-2 mb-1 group-hover:text-emerald-600 transition-colors">
+                                                {item.name}
+                                            </p>
+                                            <p className="text-sm font-bold text-emerald-600">
+                                                {formatCurrency(item.display_price)}
+                                            </p>
+                                        </Link>
+                                    ))}
                                 </div>
                             </div>
                         )}
