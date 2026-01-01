@@ -128,8 +128,8 @@ export default function RetailerHome() {
                                         <div className="text-[10px] text-emerald-100">Factory Owners</div>
                                     </div>
                                     <div className="bg-white/10 backdrop-blur p-3 rounded-xl text-center text-white translate-y-4">
-                                        <div className="text-2xl font-bold">40%</div>
-                                        <div className="text-[10px] text-emerald-100">Margins</div>
+                                        <div className="text-2xl font-bold">50+</div>
+                                        <div className="text-[10px] text-emerald-100">Categories</div>
                                     </div>
                                 </div>
                             </div>
@@ -288,10 +288,7 @@ function ProductCard({ product }: { product: any }) {
                         )}
                     </div>
 
-                    {/* Tiny Margin Text */}
-                    <div className="mt-1 text-[10px] text-emerald-600 font-medium truncate">
-                        Margin: ₹{Math.round(product.your_margin || (product.display_price * 0.15))}/pc
-                    </div>
+
                 </div>
             </div>
         </Link>
