@@ -109,7 +109,7 @@ export default function ProductDetailPage() {
     }
 
     const fetchManufacturerProducts = async (manufacturerId: string, currentProductId: string) => {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('products')
             .select(`
                 *,
@@ -120,8 +120,11 @@ export default function ProductDetailPage() {
             `)
             .eq('manufacturer_id', manufacturerId)
             .neq('id', currentProductId)
-            .eq('is_active', true)
             .limit(6)
+
+        if (error) {
+            console.error('Error fetching manufacturer products:', error)
+        }
 
         if (data) {
             setManufacturerProducts(data as Product[])
