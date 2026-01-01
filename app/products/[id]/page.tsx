@@ -102,7 +102,7 @@ export default function ProductDetailPage() {
             setQuantity((data as Product).moq || 1)
             // Fetch other products by this manufacturer
             if ((data as Product).manufacturer?.id) {
-                fetchManufacturerProducts((data as Product).manufacturer.id, (data as Product).id)
+                fetchManufacturerProducts((data as Product).manufacturer!.id, (data as Product).id)
             }
         }
         setLoading(false)
