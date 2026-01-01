@@ -1,14 +1,100 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, ShieldCheck, Heart, Package } from 'lucide-react'
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, ShieldCheck } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function Footer() {
     const currentYear = new Date().getFullYear()
+    const [userRole, setUserRole] = useState<'retailer' | 'manufacturer' | 'admin' | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        checkUser()
+    }, [])
+
+    const checkUser = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('user_type')
+                    .eq('id', user.id)
+                    .single()
+
+                if (profile) {
+                    setUserRole((profile as any).user_type)
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching user role for footer:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Role-based link configurations
+    const getQuickLinks = () => {
+        if (!userRole) { // Guest
+            return [
+                { label: 'Browse Products', href: '/products' },
+                { label: 'Login', href: '/login' },
+                { label: 'Register as Retailer', href: '/register?type=retailer' },
+                { label: 'Sell on D2BCart', href: '/register?type=manufacturer' },
+            ]
+        }
+
+        switch (userRole) {
+            case 'manufacturer':
+                return [
+                    { label: 'Dashboard', href: '/manufacturer' },
+                    { label: 'My Products', href: '/manufacturer/products' },
+                    { label: 'Orders Received', href: '/manufacturer/orders' },
+                    { label: 'Create Listing', href: '/manufacturer/products/add' },
+                ]
+            case 'admin':
+                return [
+                    { label: 'Admin Dashboard', href: '/admin' },
+                    { label: 'Manage Users', href: '/admin/users' },
+                    { label: 'Platform Reports', href: '/admin/reports' },
+                    { label: 'Category Management', href: '/admin/categories' },
+                ]
+            case 'retailer':
+            default:
+                return [
+                    { label: 'Browse Products', href: '/products' },
+                    { label: 'My Orders', href: '/retailer/orders' },
+                    { label: 'Wishlist', href: '/wishlist' },
+                    { label: 'Profile Settings', href: '/retailer' },
+                ]
+        }
+    }
+
+    const getSupportLinks = () => {
+        const commonDocs = [
+            { label: 'Help Center', href: '#' },
+            { label: 'Contact Us', href: '#' },
+        ]
+
+        if (userRole === 'manufacturer') {
+            return [
+                ...commonDocs,
+                { label: 'Seller Handbook', href: '#' },
+                { label: 'Shipping Policy', href: '#' },
+            ]
+        }
+
+        return [
+            ...commonDocs,
+            { label: 'Returns & Refunds', href: '#' },
+            { label: 'Shipping Policy', href: '#' },
+        ]
+    }
 
     return (
-        <footer className="bg-white border-t border-gray-200 pt-12 pb-20 md:pb-12">
+        <footer className="bg-white border-t border-gray-200 pt-12 pb-24 md:pb-12">
             <div className="max-w-7xl mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
                     {/* Brand Column */}
@@ -34,50 +120,44 @@ export default function Footer() {
                     <div>
                         <h3 className="font-semibold text-gray-900 mb-4">Support & Help</h3>
                         <ul className="space-y-3 text-sm text-gray-600">
-                            <li>
-                                <Link href="/help" className="hover:text-emerald-600 transition-colors">Help Center</Link>
-                            </li>
-                            <li className="flex items-start gap-2">
+                            {getSupportLinks().map((link, idx) => (
+                                <li key={idx}>
+                                    <Link href={link.href} className="hover:text-emerald-600 transition-colors">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                            <li className="flex items-start gap-2 pt-2">
                                 <Phone className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                                <a href="tel:+919876543210" className="hover:text-emerald-600 transition-colors">+91 98765 43210</a>
+                                <a href="tel:+919876543210" className="hover:text-emerald-600 transition-colors font-medium">+91 98765 43210</a>
                             </li>
                             <li className="flex items-start gap-2">
                                 <Mail className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
                                 <a href="mailto:support@d2bcart.com" className="hover:text-emerald-600 transition-colors">support@d2bcart.com</a>
                             </li>
-                            <li>
-                                <Link href="/returns" className="hover:text-emerald-600 transition-colors">Returns & Refunds</Link>
-                            </li>
-                            <li>
-                                <Link href="/shipping-policy" className="hover:text-emerald-600 transition-colors">Shipping Policy</Link>
-                            </li>
                         </ul>
                     </div>
 
-                    {/* Quick Links */}
+                    {/* Quick Links (Dynamic) */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Quick Links</h3>
+                        <h3 className="font-semibold text-gray-900 mb-4">
+                            {userRole === 'manufacturer' ? 'Seller Tools' : userRole === 'admin' ? 'Admin Tools' : 'Quick Actions'}
+                        </h3>
                         <ul className="space-y-3 text-sm text-gray-600">
-                            <li>
-                                <Link href="/products" className="hover:text-emerald-600 transition-colors flex items-center gap-2">
-                                    Browse Products
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/retailer/orders" className="hover:text-emerald-600 transition-colors flex items-center gap-2">
-                                    My Orders
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/wishlist" className="hover:text-emerald-600 transition-colors flex items-center gap-2">
-                                    Saved Items
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/register?type=manufacturer" className="hover:text-emerald-600 transition-colors text-emerald-700 font-medium">
-                                    Become a Seller
-                                </Link>
-                            </li>
+                            {getQuickLinks().map((link, idx) => (
+                                <li key={idx}>
+                                    <Link href={link.href} className="hover:text-emerald-600 transition-colors flex items-center gap-2">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                            {!userRole && (
+                                <li className="pt-2">
+                                    <Link href="/register?type=manufacturer" className="text-emerald-700 font-medium hover:text-emerald-800 transition-colors">
+                                        Become a Seller →
+                                    </Link>
+                                </li>
+                            )}
                         </ul>
                     </div>
 
@@ -112,10 +192,12 @@ export default function Footer() {
                         © {currentYear} D2BCart. All rights reserved.
                     </p>
                     <div className="flex gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-                        {/* Placeholder Payment Icons */}
-                        <div className="h-6 w-10 bg-gray-200 rounded"></div>
-                        <div className="h-6 w-10 bg-gray-200 rounded"></div>
-                        <div className="h-6 w-10 bg-gray-200 rounded"></div>
+                        {/* Build a visually pleasing placeholder for payment icons using CSS */}
+                        <div className="flex gap-2">
+                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
+                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
+                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
+                        </div>
                     </div>
                 </div>
             </div>
