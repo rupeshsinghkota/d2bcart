@@ -20,19 +20,38 @@ export async function POST(req: Request) {
 
         let newStatus = ''
         const cs = current_status?.toUpperCase() || ''
+        const sid = Number(current_status_id)
 
-        if (cs === 'DELIVERED' || current_status_id === 7) {
+        // Comprehensive Mapping Based on Shiprocket Documentation
+        // 6: Shipped, 11: Dispatched, 17: In Transit, 18: Out for Delivery, 7: Delivered
+        // 8: Cancelled, 19: RTO Initiated, 20: RTO Delivered
+
+        if (sid === 7 || cs === 'DELIVERED') {
             newStatus = 'delivered'
-        } else if (cs === 'SHIPPED' || current_status_id === 6) {
+        } else if (sid === 18 || cs === 'OUT FOR DELIVERY') {
+            newStatus = 'out_for_delivery'
+        } else if (sid === 17 || cs === 'IN TRANSIT') {
+            newStatus = 'in_transit'
+        } else if (sid === 6 || sid === 11 || cs === 'SHIPPED' || cs === 'DISPATCHED') {
             newStatus = 'shipped'
-        } else if (cs.includes('CANCEL') || current_status_id === 8) {
+        } else if (sid === 8 || cs.includes('CANCEL')) {
             newStatus = 'cancelled'
+        } else if (sid === 19 || cs === 'RTO INITIATED') {
+            newStatus = 'rto_initiated'
+        } else if (sid === 20 || cs === 'RTO DELIVERED') {
+            newStatus = 'rto_delivered'
         }
 
         if (newStatus) {
+            const updateData: any = { status: newStatus }
+
+            // Auto-update timestamps for key events
+            if (newStatus === 'shipped') updateData.shipped_at = new Date().toISOString()
+            if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString()
+
             const { error } = await supabaseAdmin
                 .from('orders')
-                .update({ status: newStatus })
+                .update(updateData)
                 .eq('awb_code', awb)
 
             if (error) {

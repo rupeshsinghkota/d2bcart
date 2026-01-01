@@ -63,23 +63,32 @@ export async function POST(req: Request) {
         const shipmentUpload = trackData?.tracking_data?.shipment_track?.[0]
 
         if (shipmentUpload) {
-            const currentStatus = shipmentUpload.current_status?.toUpperCase() // e.g., "DELIVERED"
+            const cs = shipmentUpload.current_status?.toUpperCase() || ''
+            const sid = Number(shipmentUpload.current_status_id)
 
             let newStatus = order.status
 
-            if (currentStatus === 'DELIVERED') {
+            if (sid === 7 || cs === 'DELIVERED') {
                 newStatus = 'delivered'
-            } else if (currentStatus === 'SHIPPED' || currentStatus === 'OUT FOR DELIVERY' || currentStatus === 'IN TRANSIT') {
-                if (order.status !== 'delivered') { // Don't revert delivered
-                    newStatus = 'shipped'
-                }
-            } else if (currentStatus === 'CANCELED') {
+            } else if (sid === 18 || cs === 'OUT FOR DELIVERY') {
+                newStatus = 'out_for_delivery'
+            } else if (sid === 17 || cs === 'IN TRANSIT') {
+                newStatus = 'in_transit'
+            } else if (sid === 6 || sid === 11 || cs === 'SHIPPED' || cs === 'DISPATCHED') {
+                newStatus = 'shipped'
+            } else if (sid === 8 || cs.includes('CANCEL')) {
                 newStatus = 'cancelled'
+            } else if (sid === 19 || cs === 'RTO INITIATED') {
+                newStatus = 'rto_initiated'
+            } else if (sid === 20 || cs === 'RTO DELIVERED') {
+                newStatus = 'rto_delivered'
             }
 
-            // Update if changed
-            if (newStatus !== order.status) {
+            // Update if changed and not reverting a final state
+            const finalStates = ['delivered', 'cancelled', 'rto_delivered']
+            if (newStatus !== order.status && !finalStates.includes(order.status)) {
                 const updates: any = { status: newStatus }
+                if (newStatus === 'shipped') updates.shipped_at = new Date().toISOString()
                 if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString()
 
                 await supabaseAdmin

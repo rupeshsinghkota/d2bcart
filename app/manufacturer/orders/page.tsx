@@ -157,10 +157,14 @@ const OrdersContent = () => {
         const styles: Record<string, string> = {
             pending: 'bg-gray-100 text-gray-700',
             paid: 'bg-yellow-100 text-yellow-700',
-            confirmed: 'bg-blue-100 text-blue-700', // When confirmed by platform/shiprocket
+            confirmed: 'bg-blue-100 text-blue-700',
             shipped: 'bg-purple-100 text-purple-700',
+            in_transit: 'bg-indigo-100 text-indigo-700',
+            out_for_delivery: 'bg-emerald-100 text-emerald-700',
             delivered: 'bg-green-100 text-green-700',
-            cancelled: 'bg-red-100 text-red-700'
+            cancelled: 'bg-red-100 text-red-700',
+            rto_initiated: 'bg-orange-100 text-orange-700',
+            rto_delivered: 'bg-red-100 text-red-700'
         }
         return styles[status] || 'bg-gray-100 text-gray-700'
     }
@@ -171,7 +175,7 @@ const OrdersContent = () => {
 
     // Calculate pending earnings
     const pendingEarnings = orders
-        .filter(o => ['paid', 'confirmed', 'shipped'].includes(o.status))
+        .filter(o => ['paid', 'confirmed', 'shipped', 'in_transit', 'out_for_delivery'].includes(o.status))
         .reduce((sum, o) => sum + o.manufacturer_payout, 0)
 
     if (loading) {
@@ -207,17 +211,17 @@ const OrdersContent = () => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {['all', 'paid', 'confirmed', 'shipped', 'delivered'].map(status => (
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
+                    {['all', 'paid', 'confirmed', 'shipped', 'in_transit', 'delivered'].map(status => (
                         <button
                             key={status}
                             onClick={() => setFilter(status)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filter === status
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-100'
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
                                 }`}
                         >
-                            {status === 'all' ? 'All Orders' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            {status === 'all' ? 'All Orders' : status === 'in_transit' ? 'In Transit' : status.charAt(0).toUpperCase() + status.slice(1)}
                         </button>
                     ))}
                 </div>

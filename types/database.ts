@@ -1,5 +1,5 @@
 export type UserType = 'manufacturer' | 'retailer' | 'admin'
-export type OrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'rto_initiated' | 'rto_delivered'
 export type PayoutStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface Category {

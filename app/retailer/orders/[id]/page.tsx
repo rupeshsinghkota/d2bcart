@@ -40,8 +40,9 @@ export default function RetailerOrderDetails() {
         if (data) {
             setOrder(data)
 
-            // Auto-track if AWB exists and not delivered yet
-            if (data.awb_code && data.status !== 'delivered' && data.status !== 'cancelled') {
+            // Auto-track if AWB exists and not in a final state
+            const finalStates = ['delivered', 'cancelled', 'rto_delivered']
+            if (data.awb_code && !finalStates.includes(data.status)) {
                 fetch('/api/shiprocket/track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -61,11 +62,16 @@ export default function RetailerOrderDetails() {
 
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
-            pending: 'bg-yellow-100 text-yellow-800',
+            pending: 'bg-gray-100 text-gray-700',
+            paid: 'bg-yellow-100 text-yellow-800',
             confirmed: 'bg-blue-100 text-blue-800',
             shipped: 'bg-purple-100 text-purple-800',
+            in_transit: 'bg-indigo-100 text-indigo-800',
+            out_for_delivery: 'bg-emerald-100 text-emerald-800',
             delivered: 'bg-green-100 text-green-800',
-            cancelled: 'bg-red-100 text-red-800'
+            cancelled: 'bg-red-100 text-red-800',
+            rto_initiated: 'bg-orange-100 text-orange-800',
+            rto_delivered: 'bg-red-100 text-red-800'
         }
         return colors[status] || 'bg-gray-100 text-gray-800'
     }

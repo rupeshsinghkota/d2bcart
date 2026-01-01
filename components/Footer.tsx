@@ -74,22 +74,22 @@ export default function Footer() {
 
     const getSupportLinks = () => {
         const commonDocs = [
-            { label: 'Help Center', href: '#' },
-            { label: 'Contact Us', href: '#' },
+            { label: 'About Us', href: '/about' },
+            { label: 'Contact Us', href: '/contact' },
         ]
 
         if (userRole === 'manufacturer') {
             return [
                 ...commonDocs,
                 { label: 'Seller Handbook', href: '#' },
-                { label: 'Shipping Policy', href: '#' },
+                { label: 'Shipping Policy', href: '/shipping-policy' },
             ]
         }
 
         return [
             ...commonDocs,
-            { label: 'Returns & Refunds', href: '#' },
-            { label: 'Shipping Policy', href: '#' },
+            { label: 'Returns & Refunds', href: '/refund-policy' },
+            { label: 'Shipping Policy', href: '/shipping-policy' },
         ]
     }
 
