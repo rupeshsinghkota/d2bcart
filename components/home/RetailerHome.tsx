@@ -228,19 +228,24 @@ function CategoryCard({ cat }: { cat: any }) {
                 bg-gray-50
                 group-hover:shadow-lg group-hover:border-emerald-200 transition-all
             `}>
-                {generatedImg ? (
-                    <img
-                        src={generatedImg}
-                        alt={cat.name}
-                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                    />
-                ) : cat.image_url ? (
-                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xl sm:text-3xl bg-gray-100">
-                        {cat.name?.[0]?.toUpperCase()}
-                    </div>
-                )}
+                {(() => {
+                    const generatedImg = getCategoryImage(cat.name)
+                    if (generatedImg) return (
+                        <img
+                            src={generatedImg}
+                            alt={cat.name}
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                        />
+                    )
+                    if (cat.image_url) return (
+                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                    )
+                    return (
+                        <div className="w-full h-full flex items-center justify-center text-xl sm:text-3xl bg-gray-100">
+                            {cat.name?.[0]?.toUpperCase()}
+                        </div>
+                    )
+                })()}
             </div>
             <span className="text-[10px] sm:text-xs text-center text-gray-700 font-medium line-clamp-2 max-w-[72px] sm:max-w-full leading-tight">
                 {cat.name}
