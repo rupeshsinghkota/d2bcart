@@ -57,11 +57,14 @@ export const CategorySidebar = ({ categories, selectedCategory, onSelectCategory
                                 }}
                             >
                                 <div className="flex items-center gap-2">
-                                    {level === 0 && getCategoryImage(cat.name) && (
-                                        <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                                            <img src={getCategoryImage(cat.name)!} className="w-full h-full object-cover" alt="" />
-                                        </div>
-                                    )}
+                                    {level === 0 && (() => {
+                                        const img = getCategoryImage(cat.name)
+                                        return img ? (
+                                            <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
+                                                <img src={img} className="w-full h-full object-cover" alt="" />
+                                            </div>
+                                        ) : null
+                                    })()}
                                     <span>{cat.name}</span>
                                 </div>
                                 {hasChildren && (

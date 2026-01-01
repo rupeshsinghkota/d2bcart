@@ -96,13 +96,12 @@ export default function CategoriesPage() {
                                     w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1 md:mb-0 shrink-0 overflow-hidden
                                     ${selectedCategoryId === parent.id ? 'bg-emerald-50' : 'bg-gray-200/50'}
                                 `}>
-                                    {getCategoryImage(parent.name) ? (
-                                        <img src={getCategoryImage(parent.name)!} alt={parent.name} className="w-full h-full object-cover" />
-                                    ) : parent.image_url ? (
-                                        <img src={parent.image_url} alt={parent.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-sm md:text-lg font-bold text-gray-400">{parent.name[0]}</span>
-                                    )}
+                                    {(() => {
+                                        const img = getCategoryImage(parent.name)
+                                        if (img) return <img src={img} alt={parent.name} className="w-full h-full object-cover" />
+                                        if (parent.image_url) return <img src={parent.image_url} alt={parent.name} className="w-full h-full object-cover" />
+                                        return <span className="text-sm md:text-lg font-bold text-gray-400">{parent.name[0]}</span>
+                                    })()}
                                 </div>
                                 <span className="text-[10px] md:text-sm font-semibold text-center md:text-left leading-tight md:line-clamp-2">
                                     {parent.name}
@@ -120,11 +119,14 @@ export default function CategoriesPage() {
                             <div className="flex items-start justify-between mb-8 border-b border-gray-100 pb-4">
                                 <div>
                                     <h1 className="text-xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                                        {getCategoryImage(selectedCategory.name) && (
-                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center overflow-hidden border border-emerald-100">
-                                                <img src={getCategoryImage(selectedCategory.name)!} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
+                                        {(() => {
+                                            const img = getCategoryImage(selectedCategory.name)
+                                            return img ? (
+                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center overflow-hidden border border-emerald-100">
+                                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                                </div>
+                                            ) : null
+                                        })()}
                                         {selectedCategory.name}
                                     </h1>
 
@@ -163,13 +165,12 @@ export default function CategoriesPage() {
                                                             className="group flex flex-col items-center text-center p-3 rounded-xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-emerald-200 hover:shadow-sm transition-all duration-200"
                                                         >
                                                             <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm border border-gray-100 overflow-hidden group-hover:scale-105 transition-transform">
-                                                                {leaf.image_url ? (
-                                                                    <img src={leaf.image_url} alt={leaf.name} className="w-full h-full object-cover" />
-                                                                ) : getCategoryImage(leaf.name) ? (
-                                                                    <img src={getCategoryImage(leaf.name)!} alt={leaf.name} className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <span className="text-sm font-bold text-gray-400">{leaf.name[0]}</span>
-                                                                )}
+                                                                {(() => {
+                                                                    const img = getCategoryImage(leaf.name)
+                                                                    if (leaf.image_url) return <img src={leaf.image_url} alt={leaf.name} className="w-full h-full object-cover" />
+                                                                    if (img) return <img src={img} alt={leaf.name} className="w-full h-full object-cover" />
+                                                                    return <span className="text-sm font-bold text-gray-400">{leaf.name[0]}</span>
+                                                                })()}
                                                             </div>
                                                             <span className="text-xs md:text-sm font-medium text-gray-700 group-hover:text-emerald-700 line-clamp-2 leading-tight">
                                                                 {leaf.name}
