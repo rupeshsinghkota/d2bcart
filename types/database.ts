@@ -19,7 +19,6 @@ export interface User {
     phone?: string
     user_type: UserType
     business_name: string
-    gst_number?: string
     address?: string
     city?: string
     state?: string
