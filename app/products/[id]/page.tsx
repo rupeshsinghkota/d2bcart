@@ -30,6 +30,7 @@ export default function ProductDetailPage() {
     const [quantity, setQuantity] = useState(1)
     const [addingToCart, setAddingToCart] = useState(false)
     const [requested, setRequested] = useState(false)
+    const [activeImageIndex, setActiveImageIndex] = useState(0)
 
     const { user, addToCart } = useStore()
 
@@ -178,6 +179,26 @@ export default function ProductDetailPage() {
                 </div>
             </div>
 
+            {/* Breadcrumbs */}
+            <div className="max-w-7xl mx-auto px-4 pt-3 md:pt-4">
+                <nav className="flex items-center gap-2 text-sm text-gray-500 overflow-x-auto no-scrollbar">
+                    <Link href="/products" className="hover:text-emerald-600 transition-colors whitespace-nowrap">Products</Link>
+                    {product.category && (
+                        <>
+                            <span className="text-gray-300">/</span>
+                            <Link
+                                href={`/products?category=${product.category.slug}`}
+                                className="hover:text-emerald-600 transition-colors whitespace-nowrap"
+                            >
+                                {product.category.name}
+                            </Link>
+                        </>
+                    )}
+                    <span className="text-gray-300">/</span>
+                    <span className="text-gray-700 font-medium truncate">{product.name}</span>
+                </nav>
+            </div>
+
             <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
                 <div className="grid md:grid-cols-2 gap-6 md:gap-10">
                     {/* Images Section */}
@@ -185,9 +206,9 @@ export default function ProductDetailPage() {
                         {/* Main Image */}
                         <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
                             <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center relative">
-                                {product.images?.[0] ? (
+                                {product.images?.[activeImageIndex] ? (
                                     <img
-                                        src={product.images[0]}
+                                        src={product.images[activeImageIndex]}
                                         alt={product.name}
                                         className="w-full h-full object-cover"
                                     />
@@ -195,9 +216,12 @@ export default function ProductDetailPage() {
                                     <Package className="w-24 h-24 text-gray-300" />
                                 )}
                                 {product.category && (
-                                    <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold text-gray-700 shadow-sm border border-gray-100">
+                                    <Link
+                                        href={`/products?category=${product.category.slug}`}
+                                        className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold text-gray-700 shadow-sm border border-gray-100 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                                    >
                                         {product.category.name}
-                                    </span>
+                                    </Link>
                                 )}
                             </div>
                         </div>
@@ -206,12 +230,13 @@ export default function ProductDetailPage() {
                         {product.images && product.images.length > 1 && (
                             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                 {product.images.map((img, idx) => (
-                                    <div
+                                    <button
                                         key={idx}
-                                        className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-transparent hover:border-emerald-400 transition-colors cursor-pointer"
+                                        onClick={() => setActiveImageIndex(idx)}
+                                        className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
                                     >
                                         <img src={img} alt="" className="w-full h-full object-cover" />
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         )}
