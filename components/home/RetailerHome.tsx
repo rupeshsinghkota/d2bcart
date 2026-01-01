@@ -1,34 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { ChevronRight, Sparkles, TrendingUp, Percent, Zap, Package, Star, ArrowRight, Loader2 } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Sparkles, TrendingUp, Percent, Zap, Package, Star, ArrowRight, Loader2 } from 'lucide-react'
+import { getCategoryImage } from '@/utils/category'
 import { formatCurrency } from '@/lib/utils'
 
 // Helper to shuffle array for "random" feed
 const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
-
-// Manual mapping of generated images (assuming they are moved to public/category-images)
-const CATEGORY_IMAGES: Record<string, string> = {
-    'electronics': '/category-images/electronics.png',
-    'appliances': '/category-images/appliances.png',
-    'fashion': '/category-images/fashion.png',
-    'footwear': '/category-images/footwear.png',
-    'grocery': '/category-images/grocery.png',
-    'beauty': '/category-images/beauty.png',
-    'personal care': '/category-images/beauty.png',
-    'home': '/category-images/home.png',
-    'kitchen': '/category-images/kitchen.png',
-    'industrial': '/category-images/industrial.png',
-    'office': '/category-images/industrial.png',
-    'toys': '/category-images/toys.png',
-    'baby': '/category-images/toys.png',
-    'sports': '/category-images/sports.png',
-    'automotive': '/category-images/automotive.png',
-    'car': '/category-images/automotive.png',
-    'hardware': '/category-images/hardware.png',
-}
 
 export default function RetailerHome() {
     const [categories, setCategories] = useState<any[]>([])
@@ -37,6 +17,16 @@ export default function RetailerHome() {
     const [loadingMore, setLoadingMore] = useState(false)
     const [page, setPage] = useState(1)
     const PAGE_SIZE = 24
+
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollContainerRef.current) {
+            const { current } = scrollContainerRef
+            const scrollAmount = direction === 'left' ? -300 : 300
+            current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
+        }
+    }
 
     useEffect(() => {
         fetchData()
@@ -97,6 +87,8 @@ export default function RetailerHome() {
             </div>
         )
     }
+
+
 
     return (
         <div className="pb-24 md:pb-8 bg-gray-50 min-h-screen">
@@ -187,12 +179,26 @@ export default function RetailerHome() {
                 <div className="max-w-7xl mx-auto">
                     <div className="px-4 sm:px-6 lg:px-8 flex items-center justify-between mb-3.5">
                         <h2 className="text-lg sm:text-xl font-bold text-gray-900">Shop by Category</h2>
-                        <Link href="/categories" className="text-emerald-600 text-xs sm:text-sm font-semibold hover:underline">
-                            See All
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {/* Desktop Scroll Arrows */}
+                            <div className="hidden md:flex gap-1">
+                                <button onClick={() => scroll('left')} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-emerald-600 transition-colors">
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => scroll('right')} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-emerald-600 transition-colors">
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <Link href="/categories" className="text-emerald-600 text-xs sm:text-sm font-semibold hover:underline">
+                                See All
+                            </Link>
+                        </div>
                     </div>
                     {/* Horizontal Scroll with Generated Images */}
-                    <div className="flex overflow-x-auto pb-4 px-4 sm:px-8 gap-3 sm:gap-5 no-scrollbar snap-x">
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex overflow-x-auto pb-4 px-4 sm:px-8 gap-3 sm:gap-5 no-scrollbar snap-x scroll-smooth"
+                    >
                         {categories.map(cat => (
                             <CategoryCard key={cat.id} cat={cat} />
                         ))}
@@ -239,34 +245,7 @@ export default function RetailerHome() {
 
 
 
-function getCategoryImage(name: string): string | null {
-    const lowerName = name?.toLowerCase() || ''
 
-    // Explicit priority checks
-    if (lowerName.includes('industrial') || lowerName.includes('office') || lowerName.includes('stationery')) return CATEGORY_IMAGES['industrial']
-
-    if (lowerName.includes('shoe') || lowerName.includes('footwear') || lowerName.includes('sandal')) return CATEGORY_IMAGES['footwear']
-    if (lowerName.includes('fashion') || lowerName.includes('clothing') || lowerName.includes('wear')) return CATEGORY_IMAGES['fashion']
-
-    if (lowerName.includes('beauty') || lowerName.includes('personal') || lowerName.includes('hair') || lowerName.includes('skin')) return CATEGORY_IMAGES['beauty']
-    if (lowerName.includes('grocery') || lowerName.includes('fmcg') || lowerName.includes('food')) return CATEGORY_IMAGES['grocery']
-
-    if (lowerName.includes('toy') || lowerName.includes('baby') || lowerName.includes('game')) return CATEGORY_IMAGES['toys']
-    if (lowerName.includes('sport') || lowerName.includes('gym') || lowerName.includes('fitness')) return CATEGORY_IMAGES['sports']
-    if (lowerName.includes('auto') || lowerName.includes('car') || lowerName.includes('bike')) return CATEGORY_IMAGES['automotive']
-
-    // Hardware & Tools
-    if (lowerName.includes('hardware') || lowerName.includes('tool') || lowerName.includes('drill') || lowerName.includes('construction')) return CATEGORY_IMAGES['hardware']
-
-    // Electronics & Appliances split
-    if (lowerName.includes('wash') || lowerName.includes('fridge') || lowerName.includes('conditioner') || lowerName.includes('appliance')) return CATEGORY_IMAGES['appliances']
-    if (lowerName.includes('kitchen') || lowerName.includes('cook') || lowerName.includes('mixer')) return CATEGORY_IMAGES['kitchen']
-    if (lowerName.includes('electronics') || lowerName.includes('mobile') || lowerName.includes('gadget')) return CATEGORY_IMAGES['electronics']
-
-    if (lowerName.includes('home') || lowerName.includes('decor')) return CATEGORY_IMAGES['home']
-
-    return null
-}
 
 function CategoryCard({ cat }: { cat: any }) {
     const generatedImg = getCategoryImage(cat.name)
