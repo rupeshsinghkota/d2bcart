@@ -238,174 +238,174 @@ export default function ProductDetailPage() {
                                 </Link>
                             )}
                         </div>
-                    </div>
 
-                    {/* Thumbnail Gallery */}
-                    {product.images && product.images.length > 1 && (
-                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                            {product.images.map((img, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setActiveImageIndex(idx)}
-                                    className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
-                                >
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Trust Indicators - Desktop Only */}
-                    <div className="hidden md:grid grid-cols-3 gap-3 mt-6">
-                        <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                            <Shield className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                            <div className="text-xs font-medium text-gray-700">Secure Payment</div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                            <Check className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                            <div className="text-xs font-medium text-gray-700">Quality Assured</div>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                            <Package className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                            <div className="text-xs font-medium text-gray-700">Direct Shipping</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Product Info Section */}
-                <div className="space-y-4">
-                    {/* Main Product Card */}
-                    <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-gray-100">
-                        <h1 className="hidden md:block text-2xl md:text-3xl font-bold text-gray-900 mb-3 leading-tight">
-                            {product.name}
-                        </h1>
-
-                        {/* Price */}
-                        <div className="flex items-baseline gap-2 mb-4">
-                            <span className="text-3xl md:text-4xl font-bold text-gray-900">
-                                {formatCurrency(product.display_price)}
-                            </span>
-                            <span className="text-gray-500 text-sm">/unit</span>
-                        </div>
-
-                        {product.description && (
-                            <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-5 border-b border-gray-100 pb-5">
-                                {product.description}
-                            </p>
+                        {/* Thumbnail Gallery */}
+                        {product.images && product.images.length > 1 && (
+                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                {product.images.map((img, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setActiveImageIndex(idx)}
+                                        className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
+                                    >
+                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
                         )}
 
-                        {/* Product Specs */}
-                        <div className="grid grid-cols-2 gap-3 mb-5">
-                            <div className="bg-gray-50 rounded-xl p-3 text-center">
-                                <div className="text-xs text-gray-500 mb-1">Min. Order</div>
-                                <div className="font-bold text-gray-900">{product.moq} units</div>
+                        {/* Trust Indicators - Desktop Only */}
+                        <div className="hidden md:grid grid-cols-3 gap-3 mt-6">
+                            <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
+                                <Shield className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                                <div className="text-xs font-medium text-gray-700">Secure Payment</div>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-3 text-center">
-                                <div className="text-xs text-gray-500 mb-1">Stock</div>
-                                <div className="font-bold text-gray-900">{product.stock > 0 ? `${product.stock} units` : 'Available'}</div>
+                            <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
+                                <Check className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                                <div className="text-xs font-medium text-gray-700">Quality Assured</div>
                             </div>
-                        </div>
-
-                        {/* Quantity Selector - Desktop */}
-                        <div className="hidden md:block mb-5">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Select Quantity
-                            </label>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center bg-gray-100 rounded-xl overflow-hidden">
-                                    <button
-                                        onClick={() => setQuantity(Math.max(product.moq, quantity - 1))}
-                                        className="p-3 hover:bg-gray-200 transition-colors"
-                                    >
-                                        <Minus className="w-5 h-5 text-gray-600" />
-                                    </button>
-                                    <input
-                                        type="number"
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(Math.max(product.moq, parseInt(e.target.value) || product.moq))}
-                                        className="w-16 text-center bg-transparent py-3 font-semibold focus:outline-none"
-                                        min={product.moq}
-                                    />
-                                    <button
-                                        onClick={() => setQuantity(quantity + 1)}
-                                        className="p-3 hover:bg-gray-200 transition-colors"
-                                    >
-                                        <Plus className="w-5 h-5 text-gray-600" />
-                                    </button>
-                                </div>
-                                <div className="flex-1 text-right">
-                                    <span className="text-gray-500 text-sm">Total: </span>
-                                    <span className="text-2xl font-bold text-emerald-600">
-                                        {formatCurrency(totalAmount)}
-                                    </span>
-                                </div>
+                            <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
+                                <Package className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                                <div className="text-xs font-medium text-gray-700">Direct Shipping</div>
                             </div>
                         </div>
-
-                        {/* Desktop Action Buttons */}
-                        {product.stock > 0 ? (
-                            <div className="hidden md:flex gap-3">
-                                <button
-                                    onClick={handleAddToCart}
-                                    disabled={addingToCart}
-                                    className="flex-1 py-3.5 px-6 border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    <ShoppingCart className="w-5 h-5" />
-                                    Add to Cart
-                                </button>
-                                <button
-                                    onClick={handleBuyNow}
-                                    className="flex-1 py-3.5 px-6 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
-                                >
-                                    Buy Now
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={handleNotifyMe}
-                                disabled={requested}
-                                className={`hidden md:flex w-full py-3.5 rounded-xl items-center justify-center gap-2 font-semibold transition-colors ${requested
-                                    ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed'
-                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                    }`}
-                            >
-                                {requested ? (
-                                    <><Check className="w-5 h-5" /> Request Sent</>
-                                ) : (
-                                    <><Bell className="w-5 h-5" /> Notify Me When Available</>
-                                )}
-                            </button>
-                        )}
                     </div>
 
-                    {/* Manufacturer Info Card */}
-                    {product.manufacturer && (
-                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Building className="w-5 h-5 text-gray-400" />
-                                Seller Information
-                            </h3>
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-gray-900">
-                                            {product.manufacturer.business_name}
+                    {/* Product Info Section */}
+                    <div className="space-y-4">
+                        {/* Main Product Card */}
+                        <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-gray-100">
+                            <h1 className="hidden md:block text-2xl md:text-3xl font-bold text-gray-900 mb-3 leading-tight">
+                                {product.name}
+                            </h1>
+
+                            {/* Price */}
+                            <div className="flex items-baseline gap-2 mb-4">
+                                <span className="text-3xl md:text-4xl font-bold text-gray-900">
+                                    {formatCurrency(product.display_price)}
+                                </span>
+                                <span className="text-gray-500 text-sm">/unit</span>
+                            </div>
+
+                            {product.description && (
+                                <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-5 border-b border-gray-100 pb-5">
+                                    {product.description}
+                                </p>
+                            )}
+
+                            {/* Product Specs */}
+                            <div className="grid grid-cols-2 gap-3 mb-5">
+                                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                    <div className="text-xs text-gray-500 mb-1">Min. Order</div>
+                                    <div className="font-bold text-gray-900">{product.moq} units</div>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                    <div className="text-xs text-gray-500 mb-1">Stock</div>
+                                    <div className="font-bold text-gray-900">{product.stock > 0 ? `${product.stock} units` : 'Available'}</div>
+                                </div>
+                            </div>
+
+                            {/* Quantity Selector - Desktop */}
+                            <div className="hidden md:block mb-5">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Select Quantity
+                                </label>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center bg-gray-100 rounded-xl overflow-hidden">
+                                        <button
+                                            onClick={() => setQuantity(Math.max(product.moq, quantity - 1))}
+                                            className="p-3 hover:bg-gray-200 transition-colors"
+                                        >
+                                            <Minus className="w-5 h-5 text-gray-600" />
+                                        </button>
+                                        <input
+                                            type="number"
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(Math.max(product.moq, parseInt(e.target.value) || product.moq))}
+                                            className="w-16 text-center bg-transparent py-3 font-semibold focus:outline-none"
+                                            min={product.moq}
+                                        />
+                                        <button
+                                            onClick={() => setQuantity(quantity + 1)}
+                                            className="p-3 hover:bg-gray-200 transition-colors"
+                                        >
+                                            <Plus className="w-5 h-5 text-gray-600" />
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 text-right">
+                                        <span className="text-gray-500 text-sm">Total: </span>
+                                        <span className="text-2xl font-bold text-emerald-600">
+                                            {formatCurrency(totalAmount)}
                                         </span>
-                                        {product.manufacturer.is_verified && (
-                                            <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
-                                                <Shield className="w-3 h-3" />
-                                                Verified
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                                        <MapPin className="w-4 h-4" />
-                                        {product.manufacturer.city}, {product.manufacturer.state}
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Desktop Action Buttons */}
+                            {product.stock > 0 ? (
+                                <div className="hidden md:flex gap-3">
+                                    <button
+                                        onClick={handleAddToCart}
+                                        disabled={addingToCart}
+                                        className="flex-1 py-3.5 px-6 border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <ShoppingCart className="w-5 h-5" />
+                                        Add to Cart
+                                    </button>
+                                    <button
+                                        onClick={handleBuyNow}
+                                        className="flex-1 py-3.5 px-6 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+                                    >
+                                        Buy Now
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleNotifyMe}
+                                    disabled={requested}
+                                    className={`hidden md:flex w-full py-3.5 rounded-xl items-center justify-center gap-2 font-semibold transition-colors ${requested
+                                        ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed'
+                                        : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                        }`}
+                                >
+                                    {requested ? (
+                                        <><Check className="w-5 h-5" /> Request Sent</>
+                                    ) : (
+                                        <><Bell className="w-5 h-5" /> Notify Me When Available</>
+                                    )}
+                                </button>
+                            )}
                         </div>
-                    )}
+
+                        {/* Manufacturer Info Card */}
+                        {product.manufacturer && (
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    <Building className="w-5 h-5 text-gray-400" />
+                                    Seller Information
+                                </h3>
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-semibold text-gray-900">
+                                                {product.manufacturer.business_name}
+                                            </span>
+                                            {product.manufacturer.is_verified && (
+                                                <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                                                    <Shield className="w-3 h-3" />
+                                                    Verified
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                                            <MapPin className="w-4 h-4" />
+                                            {product.manufacturer.city}, {product.manufacturer.state}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
