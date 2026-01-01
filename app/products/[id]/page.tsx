@@ -205,12 +205,12 @@ export default function ProductDetailPage() {
                     <div className="space-y-4">
                         {/* Main Image */}
                         <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                            <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center relative">
+                            <div className="aspect-square bg-gray-50 flex items-center justify-center relative p-4">
                                 {product.images?.[activeImageIndex] ? (
                                     <img
                                         src={product.images[activeImageIndex]}
                                         alt={product.name}
-                                        className="w-full h-full object-cover"
+                                        className="max-w-full max-h-full object-contain"
                                     />
                                 ) : (
                                     <Package className="w-24 h-24 text-gray-300" />
