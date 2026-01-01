@@ -10,7 +10,7 @@ import { Search, Filter, Package, MapPin, Heart, ChevronRight } from 'lucide-rea
 import { toast } from 'react-hot-toast'
 import { Breadcrumbs } from '@/components/product/Breadcrumbs'
 import { CategorySidebar } from '@/components/product/CategorySidebar'
-import { SubCategoryPills } from '@/components/product/SubCategoryPills'
+// import { SubCategoryPills } from '@/components/product/SubCategoryPills'
 
 import { MobileFilterBar } from '@/components/product/MobileFilterBar'
 import { MobileCategorySheet } from '@/components/product/MobileCategorySheet'
@@ -231,12 +231,12 @@ const ProductsContent = () => {
 
                     {/* Main Content */}
                     <div className="flex-1 min-w-0">
-                        {/* Mobile Pills */}
-                        <SubCategoryPills
+                        {/* Mobile Pills - Removed as per feedback (redundant with filter) */}
+                        {/* <SubCategoryPills
                             categories={categories}
                             selectedCategory={selectedCategory}
                             onSelectCategory={setSelectedCategory}
-                        />
+                        /> */}
 
                         {/* Products Grid */}
                         {loading ? (
