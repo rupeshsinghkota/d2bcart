@@ -110,11 +110,10 @@ const ProductsContent = () => {
             .from('products')
             .select(`
                 *,
-                manufacturer:users!products_manufacturer_id_fkey!inner(business_name, city, is_verified),
+                manufacturer:users!manufacturer_id(business_name, city, is_verified),
                 category:categories!products_category_id_fkey(name, slug)
             `)
             .eq('is_active', true)
-            .eq('manufacturer.is_verified', true)
 
         // Sorting
         switch (sortBy) {
