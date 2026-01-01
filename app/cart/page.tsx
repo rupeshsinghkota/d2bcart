@@ -221,33 +221,49 @@ export default function CartPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-4xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-8">
+        <div className="min-h-screen bg-gray-50 pb-32 md:pb-8">
+            {/* Mobile Header */}
+            <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex items-center gap-3">
+                <Link href="/products" className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <ArrowLeft className="w-5 h-5 text-gray-700" />
+                </Link>
+                <h1 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                    Cart ({cart.length})
+                </h1>
+            </div>
+
+            <div className="max-w-5xl mx-auto px-4 py-4 md:py-8">
+                {/* Desktop Header */}
+                <div className="hidden md:block mb-8">
                     <Link
                         href="/products"
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
                         Continue Shopping
                     </Link>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <ShoppingCart className="w-8 h-8 text-emerald-600" />
-                        Shopping Cart
+                        Your Cart
                     </h1>
                 </div>
 
                 {cart.length === 0 ? (
-                    <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h2 className="text-xl font-semibold text-gray-600 mb-2">
+                    <div className="bg-white rounded-2xl p-8 md:p-12 text-center shadow-sm border border-gray-100">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Package className="w-10 h-10 text-gray-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">
                             Your cart is empty
                         </h2>
-                        <p className="text-gray-500 mb-6">
-                            Start adding products to place an order
+                        <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                            Looks like you haven't added any products yet. Start browsing to find great deals!
                         </p>
-                        <Link href="/products" className="btn-primary inline-block">
+                        <Link
+                            href="/products"
+                            className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                        >
                             Browse Products
                         </Link>
                     </div>
@@ -451,6 +467,44 @@ export default function CartPage() {
                     </div>
                 )}
             </div>
+
+            {/* Mobile Sticky Bottom Checkout Bar */}
+            {cart.length > 0 && (
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 z-40 safe-area-inset-bottom">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-xs text-gray-500">{cart.length} item(s)</p>
+                            <p className="text-lg font-bold text-gray-900">
+                                {formatCurrency(
+                                    getCartTotal() +
+                                    getTotalShipping() +
+                                    cart.reduce((sum, item) => sum + calculateTax(
+                                        item.product.display_price,
+                                        item.quantity,
+                                        item.product.tax_rate || 18,
+                                        manufacturerStates[item.product.manufacturer_id],
+                                        user?.state
+                                    ).taxAmount, 0)
+                                )}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handlePlaceOrder}
+                            disabled={placingOrder || cart.length === 0}
+                            className="flex-1 max-w-[200px] py-3 bg-emerald-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-600/20"
+                        >
+                            {placingOrder ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <CreditCard className="w-5 h-5" />
+                                    Checkout
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >
     )
 }
