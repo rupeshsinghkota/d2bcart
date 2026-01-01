@@ -72,16 +72,16 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between gap-4">
 
                 {/* 1. Logo Section */}
-                <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+                <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
                     <div className="relative">
-                        <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-shadow">
-                            <span className="text-white font-black text-lg md:text-xl tracking-tight">D</span>
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-shadow">
+                            <span className="text-white font-black text-base sm:text-lg md:text-xl tracking-tight">D</span>
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white"></div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 sm:w-3 h-2.5 sm:h-3 bg-emerald-400 rounded-full border-2 border-white"></div>
                     </div>
-                    <div className="hidden sm:flex flex-col leading-none">
-                        <span className="font-extrabold text-lg md:text-xl text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
-                        <span className="text-[9px] text-gray-400 font-medium tracking-wider uppercase">B2B Marketplace</span>
+                    <div className="flex flex-col leading-none">
+                        <span className="font-extrabold text-base sm:text-lg md:text-xl text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
+                        <span className="hidden xs:block text-[8px] sm:text-[9px] text-gray-400 font-medium tracking-wider uppercase">B2B Marketplace</span>
                     </div>
                 </Link>
 
