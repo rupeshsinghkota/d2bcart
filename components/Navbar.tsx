@@ -68,34 +68,35 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="bg-white shadow-sm sticky top-0 z-50 h-16">
-            <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between gap-4">
+        <nav className="bg-white shadow-sm sticky top-0 z-50">
+            {/* Main Header Row */}
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center gap-3 sm:gap-4">
 
                 {/* 1. Logo Section */}
-                <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
+                <Link href="/" className="flex items-center gap-1.5 sm:gap-2 shrink-0 group">
                     <div className="relative">
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30 transition-shadow">
-                            <span className="text-white font-black text-base sm:text-lg md:text-xl tracking-tight">D</span>
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
+                            <span className="text-white font-black text-sm sm:text-base md:text-lg">D</span>
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 sm:w-3 h-2.5 sm:h-3 bg-emerald-400 rounded-full border-2 border-white"></div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 bg-emerald-400 rounded-full border-[1.5px] border-white"></div>
                     </div>
                     <div className="flex flex-col leading-none">
-                        <span className="font-extrabold text-base sm:text-lg md:text-xl text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
-                        <span className="hidden xs:block text-[8px] sm:text-[9px] text-gray-400 font-medium tracking-wider uppercase">B2B Marketplace</span>
+                        <span className="font-bold text-sm sm:text-base md:text-lg text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
+                        <span className="hidden sm:block text-[8px] text-gray-400 font-medium tracking-wide uppercase">B2B Marketplace</span>
                     </div>
                 </Link>
 
-                {/* 2. Global Search Bar (Centered & Flexible) */}
-                <form onSubmit={handleSearch} className="flex-1 max-w-2xl relative group">
+                {/* 2. Search Bar - Flexible Width */}
+                <form onSubmit={handleSearch} className="flex-1 min-w-0">
                     <div className="relative">
                         <input
                             type="text"
                             placeholder="Search products..."
-                            className="w-full pl-10 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-emerald-500 rounded-lg text-sm transition-all outline-none border ring-0"
+                            className="w-full pl-9 pr-3 py-2 sm:py-2.5 bg-gray-50 hover:bg-gray-100 focus:bg-white border border-gray-200 focus:border-emerald-500 rounded-full text-sm transition-all outline-none focus:ring-2 focus:ring-emerald-500/20"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     </div>
                 </form>
 
