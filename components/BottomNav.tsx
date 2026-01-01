@@ -44,6 +44,7 @@ export default function BottomNav() {
 
     const navItems = [
         { href: '/', icon: Home, label: 'Home' },
+        { href: '/categories', icon: LayoutGrid, label: 'Categories' },
         { href: '/products', icon: Store, label: 'Shop' },
     ]
 

@@ -37,6 +37,7 @@ export default function ProductDetailPage() {
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
     const [manufacturerProducts, setManufacturerProducts] = useState<Product[]>([])
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
     const { user, addToCart } = useStore()
 
@@ -319,9 +320,19 @@ export default function ProductDetailPage() {
                             </div>
 
                             {product.description && (
-                                <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-5 border-b border-gray-100 pb-5">
-                                    {product.description}
-                                </p>
+                                <div className="mb-5 border-b border-gray-100 pb-5">
+                                    <p className={`text-gray-600 text-sm md:text-base leading-relaxed ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
+                                        {product.description}
+                                    </p>
+                                    {product.description.length > 150 && (
+                                        <button
+                                            onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                            className="text-emerald-600 font-medium text-sm mt-2 hover:text-emerald-700 hover:underline focus:outline-none"
+                                        >
+                                            {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                                        </button>
+                                    )}
+                                </div>
                             )}
 
                             {/* Product Specs */}

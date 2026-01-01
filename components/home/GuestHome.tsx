@@ -38,7 +38,7 @@ export default function GuestHome() {
             .from('categories')
             .select('*')
             .is('parent_id', null)
-            .limit(10)
+
 
         // Fetch top products
         const { data: prods } = await supabase

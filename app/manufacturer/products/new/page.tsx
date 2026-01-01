@@ -37,12 +37,58 @@ export default function NewProductPage() {
     }, [])
 
     const fetchCategories = async () => {
+        // 1. Fetch Manufacturer's Subscribed Categories
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+
+        const res = await fetch('/api/manufacturer/categories', {
+            headers: {
+                Authorization: `Bearer ${session.access_token}`
+            }
+        })
+        const { categories: subscribedIds, error } = await res.json()
+
+        if (error || !subscribedIds || subscribedIds.length === 0) {
+            toast.error("You haven't selected any categories yet. Please go to your Profile settings.")
+            setTimeout(() => router.push('/manufacturer/profile'), 2000)
+            return
+        }
+
+        // 2. Fetch ALL Categories to build hierarchy
         const { data } = await supabase
             .from('categories')
             .select('*')
             .order('name')
 
-        if (data) setCategories(data)
+        const allCategories = (data || []) as Category[]
+
+        if (allCategories) {
+            // Build Map for Lookup
+            const catMap = new Map(allCategories.map(c => [c.id, c]))
+
+            // Filter and Build Paths
+            const filtered = allCategories
+                .filter(c => subscribedIds.includes(c.id))
+                .map(c => {
+                    let path = c.name
+                    let current = c
+                    let depth = 0
+                    while (current.parent_id && depth < 5) {
+                        const parent = catMap.get(current.parent_id)
+                        if (parent) {
+                            path = `${parent.name} > ${path}`
+                            current = parent
+                        } else {
+                            break
+                        }
+                        depth++
+                    }
+                    return { ...c, name: path } // Overwrite name for display
+                })
+                .sort((a, b) => a.name.localeCompare(b.name))
+
+            setCategories(filtered)
+        }
     }
 
     const handleCategoryChange = (categoryId: string) => {
@@ -58,6 +104,7 @@ export default function NewProductPage() {
         try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
+            const userId = (user as any).id
 
             // Calculate display price and margin
             const basePrice = parseFloat(formData.base_price)
@@ -66,7 +113,7 @@ export default function NewProductPage() {
             const margin = displayPrice - basePrice
 
             const { error } = await (supabase.from('products') as any).insert({
-                manufacturer_id: user.id,
+                manufacturer_id: userId,
                 category_id: formData.category_id,
                 name: formData.name,
                 description: formData.description,
@@ -165,11 +212,21 @@ export default function NewProductPage() {
                                     required
                                 >
                                     <option value="">Select a category</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>
-                                            {cat.name} (+{cat.markup_percentage}% platform fee)
-                                        </option>
-                                    ))}
+                                    {categories.map(cat => {
+                                        // Find parent names for display
+                                        // Note: We need the full list to do this efficiently. 
+                                        // Since 'categories' state currently ONLY holds filtered items, we might miss parents if they aren't selected.
+                                        // However, showing just the name is often ambiguous.
+                                        // Let's rely on the name for now, or if we kept 'allCategories' we could build paths.
+                                        // Given the constraints, I'll stick to name, but add a TODO or try to show parent if available in the object (if I fetched it properly).
+                                        // Actually, I can join `parent_id` but that requires looking up.
+                                        // Let's just output the name for now, but assume the user selects LEAF nodes usually.
+                                        return (
+                                            <option key={cat.id} value={cat.id}>
+                                                {cat.name} (+{cat.markup_percentage}% platform fee)
+                                            </option>
+                                        )
+                                    })}
                                 </select>
                             </div>
 

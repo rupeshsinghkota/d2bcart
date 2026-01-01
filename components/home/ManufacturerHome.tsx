@@ -83,7 +83,7 @@ export default function ManufacturerHome({ user }: { user: any }) {
                 <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white">
                     <h3 className="text-xl font-bold mb-2">Add New Products</h3>
                     <p className="text-gray-400 mb-6 text-sm">Expand your catalog to reach more retailers.</p>
-                    <Link href="/manufacturer/add-product" className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100">
+                    <Link href="/manufacturer/products/new" className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100">
                         + Add Product
                     </Link>
                 </div>

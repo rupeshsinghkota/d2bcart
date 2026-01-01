@@ -11,7 +11,8 @@ import {
     Heart,
     LogOut,
     Store,
-    Package
+    Package,
+    LayoutGrid
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
@@ -107,6 +108,11 @@ export default function Navbar() {
                     <Link href="/products" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 transition-colors">
                         <Package className="w-5 h-5" />
                         <span className="text-xs font-medium mt-0.5">Products</span>
+                    </Link>
+
+                    <Link href="/categories" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 transition-colors">
+                        <LayoutGrid className="w-5 h-5" />
+                        <span className="text-xs font-medium mt-0.5">Categories</span>
                     </Link>
 
                     {user ? (
