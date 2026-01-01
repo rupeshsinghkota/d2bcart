@@ -15,7 +15,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
     'fashion': '/category-images/fashion.png',
     'grocery': '/category-images/grocery.png',
     'home': '/category-images/home.png',
-    'kitchen': '/category-images/home.png',
+    'industrial': '/category-images/industrial.png',
 }
 
 export default function RetailerHome() {
@@ -225,11 +225,18 @@ export default function RetailerHome() {
     )
 }
 
+
+
 function getCategoryImage(name: string): string | null {
     const lowerName = name?.toLowerCase() || ''
-    for (const [key, img] of Object.entries(CATEGORY_IMAGES)) {
-        if (lowerName.includes(key)) return img
-    }
+
+    // Explicit priority checks
+    if (lowerName.includes('industrial') || lowerName.includes('office') || lowerName.includes('stationery')) return CATEGORY_IMAGES['industrial']
+    if (lowerName.includes('electronics') || lowerName.includes('mobile') || lowerName.includes('appliance')) return CATEGORY_IMAGES['electronics']
+    if (lowerName.includes('fashion') || lowerName.includes('clothing') || lowerName.includes('wear')) return CATEGORY_IMAGES['fashion']
+    if (lowerName.includes('grocery') || lowerName.includes('fmcg') || lowerName.includes('food')) return CATEGORY_IMAGES['grocery']
+    if (lowerName.includes('home') || lowerName.includes('kitchen') || lowerName.includes('decor')) return CATEGORY_IMAGES['home']
+
     return null
 }
 
