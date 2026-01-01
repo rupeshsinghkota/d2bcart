@@ -103,6 +103,12 @@ export default function Navbar() {
                 {/* 3. Action Icons (Right Side) */}
                 <div className="flex items-center gap-3 md:gap-5 shrink-0">
 
+                    {/* Products Link - Desktop Only */}
+                    <Link href="/products" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 transition-colors">
+                        <Package className="w-5 h-5" />
+                        <span className="text-xs font-medium mt-0.5">Products</span>
+                    </Link>
+
                     {user ? (
                         <>
                             {/* Dashboard Role Icon (Hidden on mobile as it's in bottom nav) */}
