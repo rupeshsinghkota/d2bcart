@@ -99,11 +99,17 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
                     {/* Brand Column */}
                     <div className="space-y-4">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="bg-emerald-600 text-white p-1.5 rounded-lg">
-                                <span className="font-bold text-xl">D</span>
+                        <Link href="/" className="flex items-center gap-2.5 group">
+                            <div className="relative">
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                    <span className="text-white font-black text-xl tracking-tight">D</span>
+                                </div>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white"></div>
                             </div>
-                            <span className="font-bold text-xl text-gray-900 tracking-tight">D2BCart</span>
+                            <div className="flex flex-col leading-none">
+                                <span className="font-extrabold text-xl text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
+                                <span className="text-[9px] text-gray-400 font-medium tracking-wider uppercase">B2B Marketplace</span>
+                            </div>
                         </Link>
                         <p className="text-gray-500 text-sm leading-relaxed">
                             India's leading B2B marketplace connecting retailers directly with verified manufacturers.
