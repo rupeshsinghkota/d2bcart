@@ -26,7 +26,7 @@ export const getChildren = (parentId: string | null, allCategories: Category[]):
 export const getSiblings = (categoryId: string, allCategories: Category[]): Category[] => {
     const current = allCategories.find(c => c.id === categoryId)
     if (!current) return []
-    return getChildren(current.parent_id, allCategories)
+    return getChildren(current.parent_id || null, allCategories)
 }
 
 // Get the root category for a given category ID
