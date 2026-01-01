@@ -127,12 +127,7 @@ export default function CategoriesPage() {
                                         )}
                                         {selectedCategory.name}
                                     </h1>
-                                    <div className="flex items-center gap-2 mt-2 ml-1">
-                                        <span className="text-xs md:text-sm text-gray-500">Base Margin:</span>
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            +{selectedCategory.markup_percentage}%
-                                        </span>
-                                    </div>
+
                                 </div>
                                 <Link
                                     href={`/products?category=${selectedCategory.slug}`}
@@ -155,9 +150,7 @@ export default function CategoriesPage() {
                                                     </h2>
                                                     <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
                                                 </Link>
-                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                    {subCategory.markup_percentage}% Margin
-                                                </span>
+
                                             </div>
 
                                             {/* Level 3 Grid (Leaf Nodes) */}
