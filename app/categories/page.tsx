@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Category } from '@/types'
-import { Package } from 'lucide-react'
+import { Package, ChevronRight } from 'lucide-react'
 import { getCategoryImage } from '@/utils/category'
 
 export default function CategoriesPage() {
@@ -37,9 +37,23 @@ export default function CategoriesPage() {
         setLoading(false)
     }
 
+    // Helper to build 3-level tree
+    const getCategoryTree = (rootId: string | null) => {
+        if (!rootId) return []
+
+        // Level 2 (Subcategories of Root)
+        const level2 = categories.filter(c => c.parent_id === rootId)
+
+        return level2.map(sub => ({
+            ...sub,
+            // Level 3 (Subcategories of Level 2)
+            children: categories.filter(c => c.parent_id === sub.id)
+        }))
+    }
+
     const parentCategories = categories.filter(c => !c.parent_id)
     const selectedCategory = categories.find(c => c.id === selectedCategoryId)
-    const subCategories = categories.filter(c => c.parent_id === selectedCategoryId)
+    const categoryTree = getCategoryTree(selectedCategoryId) // Replaced subCategories with categoryTree
 
     if (loading) {
         return (
@@ -82,14 +96,12 @@ export default function CategoriesPage() {
                                     w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1 md:mb-0 shrink-0 overflow-hidden
                                     ${selectedCategoryId === parent.id ? 'bg-emerald-50' : 'bg-gray-200/50'}
                                 `}>
-                                    {parent.image_url ? (
+                                    {getCategoryImage(parent.name) ? (
+                                        <img src={getCategoryImage(parent.name)!} alt={parent.name} className="w-full h-full object-cover" />
+                                    ) : parent.image_url ? (
                                         <img src={parent.image_url} alt={parent.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        getCategoryImage(parent.name) ? (
-                                            <img src={getCategoryImage(parent.name)!} alt={parent.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-sm md:text-lg font-bold text-gray-400">{parent.name[0]}</span>
-                                        )
+                                        <span className="text-sm md:text-lg font-bold text-gray-400">{parent.name[0]}</span>
                                     )}
                                 </div>
                                 <span className="text-[10px] md:text-sm font-semibold text-center md:text-left leading-tight md:line-clamp-2">
@@ -100,18 +112,23 @@ export default function CategoriesPage() {
                     </div>
                 </aside>
 
-                {/* Right Content: Subcategories */}
+                {/* Right Content: 3-Level Hierarchy */}
                 <main className="flex-1 overflow-y-auto bg-white p-4 md:p-6 lg:p-8">
                     {selectedCategory && (
-                        <div className="max-w-4xl mx-auto h-full flex flex-col">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-6 md:mb-8 border-b border-gray-100 pb-4">
+                        <div className="max-w-5xl mx-auto h-full flex flex-col">
+                            {/* Header: Level 1 (Root) */}
+                            <div className="flex items-start justify-between mb-8 border-b border-gray-100 pb-4">
                                 <div>
-                                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                                    <h1 className="text-xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                                        {getCategoryImage(selectedCategory.name) && (
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center overflow-hidden border border-emerald-100">
+                                                <img src={getCategoryImage(selectedCategory.name)!} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
                                         {selectedCategory.name}
                                     </h1>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="text-xs md:text-sm text-gray-500">Platform Margin:</span>
+                                    <div className="flex items-center gap-2 mt-2 ml-1">
+                                        <span className="text-xs md:text-sm text-gray-500">Base Margin:</span>
                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
                                             +{selectedCategory.markup_percentage}%
                                         </span>
@@ -121,55 +138,73 @@ export default function CategoriesPage() {
                                     href={`/products?category=${selectedCategory.slug}`}
                                     className="hidden md:inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
                                 >
-                                    Browse All
+                                    Browse All Items
                                 </Link>
                             </div>
 
-                            {/* Subcategories Grid */}
-                            {subCategories.length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-                                    {subCategories.map(sub => (
-                                        <Link
-                                            key={sub.id}
-                                            href={`/products?category=${sub.slug}`}
-                                            className="group relative flex flex-col bg-white rounded-xl border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all p-3 md:p-4 text-center items-center h-full"
-                                        >
-                                            <div className="w-14 h-14 md:w-20 md:h-20 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                                                {/* Reuse parent image or show generic icon for subcategory if no specific image */}
-                                                <Package className="w-6 h-6 md:w-8 md:h-8 text-gray-300 group-hover:text-emerald-500 transition-colors" />
-                                            </div>
-                                            <h3 className="text-sm font-medium text-gray-900 group-hover:text-emerald-700 line-clamp-2">
-                                                {sub.name}
-                                            </h3>
-                                            <div className="mt-auto pt-2">
-                                                <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">
-                                                    +{sub.markup_percentage}% Margin
+                            {/* Level 2 & 3 Sections */}
+                            <div className="space-y-10 pb-12">
+                                {categoryTree.length > 0 ? (
+                                    categoryTree.map(subCategory => (
+                                        <div key={subCategory.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                            {/* Level 2 Header */}
+                                            <div className="flex items-center justify-between mb-4">
+                                                <Link href={`/products?category=${subCategory.slug}`} className="group flex items-center gap-2 hover:opacity-80">
+                                                    <h2 className="text-lg md:text-xl font-bold text-gray-800 group-hover:text-emerald-700 transition-colors">
+                                                        {subCategory.name}
+                                                    </h2>
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+                                                </Link>
+                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                                    {subCategory.markup_percentage}% Margin
                                                 </span>
                                             </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-60 min-h-[200px]">
-                                    <Package className="w-12 h-12 text-gray-300 mb-2" />
-                                    <p className="text-gray-500 text-sm">No subcategories yet</p>
-                                    <Link
-                                        href={`/products?category=${selectedCategory.slug}`}
-                                        className="mt-4 text-emerald-600 font-medium hover:underline text-sm"
-                                    >
-                                        Browse all {selectedCategory.name} products
-                                    </Link>
-                                </div>
-                            )}
 
-                            {/* Mobile "Browse All" Button (Fixed at bottom or inline) */}
-                            <div className="mt-8 md:hidden">
-                                <Link
-                                    href={`/products?category=${selectedCategory.slug}`}
-                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white text-sm font-bold rounded-xl shadow-lg active:scale-95 transition-transform"
-                                >
-                                    Browse All {selectedCategory.name} products
-                                </Link>
+                                            {/* Level 3 Grid (Leaf Nodes) */}
+                                            {subCategory.children.length > 0 ? (
+                                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+                                                    {subCategory.children.map(leaf => (
+                                                        <Link
+                                                            key={leaf.id}
+                                                            href={`/products?category=${leaf.slug}`}
+                                                            className="group flex flex-col items-center text-center p-3 rounded-xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-emerald-200 hover:shadow-sm transition-all duration-200"
+                                                        >
+                                                            <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm border border-gray-100 overflow-hidden group-hover:scale-105 transition-transform">
+                                                                {leaf.image_url ? (
+                                                                    <img src={leaf.image_url} alt={leaf.name} className="w-full h-full object-cover" />
+                                                                ) : getCategoryImage(leaf.name) ? (
+                                                                    <img src={getCategoryImage(leaf.name)!} alt={leaf.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-sm font-bold text-gray-400">{leaf.name[0]}</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs md:text-sm font-medium text-gray-700 group-hover:text-emerald-700 line-clamp-2 leading-tight">
+                                                                {leaf.name}
+                                                            </span>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                // If no Level 3 (Leaf nodes), show placeholder or handle as leaf itself
+                                                <div className="text-sm text-gray-400 italic pl-1">
+                                                    No sub-categories. <Link href={`/products?category=${subCategory.slug}`} className="text-emerald-600 hover:underline not-italic ml-1">View products</Link>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    // If Root has no Level 2 children
+                                    <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">
+                                        <Package className="w-12 h-12 text-gray-300 mb-3" />
+                                        <p className="text-gray-500">No sub-categories found.</p>
+                                        <Link
+                                            href={`/products?category=${selectedCategory.slug}`}
+                                            className="mt-4 px-4 py-2 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                                        >
+                                            View all products in {selectedCategory.name}
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

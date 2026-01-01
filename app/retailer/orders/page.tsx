@@ -62,7 +62,7 @@ export default function RetailerOrdersPage() {
             .select(`
         *,
         product:products(id, name, images, display_price, base_price, manufacturer_id, category:categories(name)),
-        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, phone)
+        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, phone, email, address, state, pincode)
       `)
             .eq('retailer_id', user.id)
             .order('created_at', { ascending: false })
@@ -162,98 +162,174 @@ export default function RetailerOrdersPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {filteredOrders.map(order => (
-                            <div key={order.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                                {/* Order Header */}
-                                <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        {getStatusIcon(order.status)}
-                                        <div>
-                                            <span className="font-mono text-sm font-medium">
-                                                {order.order_number}
+                        <div className="space-y-4">
+                            {/* Mobile: Cards */}
+                            <div className="md:hidden space-y-4">
+                                {filteredOrders.map(order => (
+                                    <div key={order.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                                        {/* Order Header */}
+                                        <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                {getStatusIcon(order.status)}
+                                                <div>
+                                                    <span className="font-mono text-xs font-medium text-gray-900">
+                                                        #{order.order_number}
+                                                    </span>
+                                                    <div className="text-xs text-gray-500">
+                                                        {new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${getStatusBadge(order.status)}`}>
+                                                {order.status}
                                             </span>
-                                            <span className="text-gray-400 mx-2">•</span>
-                                            <span className="text-sm text-gray-500">
-                                                {new Date(order.created_at).toLocaleDateString('en-IN', {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    year: 'numeric'
-                                                })}
-                                            </span>
                                         </div>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(order.status)}`}>
-                                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                    </span>
-                                </div>
 
-                                {/* Order Content */}
-                                <div className="p-4 flex items-center gap-4">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
-                                        {(order as any).product?.images?.[0] ? (
-                                            <img
-                                                src={(order as any).product.images[0]}
-                                                alt=""
-                                                className="w-full h-full object-cover rounded-lg"
-                                            />
-                                        ) : (
-                                            <Package className="w-8 h-8 text-gray-400" />
-                                        )}
-                                    </div>
+                                        {/* Order Content */}
+                                        <div className="p-4 flex gap-4">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
+                                                {(order as any).product?.images?.[0] ? (
+                                                    <img
+                                                        src={(order as any).product.images[0]}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <Package className="w-6 h-6 text-gray-400" />
+                                                )}
+                                            </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-gray-900">
-                                            {(order as any).product?.name}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            {(order as any).product?.category?.name}
-                                        </p>
-                                        <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                                            <MapPin className="w-3 h-3" />
-                                            {(order as any).manufacturer?.business_name}, {(order as any).manufacturer?.city}
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-semibold text-gray-900 text-sm line-clamp-1">
+                                                    {(order as any).product?.name}
+                                                </h3>
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {(order as any).manufacturer?.business_name}
+                                                </div>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <div className="text-sm font-bold text-gray-900">
+                                                        {formatCurrency(order.total_amount)}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {order.quantity} units
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div className="text-right">
-                                        <div className="text-lg font-bold text-gray-900">
-                                            {formatCurrency(order.total_amount)}
-                                        </div>
-                                        <div className="text-sm text-gray-500">
-                                            {order.quantity} units × {formatCurrency(order.unit_price)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Order Actions */}
-                                <div className="px-4 pb-4 flex items-center justify-end gap-3 border-t bg-gray-50/50 pt-3 mt-4">
-                                    {(['paid', 'confirmed', 'shipped', 'delivered'].includes(order.status)) && (
-                                        <>
+                                        {/* Actions */}
+                                        <div className="px-4 pb-4 flex items-center justify-end gap-2">
                                             <button
                                                 onClick={() => handleBuyAgain(order)}
-                                                className="text-sm font-medium text-blue-700 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full"
+                                                className="p-2 bg-blue-50 text-blue-600 rounded-lg"
+                                                title="Buy Again"
                                             >
                                                 <RefreshCw className="w-4 h-4" />
-                                                Buy Again
                                             </button>
                                             <button
                                                 onClick={() => generateInvoice(order)}
-                                                className="text-sm font-medium text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+                                                className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"
+                                                title="Invoice"
                                             >
                                                 <FileText className="w-4 h-4" />
-                                                Invoice
                                             </button>
-                                        </>
-                                    )}
-
-                                    {order.status === 'shipped' && order.tracking_number && (
-                                        <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm flex items-center gap-2">
-                                            <Truck className="w-4 h-4" />
-                                            Track: {order.tracking_number}
+                                            <Link
+                                                href={`/retailer/orders/${order.id}`}
+                                                className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                                            >
+                                                <ArrowLeft className="w-4 h-4 rotate-180" />
+                                            </Link>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+
+                            {/* Desktop: Table */}
+                            <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Manufacturer</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredOrders.map(order => (
+                                            <tr key={order.id} className="hover:bg-gray-50 transition-colors group">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
+                                                        {getStatusIcon(order.status)}
+                                                        <div>
+                                                            <div className="font-mono text-sm font-medium text-gray-900">{order.order_number}</div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                                                            {(order as any).product?.images?.[0] && (
+                                                                <img src={(order as any).product.images[0]} alt="" className="w-full h-full object-cover" />
+                                                            )}
+                                                        </div>
+                                                        <div className="max-w-[200px]">
+                                                            <div className="text-sm font-medium text-gray-900 truncate">{(order as any).product?.name}</div>
+                                                            <div className="text-xs text-gray-500">{order.quantity} units</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                                        <span className="truncate max-w-[150px]">{(order as any).manufacturer?.business_name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${getStatusBadge(order.status)}`}>
+                                                        {order.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <div className="text-sm font-bold text-gray-900">{formatCurrency(order.total_amount)}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => handleBuyAgain(order)}
+                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                            title="Buy Again"
+                                                        >
+                                                            <RefreshCw className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => generateInvoice(order)}
+                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded"
+                                                            title="Invoice"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </button>
+                                                        <Link
+                                                            href={`/retailer/orders/${order.id}`}
+                                                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                                                            title="View Details"
+                                                        >
+                                                            <ArrowLeft className="w-4 h-4 rotate-180" />
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

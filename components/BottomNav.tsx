@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, LayoutGrid, User, ShoppingCart, Package, Search } from 'lucide-react'
+import { Home, LayoutGrid, User, ShoppingCart, Package, Search, Store } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { User as UserType } from '@/types'
@@ -39,7 +39,7 @@ export default function BottomNav() {
 
     const navItems = [
         { href: '/', icon: Home, label: 'Home' },
-        { href: '/products', icon: Search, label: 'Browse' },
+        { href: '/products', icon: Store, label: 'Shop' },
         { href: '/categories', icon: LayoutGrid, label: 'Categories' },
     ]
 
@@ -68,8 +68,8 @@ export default function BottomNav() {
                             key={item.href}
                             href={item.href}
                             className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative transition-colors ${active
-                                    ? 'text-emerald-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'text-emerald-600'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             <div className="relative">

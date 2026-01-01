@@ -62,15 +62,17 @@ export default function Navbar() {
     const getDashboardLink = () => {
         if (!user) return '/'
         if (user.email === 'rupeshsingh1103@gmail.com') return '/admin'
-        return '/' // Handled by app/page.tsx dynamic rendering
+        if (user.user_type === 'manufacturer') return '/manufacturer'
+        if (user.user_type === 'retailer') return '/retailer'
+        return '/'
     }
 
     return (
-        <nav className="bg-white shadow-sm sticky top-0 z-40 h-16">
+        <nav className="bg-white shadow-sm sticky top-0 z-50 h-16">
             <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between gap-4">
 
                 {/* 1. Logo Section */}
-                <Link href={getDashboardLink()} className="flex items-center gap-2 shrink-0">
+                <Link href="/" className="flex items-center gap-2 shrink-0">
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center text-white font-bold text-lg md:text-xl shadow-emerald-200">
                         D
                     </div>
@@ -83,7 +85,7 @@ export default function Navbar() {
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Search for products, brands and more"
+                            placeholder="Search products..."
                             className="w-full pl-10 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-emerald-500 rounded-lg text-sm transition-all outline-none border ring-0"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -126,12 +128,58 @@ export default function Navbar() {
                                 </Link>
                             )}
 
-                            {/* Profile Dropdown / Link */}
-                            <Link href={getDashboardLink()} className="hidden md:flex items-center gap-2 ml-2">
-                                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold border border-emerald-200">
-                                    {user.business_name?.[0]?.toUpperCase() || 'U'}
-                                </div>
-                            </Link>
+                            {/* Profile Dropdown */}
+                            <div className="relative hidden md:block">
+                                <button
+                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                    className="flex items-center gap-2 ml-2 focus:outline-none"
+                                >
+                                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold border border-emerald-200 hover:border-emerald-400 transition-colors">
+                                        {user.business_name?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                </button>
+
+                                {isMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-100 ring-1 ring-black ring-opacity-5 focus:outline-none animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="px-4 py-3 border-b border-gray-50">
+                                            <p className="text-sm font-medium text-gray-900 truncate">{user.business_name}</p>
+                                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                        </div>
+
+                                        <Link
+                                            href="/retailer/profile"
+                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                            onClick={() => setIsMenuOpen(false)}
+                                        >
+                                            <User className="w-4 h-4" />
+                                            My Profile
+                                        </Link>
+
+                                        <Link
+                                            href={getDashboardLink()}
+                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                            onClick={() => setIsMenuOpen(false)}
+                                        >
+                                            {user.user_type === 'manufacturer' ? <Package className="w-4 h-4" /> : <Store className="w-4 h-4" />}
+                                            Dashboard
+                                        </Link>
+
+                                        <button
+                                            onClick={async () => {
+                                                await supabase.auth.signOut()
+                                                setIsMenuOpen(false)
+                                                setUser(null)
+                                                useStore.getState().setUser(null)
+                                                router.push('/login')
+                                            }}
+                                            className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-50"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </>
                     ) : (
                         <div className="flex items-center gap-3">

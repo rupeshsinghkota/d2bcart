@@ -10,13 +10,14 @@ interface SalesData {
 
 interface SalesChartProps {
     data: SalesData[]
+    title?: string
 }
 
-export function SalesChart({ data }: SalesChartProps) {
+export function SalesChart({ data, title = "Revenue Overview" }: SalesChartProps) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Revenue Overview</CardTitle>
+                <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
                 <ResponsiveContainer width="100%" height={350}>
