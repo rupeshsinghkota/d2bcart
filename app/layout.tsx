@@ -9,9 +9,21 @@ import BottomNav from "@/components/BottomNav";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "D2BCart - Direct to Business",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'),
+  title: {
+    default: "D2BCart - Direct to Business Marketplace",
+    template: "%s | D2BCart"
+  },
   description: "Connect directly with manufacturers. Skip the middleman, get wholesale prices.",
-  keywords: "B2B marketplace, wholesale, manufacturers, retailers, direct trade",
+  keywords: ["B2B marketplace", "wholesale", "manufacturers", "retailers", "direct trade", "bulk buying"],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'D2BCart',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  }
 };
 
 export default function RootLayout({
