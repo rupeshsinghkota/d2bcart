@@ -13,11 +13,14 @@ import {
     Shield,
     Truck,
     CheckCircle,
+    Plus,
     Store,
     TrendingUp
 } from 'lucide-react'
 import { getCategoryImage } from '@/utils/category'
 import { formatCurrency } from '@/lib/utils'
+import { useStore } from '@/lib/store'
+import { toast } from 'react-hot-toast'
 
 export default function GuestHome() {
     const [categories, setCategories] = useState<any[]>([])
@@ -197,14 +200,33 @@ export default function GuestHome() {
                                             <h3 className="font-bold text-gray-900 text-sm md:text-base mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
                                                 {product.name}
                                             </h3>
-                                            <div className="mt-auto">
-                                                <div className="text-lg font-black text-emerald-700">
-                                                    {formatCurrency(product.display_price)}
+                                            <div className="mt-auto flex items-center justify-between gap-2">
+                                                <div>
+                                                    <div className="text-lg font-black text-emerald-700">
+                                                        {formatCurrency(product.display_price)}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-wider">
+                                                        <Sparkles className="w-3 h-3 text-emerald-500" />
+                                                        Factory Direct
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-wider">
-                                                    <Sparkles className="w-3 h-3 text-emerald-500" />
-                                                    Factory Direct
-                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        // Check if user is logged in
+                                                        const user = useStore.getState().user;
+                                                        if (!user) {
+                                                            toast.error('Please login to add to cart');
+                                                            return;
+                                                        }
+                                                        useStore.getState().addToCart(product, product.moq);
+                                                        toast.success('Added to cart!');
+                                                    }}
+                                                    className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm"
+                                                >
+                                                    <Plus className="w-5 h-5" />
+                                                </button>
                                             </div>
                                         </div>
                                     </Link>

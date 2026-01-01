@@ -236,27 +236,24 @@ export default function ProductDetailPage() {
                 <div className="grid md:grid-cols-2 gap-6 md:gap-10">
                     {/* Images Section */}
                     <div className="space-y-4">
-                        {/* Main Image */}
-                        <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                        {/* Main Image Container */}
+                        <div className="relative aspect-square w-full bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
                             <button
                                 onClick={() => product.images?.length && setLightboxOpen(true)}
-                                className="aspect-square w-full bg-gray-50 flex items-center justify-center relative p-4 cursor-zoom-in group"
+                                className="absolute inset-0 w-full h-full flex items-center justify-center p-4 cursor-zoom-in"
                             >
                                 {product.images?.[activeImageIndex] ? (
                                     <img
                                         src={product.images[activeImageIndex]}
                                         alt={product.name}
-                                        className="max-w-full max-h-full object-contain"
+                                        className="w-full h-full object-contain transition-opacity duration-300"
                                     />
                                 ) : (
                                     <Package className="w-24 h-24 text-gray-300" />
                                 )}
-                                {/* Zoom Indicator */}
-                                <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ZoomIn className="w-3.5 h-3.5" />
-                                    Click to zoom
-                                </div>
                             </button>
+
+                            {/* Floating Category Badge */}
                             {product.category && (
                                 <Link
                                     href={`/products?category=${product.category.slug}`}
@@ -265,6 +262,12 @@ export default function ProductDetailPage() {
                                     {product.category.name}
                                 </Link>
                             )}
+
+                            {/* Zoom Indicator overlay */}
+                            <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <ZoomIn className="w-3.5 h-3.5" />
+                                Click to zoom
+                            </div>
                         </div>
 
                         {/* Thumbnail Gallery */}

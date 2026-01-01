@@ -3,9 +3,11 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { ChevronRight, ChevronLeft, Sparkles, TrendingUp, Percent, Zap, Package, Star, ArrowRight, Loader2 } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Sparkles, TrendingUp, Percent, Zap, Package, Star, ArrowRight, Loader2, Plus } from 'lucide-react'
 import { getCategoryImage } from '@/utils/category'
 import { formatCurrency } from '@/lib/utils'
+import { useStore } from '@/lib/store'
+import { toast } from 'react-hot-toast'
 
 // Helper to shuffle array for "random" feed
 const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
@@ -281,19 +283,24 @@ function ProductCard({ product }: { product: any }) {
                 <h4 className="font-medium text-gray-900 text-xs sm:text-sm line-clamp-2 mb-1.5 leading-snug min-h-[2.5em]">
                     {product.name}
                 </h4>
-                <div className="mt-auto">
+                <div className="mt-auto flex items-center justify-between gap-2">
                     <div className="flex items-baseline gap-1.5 flex-wrap">
                         <span className="text-emerald-700 font-bold text-sm sm:text-base">
                             {formatCurrency(product.display_price || product.base_price)}
                         </span>
-                        {(product.display_price > product.base_price) && (
-                            <span className="text-[10px] text-gray-400 line-through">
-                                {formatCurrency(Math.round((product.display_price || product.base_price) * 1.2))}
-                            </span>
-                        )}
                     </div>
 
-
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            useStore.getState().addToCart(product, product.moq);
+                            toast.success('Added to cart!');
+                        }}
+                        className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50"
+                    >
+                        <Plus className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
         </Link>

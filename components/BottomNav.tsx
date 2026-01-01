@@ -29,8 +29,13 @@ export default function BottomNav() {
         }
     }
 
-    // Don't show on login/register pages
-    if (pathname === '/login' || pathname === '/register') return null
+    // Don't show on login/register pages or product details (due to sticky action bars)
+    if (
+        pathname === '/login' ||
+        pathname === '/register' ||
+        pathname.startsWith('/products/') ||
+        pathname === '/cart'
+    ) return null
 
     const isActive = (path: string) => {
         if (path === '/') return pathname === '/'

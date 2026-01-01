@@ -6,10 +6,11 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Product, Category } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Filter, Package, MapPin, Heart, ChevronRight } from 'lucide-react'
+import { Search, Filter, Package, MapPin, Heart, ChevronRight, Plus } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Breadcrumbs } from '@/components/product/Breadcrumbs'
 import { CategorySidebar } from '@/components/product/CategorySidebar'
+import { useStore } from '@/lib/store'
 // import { SubCategoryPills } from '@/components/product/SubCategoryPills'
 
 import { MobileFilterBar } from '@/components/product/MobileFilterBar'
@@ -338,11 +339,15 @@ const ProductsContent = () => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                // Add logic
+                                                                e.stopPropagation();
+                                                                // Use the store to add to cart
+                                                                useStore.getState().addToCart(product, product.moq);
+                                                                toast.success('Added to cart!');
                                                             }}
-                                                            className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-600 hover:text-white hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-300"
+                                                            className="h-10 w-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm border border-emerald-100"
+                                                            title="Quick Add to Cart"
                                                         >
-                                                            <ChevronRight className="w-5 h-5" />
+                                                            <Plus className="w-5 h-5" />
                                                         </button>
                                                     </div>
                                                 </div>

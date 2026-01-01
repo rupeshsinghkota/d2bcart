@@ -15,10 +15,14 @@ import {
     User as UserIcon,
     RefreshCcw,
     Download,
-    ArrowRight
+    ArrowRight,
+    Plus,
+    ShoppingCart as CartIcon
 } from 'lucide-react'
 import { SalesChart } from '@/components/analytics/SalesChart'
 import { generateInvoice } from '@/lib/invoice-generator'
+import { useStore } from '@/lib/store'
+import { toast } from 'react-hot-toast'
 
 export default function RetailerDashboard() {
     const [user, setUser] = useState<User | null>(null)
@@ -63,7 +67,7 @@ export default function RetailerDashboard() {
             .from('orders')
             .select(`
         *,
-        product:products(name, images),
+        product:products(*),
         manufacturer:users!orders_manufacturer_id_fkey(business_name, city, email, phone, address, state, pincode),
         retailer:users!orders_retailer_id_fkey(business_name, city, phone, email, address, state, pincode)
       `)
@@ -247,9 +251,18 @@ export default function RetailerDashboard() {
                                             <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
                                             <p className="text-xs text-emerald-600 font-medium">Reorder</p>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                                            <ArrowRight className="w-4 h-4" />
-                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                useStore.getState().addToCart(product, product.moq || 1);
+                                                toast.success('Added to cart!');
+                                            }}
+                                            className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50 shadow-sm"
+                                            title="Reorder Item"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </button>
                                     </Link>
                                 ))}
                             </div>
