@@ -118,9 +118,9 @@ export default function Navbar() {
                                 </Link>
                             )}
 
-                            {/* Cart (Retailer Only) */}
+                            {/* Cart (Retailer Only - Hidden on mobile as it's in bottom nav) */}
                             {user.user_type === 'retailer' && (
-                                <Link href="/cart" className="flex flex-col items-center text-gray-600 hover:text-emerald-600 relative">
+                                <Link href="/cart" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 relative">
                                     <div className="relative">
                                         <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
                                         {cart.length > 0 && (
@@ -129,7 +129,7 @@ export default function Navbar() {
                                             </span>
                                         )}
                                     </div>
-                                    <span className="text-xs font-medium mt-0.5 hidden md:block">Cart</span>
+                                    <span className="text-xs font-medium mt-0.5">Cart</span>
                                 </Link>
                             )}
 
