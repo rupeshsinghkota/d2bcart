@@ -16,6 +16,7 @@ import {
     Package,
     CreditCard
 } from 'lucide-react'
+import { calculateTax } from '@/utils/tax'
 
 export default function CartPage() {
     const router = useRouter()
@@ -26,6 +27,7 @@ export default function CartPage() {
     // State structure: { [productId]: { selected: { rate, etd, courier, id }, options: [] } }
     const [shippingEstimates, setShippingEstimates] = useState<Record<string, any>>({})
     const [calculatingShipping, setCalculatingShipping] = useState(false)
+    const [manufacturerStates, setManufacturerStates] = useState<Record<string, string>>({})
 
     useEffect(() => {
         checkUser()
@@ -54,6 +56,22 @@ export default function CartPage() {
             calculateShippingForCart()
         }
     }, [user, cart])
+
+    // Fetch Manufacturer States for Tax Calculation
+    useEffect(() => {
+        const fetchManufacturerStates = async () => {
+            const ids = Array.from(new Set(cart.map(item => item.product.manufacturer_id)))
+            if (ids.length === 0) return
+
+            const { data } = await supabase.from('users').select('id, state').in('id', ids)
+            if (data) {
+                const map: Record<string, string> = {}
+                data.forEach((u: any) => map[u.id] = u.state || '')
+                setManufacturerStates(map)
+            }
+        }
+        if (cart.length > 0) fetchManufacturerStates()
+    }, [cart])
 
     const calculateShippingForCart = async () => {
         setCalculatingShipping(true)
@@ -150,6 +168,14 @@ export default function CartPage() {
 
                 const selectedCourier = shippingEstimates[item.product.id]?.selected
 
+                const taxDetails = calculateTax(
+                    item.product.display_price,
+                    item.quantity,
+                    item.product.tax_rate || 18,
+                    manufacturerStates[item.product.manufacturer_id],
+                    user.state
+                )
+
                 const { error } = await supabase.from('orders').insert({
                     order_number: orderNumber,
                     retailer_id: user.id,
@@ -157,7 +183,9 @@ export default function CartPage() {
                     product_id: item.product.id,
                     quantity: item.quantity,
                     unit_price: item.product.display_price,
-                    total_amount: totalAmount,
+                    total_amount: taxDetails.totalAmount, // Now includes tax
+                    tax_amount: taxDetails.taxAmount,
+                    tax_rate_snapshot: item.product.tax_rate || 18,
                     manufacturer_payout: manufacturerPayout,
                     platform_profit: platformProfit + (shipCost * 0.1),
                     status: 'paid', // Mark as paid for testing
@@ -355,9 +383,27 @@ export default function CartPage() {
                                         <span>{formatCurrency(getCartTotal())}</span>
                                     </div>
                                     <div className="flex justify-between text-gray-600">
-                                        <span>Items ({cart.length})</span>
+                                        <span>Subtotal ({cart.length} items)</span>
                                         <span>{formatCurrency(getCartTotal())}</span>
                                     </div>
+
+                                    {/* Tax Summary */}
+                                    {cart.map(item => {
+                                        const tax = calculateTax(
+                                            item.product.display_price,
+                                            item.quantity,
+                                            item.product.tax_rate || 18,
+                                            manufacturerStates[item.product.manufacturer_id],
+                                            user?.state
+                                        )
+                                        return (
+                                            <div key={item.product.id} className="flex justify-between text-xs text-gray-500">
+                                                <span>Tax ({tax.taxType}) - {item.product.name.substring(0, 15)}...</span>
+                                                <span>{formatCurrency(tax.taxAmount)}</span>
+                                            </div>
+                                        )
+                                    })}
+
                                     <div className="flex justify-between text-gray-600">
                                         <span>Shipping</span>
                                         <span className={calculatingShipping ? "animate-pulse" : "text-emerald-600"}>
@@ -365,8 +411,20 @@ export default function CartPage() {
                                         </span>
                                     </div>
                                     <div className="border-t pt-3 flex justify-between font-bold text-lg">
-                                        <span>Total</span>
-                                        <span className="text-emerald-600">{formatCurrency(getCartTotal() + getTotalShipping())}</span>
+                                        <span>Total Payable</span>
+                                        <span className="text-emerald-600">
+                                            {formatCurrency(
+                                                getCartTotal() +
+                                                getTotalShipping() +
+                                                cart.reduce((sum, item) => sum + calculateTax(
+                                                    item.product.display_price,
+                                                    item.quantity,
+                                                    item.product.tax_rate || 18,
+                                                    manufacturerStates[item.product.manufacturer_id],
+                                                    user?.state
+                                                ).taxAmount, 0)
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
 

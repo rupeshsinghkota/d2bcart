@@ -26,8 +26,8 @@ export default function ManufacturerHome({ user }: { user: any }) {
             .eq('status', 'pending')
 
         // Simple aggregate for revenue (needs more complex query in real app or RPC)
-        const { data: orders } = await supabase.from('orders').select('base_price').eq('manufacturer_id', user.id).neq('status', 'cancelled')
-        const revenue = orders?.reduce((sum, o) => sum + (o.base_price || 0), 0) || 0
+        const { data: orders } = await supabase.from('orders').select('total_amount').eq('manufacturer_id', user.id).neq('status', 'cancelled') as any
+        const revenue = orders?.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0
 
         setStats({
             pendingOrders: pending || 0,

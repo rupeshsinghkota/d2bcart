@@ -227,6 +227,38 @@ export default function EditProductPage() {
                                     ))}
                                 </select>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        HSN Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.hsn_code}
+                                        onChange={(e) => updateForm('hsn_code', e.target.value)}
+                                        className="input"
+                                        placeholder="Enter HSN Code"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        GST Rate (%) *
+                                    </label>
+                                    <select
+                                        value={formData.tax_rate}
+                                        onChange={(e) => updateForm('tax_rate', e.target.value)}
+                                        className="input"
+                                        required
+                                    >
+                                        <option value="0">0%</option>
+                                        <option value="5">5%</option>
+                                        <option value="12">12%</option>
+                                        <option value="18">18%</option>
+                                        <option value="28">28%</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

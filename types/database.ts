@@ -24,6 +24,7 @@ export interface User {
     city?: string
     state?: string
     pincode?: string
+    gst_number?: string // Added GST Number
     bank_account?: string
     ifsc_code?: string
     beneficiary_name?: string
@@ -72,6 +73,8 @@ export interface Order {
     status: OrderStatus
     payment_id?: string
     shipping_address?: string
+    tax_amount?: number // Added GST Tax Amount
+    tax_rate_snapshot?: number // Added GST Rate Snapshot
     shipping_cost?: number // Added shipping_cost
     tracking_number?: string
     shipment_id?: string
