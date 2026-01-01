@@ -40,7 +40,6 @@ export default function BottomNav() {
     const navItems = [
         { href: '/', icon: Home, label: 'Home' },
         { href: '/products', icon: Store, label: 'Shop' },
-        { href: '/categories', icon: LayoutGrid, label: 'Categories' },
     ]
 
     // Add role-specific item
