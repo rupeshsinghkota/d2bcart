@@ -64,7 +64,8 @@ export default function RetailerDashboard() {
             .select(`
         *,
         product:products(name, images),
-        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, email, phone, address, state, pincode)
+        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, email, phone, address, state, pincode),
+        retailer:users!orders_retailer_id_fkey(business_name, city, phone, email, address, state, pincode)
       `)
             .eq('retailer_id', authUser.id)
             .order('created_at', { ascending: false })
@@ -164,7 +165,7 @@ export default function RetailerDashboard() {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 -mt-8 pb-8 relative z-10 pointer-events-none">
+            <div className="max-w-7xl mx-auto px-4 -mt-8 pb-8 relative z-10">
                 {/* Stats Cards - Overlapping Header */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8 pointer-events-auto">
                     <div className="bg-white rounded-xl p-4 md:p-6 shadow-md border border-gray-100/50 backdrop-blur-xl">

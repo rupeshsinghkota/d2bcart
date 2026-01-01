@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
+import { generateInvoice } from '@/lib/invoice-generator'
 
 export default function RetailerOrderDetails() {
     const params = useParams()
@@ -30,7 +31,8 @@ export default function RetailerOrderDetails() {
             .select(`
                 *,
                 product:products(name, images, base_price),
-                manufacturer:users!orders_manufacturer_id_fkey(business_name, email, phone, address, city, state, pincode)
+                manufacturer:users!orders_manufacturer_id_fkey(business_name, email, phone, address, city, state, pincode),
+                retailer:users!orders_retailer_id_fkey(business_name, city, phone, email, address, state, pincode)
             `)
             .eq('id', params.id as string)
             .single() as { data: Order | null, error: any }
@@ -106,6 +108,14 @@ export default function RetailerOrderDetails() {
                                 <ExternalLink className="w-3 h-3" />
                             </a>
                         )}
+
+                        <button
+                            onClick={() => generateInvoice(order)}
+                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2"
+                        >
+                            <Package className="w-4 h-4" />
+                            Download Invoice
+                        </button>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8 p-8">

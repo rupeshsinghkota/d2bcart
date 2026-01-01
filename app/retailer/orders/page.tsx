@@ -62,7 +62,8 @@ export default function RetailerOrdersPage() {
             .select(`
         *,
         product:products(id, name, images, display_price, base_price, manufacturer_id, category:categories(name)),
-        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, phone, email, address, state, pincode)
+        manufacturer:users!orders_manufacturer_id_fkey(business_name, city, phone, email, address, state, pincode),
+        retailer:users!orders_retailer_id_fkey(business_name, city, phone, email, address, state, pincode)
       `)
             .eq('retailer_id', user.id)
             .order('created_at', { ascending: false })
