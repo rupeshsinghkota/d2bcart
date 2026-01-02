@@ -15,12 +15,40 @@ export const metadata: Metadata = {
 }
 
 async function getCategories() {
-    const { data } = await supabase
+    // 1. Get all active product category IDs
+    const { data: activeLinkages, error: prodErr } = await supabase
+        .from('products')
+        .select('category_id')
+        .eq('is_active', true)
+
+    if (prodErr) {
+        console.error('Error fetching active product categories:', prodErr)
+        return []
+    }
+
+    const activeIds = new Set(activeLinkages?.map(p => p.category_id).filter(Boolean))
+
+    if (activeIds.size === 0) return []
+
+    // 2. Fetch all categories
+    const { data: allCategories } = await supabase
         .from('categories')
         .select('*')
         .order('name')
 
-    return (data as Category[]) || []
+    if (!allCategories) return []
+
+    // 3. Filter using recursive check
+    const hasActiveDescendant = (catId: string): boolean => {
+        if (activeIds.has(catId)) return true
+        // Check children
+        const children = allCategories.filter(c => c.parent_id === catId)
+        return children.some(child => hasActiveDescendant(child.id))
+    }
+
+    const validCategories = (allCategories as Category[]).filter(cat => hasActiveDescendant(cat.id))
+
+    return validCategories
 }
 
 export default async function CategoriesPage() {
