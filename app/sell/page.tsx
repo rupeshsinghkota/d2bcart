@@ -5,21 +5,31 @@ import Link from 'next/link';
 
 export default function SellerPage() {
     const whatsappNumber = '919117474683'; // Verified support number
-    const whatsappMessage = encodeURIComponent('Hi, I am a manufacturer/importer and I want to sell my products on d2bcart.');
+    const whatsappMessage = encodeURIComponent('Hi, I am a supplier/manufacturer and I want to sell my products on d2bcart.');
     const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-br from-blue-900 to-slate-900 text-white overflow-hidden">
-                <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10"></div>
+            <div className="relative bg-slate-900 text-white overflow-hidden">
+                {/* Background Image */}
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="/marketing/sell-hero-bg.png"
+                        alt="Warehouse background"
+                        className="w-full h-full object-cover opacity-30"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 to-slate-900/80"></div>
+                </div>
+
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative z-10 text-center">
-                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                        Manufacturers: Sell to <span className="text-blue-400">1,000+ Retailers</span>
+                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 drop-shadow-lg">
+                        Sell Your Products to <span className="text-blue-400">1,000+ Retailers</span>
                     </h1>
-                    <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                    <p className="text-xl md:text-2xl text-gray-200 mb-8 max-w-3xl mx-auto drop-shadow-md">
+                        For Manufacturers, Wholesalers & Importers.
+                        <br className="hidden md:block" />
                         Directly connect with retailers. No middlemen. No listing fees.
-                        We handle the sales, you handle the manufacturing.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <a
@@ -31,7 +41,7 @@ export default function SellerPage() {
                             <MessageSquare className="w-6 h-6" />
                             Start Selling on WhatsApp
                         </a>
-                        <p className="text-sm text-gray-400 mt-2 sm:mt-0 opacity-80">
+                        <p className="text-sm text-gray-400 mt-2 sm:mt-0 opacity-80 font-medium">
                             *Instant onboarding. No long forms.
                         </p>
                     </div>
@@ -77,34 +87,48 @@ export default function SellerPage() {
                         <p className="text-gray-500 mt-2">Start selling in less than 5 minutes</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-                        <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 hidden md:block z-0"></div>
-
-                        {[
-                            {
-                                step: "01",
-                                title: "Connect",
-                                text: "Click the button below to message us on WhatsApp."
-                            },
-                            {
-                                step: "02",
-                                title: "Share Catalog",
-                                text: "Send photos and wholesale prices of your products."
-                            },
-                            {
-                                step: "03",
-                                title: "Get Orders",
-                                text: "We list your items. You receive orders instantly."
-                            }
-                        ].map((step, idx) => (
-                            <div key={idx} className="relative z-10 bg-white p-6 rounded-xl text-center">
-                                <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-6 shadow-lg shadow-blue-200">
-                                    {step.step}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        {/* Steps */}
+                        <div className="flex-1 space-y-8 w-full">
+                            {[
+                                {
+                                    step: "01",
+                                    title: "Connect",
+                                    text: "Click the button to message us on WhatsApp."
+                                },
+                                {
+                                    step: "02",
+                                    title: "Share Catalog",
+                                    text: "Send photos and wholesale prices of your products."
+                                },
+                                {
+                                    step: "03",
+                                    title: "Get Orders",
+                                    text: "We list your items. You receive orders instantly."
+                                }
+                            ].map((step, idx) => (
+                                <div key={idx} className="flex gap-6 p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                                    <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex flex-shrink-0 items-center justify-center text-xl font-bold shadow-lg shadow-blue-200">
+                                        {step.step}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-2 text-gray-900">{step.title}</h3>
+                                        <p className="text-gray-600 leading-relaxed text-lg">{step.text}</p>
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                                <p className="text-gray-600">{step.text}</p>
+                            ))}
+                        </div>
+
+                        {/* Illustration */}
+                        <div className="flex-1 w-full max-w-md lg:max-w-full">
+                            <div className="bg-blue-50/50 rounded-3xl p-8 lg:p-12 border border-blue-100">
+                                <img
+                                    src="/marketing/supply-chain-process.png"
+                                    alt="Supply Chain Process"
+                                    className="w-full h-auto drop-shadow-md rounded-lg"
+                                />
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -128,7 +152,7 @@ export default function SellerPage() {
                     <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
                     <div className="space-y-4">
                         {[
-                            { q: "Do I need to pay any registration fee?", a: "No. Registration is completely free for manufacturers and importers." },
+                            { q: "Do I need to pay any registration fee?", a: "No. Registration is completely free for manufacturers, wholesalers, and importers." },
                             { q: "Who pays for shipping?", a: "Shipping costs are generally borne by the retailer, but we handle the logistics coordination." },
                             { q: "When do I get paid?", a: "Payments are processed within 24-48 hours of order delivery." }
                         ].map((faq, idx) => (
