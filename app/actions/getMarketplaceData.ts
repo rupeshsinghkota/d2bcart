@@ -22,13 +22,29 @@ export async function getMarketplaceData() {
 
         const uniqueActiveCategoryIds = Array.from(new Set(activeProductCategories?.map(p => p.category_id).filter(Boolean) || []))
 
-        const { data: categories, error: catError } = await supabaseAdmin
+        // Fetch all categories first to build the tree
+        const { data: allCategories, error: catFetchError } = await supabaseAdmin
             .from('categories')
             .select('*')
-            .is('parent_id', null)
-            .in('id', uniqueActiveCategoryIds)
 
-        if (catError) console.error('Error fetching categories:', catError)
+        if (catFetchError) {
+            console.error('Error fetching categories:', catFetchError)
+            return { categories: [], products: [] }
+        }
+
+        // Helper to check if a category or any of its children has active products
+        const hasActiveDescendant = (catId: string): boolean => {
+            if (uniqueActiveCategoryIds.includes(catId)) return true // Direct product match
+
+            // Check children
+            const children = allCategories.filter(c => c.parent_id === catId)
+            return children.some(child => hasActiveDescendant(child.id))
+        }
+
+        // Filter for top-level categories that are valid
+        const categories = (allCategories as Category[])
+            .filter(c => c.parent_id === null) // Only top-level for homepage
+            .filter(c => hasActiveDescendant(c.id)) // Only valid ones
 
         // Fetch Products with Manufacturer
         const { data: products, error: prodError } = await supabaseAdmin
