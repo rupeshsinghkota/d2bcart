@@ -5,6 +5,8 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
+import FacebookPixel from "@/components/analytics/FacebookPixel";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,6 +39,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning={true}>
+        <Suspense fallback={null}>
+          <FacebookPixel />
+        </Suspense>
         <Toaster position="top-right" />
         <Navbar />
         <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
