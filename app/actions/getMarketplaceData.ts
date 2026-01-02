@@ -6,10 +6,27 @@ import { Product, Category } from '@/types'
 export async function getMarketplaceData() {
     try {
         // Fetch Categories
+        // We only want categories that have at least one active product
+        // Since we can't easily do a JOIN filter on the 'categories' query directly with standard supabase-js in one go without a view,
+        // we will fetch all categories and a lightweight check for products.
+        // Optimization: In a real large scale app, this should be a Database View "active_categories".
+        // For now, we will fetch active products first and derive categories, OR fetch categories and check existence.
+
+        // Approach: Fetch active products' category_ids first (lightweight)
+        const { data: activeProductCategories, error: prodCatError } = await supabaseAdmin
+            .from('products')
+            .select('category_id')
+            .eq('is_active', true)
+
+        if (prodCatError) console.error('Error fetching active product categories:', prodCatError)
+
+        const uniqueActiveCategoryIds = Array.from(new Set(activeProductCategories?.map(p => p.category_id).filter(Boolean) || []))
+
         const { data: categories, error: catError } = await supabaseAdmin
             .from('categories')
             .select('*')
             .is('parent_id', null)
+            .in('id', uniqueActiveCategoryIds)
 
         if (catError) console.error('Error fetching categories:', catError)
 

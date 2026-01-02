@@ -14,11 +14,43 @@ interface Props {
 }
 
 async function getCategories() {
-    const { data } = await supabase
+    // 1. Get all active product category IDs
+    // Optimization: This could be large. In production, use a materialized view 'active_category_ids'.
+    const { data: activeLinkages, error: prodErr } = await supabase
+        .from('products')
+        .select('category_id')
+        .eq('is_active', true)
+
+    if (prodErr) {
+        console.error('Error fetching active product categories:', prodErr)
+        return []
+    }
+
+    const activeIds = new Set(activeLinkages?.map(p => p.category_id).filter(Boolean))
+
+    if (activeIds.size === 0) return []
+
+    // 2. Fetch all categories (standard) - we need them for hierarchy resolution
+    const { data: allCategories } = await supabase
         .from('categories')
         .select('*')
         .order('name')
-    return (data as Category[]) || []
+
+    if (!allCategories) return []
+
+    // 3. Filter: Keep a category if IT has products OR ANY OF ITS DESCENDANTS have products.
+    // Use a recursive check.
+
+    const hasActiveDescendant = (catId: string): boolean => {
+        if (activeIds.has(catId)) return true
+        // Check children
+        const children = allCategories.filter(c => c.parent_id === catId)
+        return children.some(child => hasActiveDescendant(child.id))
+    }
+
+    const validCategories = (allCategories as Category[]).filter(cat => hasActiveDescendant(cat.id))
+
+    return validCategories
 }
 
 async function getCategoryBySlug(slug: string) {
