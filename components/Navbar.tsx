@@ -205,7 +205,7 @@ export default function Navbar() {
                                 Login
                             </Link>
                             <Link href="/register" className="hidden sm:block btn-primary !py-2 !px-4 !text-sm whitespace-nowrap">
-                                Sell / Buy
+                                Register
                             </Link>
                         </div>
                     )}

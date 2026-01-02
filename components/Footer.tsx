@@ -42,7 +42,7 @@ export default function Footer() {
                 { label: 'Browse Products', href: '/products' },
                 { label: 'Login', href: '/login' },
                 { label: 'Register as Retailer', href: '/register?type=retailer' },
-                { label: 'Sell on D2BCart', href: '/register?type=manufacturer' },
+                { label: 'Sell on D2BCart', href: '/sell' },
             ]
         }
 
@@ -159,7 +159,7 @@ export default function Footer() {
                             ))}
                             {!userRole && (
                                 <li className="pt-2">
-                                    <Link href="/register?type=manufacturer" className="text-emerald-700 font-medium hover:text-emerald-800 transition-colors">
+                                    <Link href="/sell" className="text-emerald-700 font-medium hover:text-emerald-800 transition-colors">
                                         Become a Seller →
                                     </Link>
                                 </li>
