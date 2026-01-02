@@ -160,14 +160,26 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">
-                                        <Package className="w-12 h-12 text-gray-300 mb-3" />
-                                        <p className="text-gray-500">No sub-categories found.</p>
+                                    <div className="flex flex-col items-center justify-center py-16 text-center animate-in fade-in zoom-in duration-500">
+                                        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mb-6 border border-emerald-100 shadow-sm">
+                                            {(() => {
+                                                const img = getCategoryImage(selectedCategory.name)
+                                                return img ? (
+                                                    <img src={img} alt="" className="w-16 h-16 object-cover opacity-80" />
+                                                ) : (
+                                                    <Package className="w-10 h-10 text-emerald-600" />
+                                                )
+                                            })()}
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-2">Browse {selectedCategory.name}</h3>
+                                        <p className="text-gray-500 max-w-sm mb-8">
+                                            Explore our wholesale collection of {selectedCategory.name.toLowerCase()} directly from manufacturers.
+                                        </p>
                                         <Link
                                             href={`/products?category=${selectedCategory.slug}`}
-                                            className="mt-4 px-4 py-2 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                                            className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-2"
                                         >
-                                            View all products in {selectedCategory.name}
+                                            View Products <ChevronRight className="w-4 h-4" />
                                         </Link>
                                     </div>
                                 )}
