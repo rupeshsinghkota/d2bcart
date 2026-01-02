@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        emerald: {
+                            100: '#d1fae5',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        },
+                        teal: {
+                            600: '#0d9488',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 
+           Instagram requires 1:1 ratio. 
+           Recommended 1080x1080 px for best quality.
+        */
+        .capture-container {
+            width: 1080px;
+            height: 1080px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            /* Border for visual debugging, removed in capture if we capture inner content or cropping */
+            /* border: 1px solid #eee; */
+            box-sizing: border-box;
+        }
+
+        /* 
+           1. Icon Only Version (Scaled Up) 
+           The original is 10 (w-10 = 2.5rem = 40px). 
+           To fill 1080px we need massive scale.
+           Let's aim for the icon to be about 60-70% of the canvas.
+           1080 * 0.7 = ~750px.
+           40px * 19 = 760px.
+           So scale ~18-20.
+        */
+        .scale-icon-only {
+            transform: scale(18);
+            transform-origin: center;
+        }
+
+        /*
+           2. Full Logo Version (Centered in Square)
+           Text + Icon.
+           We want this legibile. 
+           Original height ~40px. 
+           If we scale by 10, width will be substantial.
+           Let's scale so it fits nicely with padding.
+        */
+        .scale-full-logo {
+            transform: scale(7);
+            transform-origin: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 1. Icon Only Container -->
+    <div id="capture-icon" class="capture-container">
+        <div class="scale-icon-only">
+            <div class="relative">
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <span class="text-white font-black text-lg select-none">D</span>
+                </div>
+                <div
+                    class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-[1.5px] border-white">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Full Logo Container (Horizontal) -->
+    <div id="capture-full" class="capture-container">
+        <div class="scale-full-logo">
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <div
+                        class="w-10 h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-lg flex items-center justify-center shadow-md shadow-emerald-500/20">
+                        <span class="text-white font-black text-lg select-none">D</span>
+                    </div>
+                    <div
+                        class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-[1.5px] border-white">
+                    </div>
+                </div>
+                <div class="flex flex-col leading-none">
+                    <span class="font-bold text-lg text-gray-900 tracking-tight whitespace-nowrap">D2B<span
+                            class="text-emerald-600">Cart</span></span>
+                    <span class="block text-[8px] text-gray-400 font-medium tracking-wide uppercase">B2B
+                        Marketplace</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Full Logo Container (Stacked/Square Optimized) -->
+    <div id="capture-stacked" class="capture-container">
+        <div style="transform: scale(10); transform-origin: center;">
+            <div class="flex flex-col items-center gap-3">
+                <div class="relative">
+                    <div
+                        class="w-16 h-16 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <span class="text-white font-black text-3xl select-none">D</span>
+                    </div>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white">
+                    </div>
+                </div>
+                <div class="flex flex-col items-center leading-none mt-1">
+                    <span class="font-bold text-2xl text-gray-900 tracking-tight whitespace-nowrap">D2B<span
+                            class="text-emerald-600">Cart</span></span>
+                    <span class="block text-[10px] text-gray-400 font-medium tracking-wide uppercase mt-1">B2B
+                        Marketplace</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

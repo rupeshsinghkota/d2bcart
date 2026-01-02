@@ -4,11 +4,9 @@ import ProductDetailClient from './ProductDetailClient'
 import { Product } from '@/types'
 import { notFound } from 'next/navigation'
 
-// Initialize Supabase client
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+const supabase = supabaseAdmin
 
 interface Props {
     params: Promise<{ id: string }>
@@ -90,6 +88,14 @@ export default async function ProductPage({ params }: Props) {
     if (product.manufacturer?.id) {
         manufacturerProducts = await getManufacturerProducts(product.manufacturer.id, product.id)
     }
+
+    console.log('ProductPage Debug:', {
+        productId: product.id,
+        manufacturer: product.manufacturer,
+        manufacturerId: product.manufacturer_id,
+        // Check if the alias worked
+        rawData: product
+    })
 
     const jsonLd = {
         '@context': 'https://schema.org',

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
+import { getMarketplaceData } from '@/app/actions/getMarketplaceData'
 import { supabase } from '@/lib/supabase'
 import {
     ChevronRight,
@@ -21,6 +22,7 @@ import { getCategoryImage } from '@/utils/category'
 import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
+import { ProductCard } from '@/components/product/ProductCard'
 
 export default function GuestHome() {
     const [categories, setCategories] = useState<any[]>([])
@@ -33,19 +35,7 @@ export default function GuestHome() {
     }, [])
 
     const fetchData = async () => {
-        // Fetch top level categories
-        const { data: cats } = await supabase
-            .from('categories')
-            .select('*')
-            .is('parent_id', null)
-
-
-        // Fetch top products
-        const { data: prods } = await supabase
-            .from('products')
-            .select('*, manufacturer:users!manufacturer_id(is_verified, business_name)')
-            .eq('is_active', true)
-            .limit(10)
+        const { categories: cats, products: prods } = await getMarketplaceData()
 
         if (cats) setCategories(cats)
         if (prods) setProducts(prods)
@@ -175,61 +165,7 @@ export default function GuestHome() {
 
                             <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8">
                                 {products.map(product => (
-                                    <Link
-                                        key={product.id}
-                                        href={`/products/${product.id}`}
-                                        className="flex flex-col group bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-2xl hover:border-emerald-100 transition-all duration-500"
-                                    >
-                                        <div className="aspect-[4/5] relative overflow-hidden bg-gray-50">
-                                            {product.images?.[0] ? (
-                                                <img
-                                                    src={product.images[0]}
-                                                    alt={product.name}
-                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <Package className="w-12 h-12 text-gray-200" />
-                                                </div>
-                                            )}
-                                            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-tight">
-                                                MOQ: {product.moq}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 flex flex-col flex-1">
-                                            <h3 className="font-bold text-gray-900 text-sm md:text-base mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                                                {product.name}
-                                            </h3>
-                                            <div className="mt-auto flex items-center justify-between gap-2">
-                                                <div>
-                                                    <div className="text-lg font-black text-emerald-700">
-                                                        {formatCurrency(product.display_price)}
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-wider">
-                                                        <Sparkles className="w-3 h-3 text-emerald-500" />
-                                                        Factory Direct
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        // Check if user is logged in
-                                                        const user = useStore.getState().user;
-                                                        if (!user) {
-                                                            toast.error('Please login to add to cart');
-                                                            return;
-                                                        }
-                                                        useStore.getState().addToCart(product, product.moq);
-                                                        toast.success('Added to cart!');
-                                                    }}
-                                                    className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm"
-                                                >
-                                                    <Plus className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </Link>
+                                    <ProductCard key={product.id} product={product} />
                                 ))}
                             </div>
 

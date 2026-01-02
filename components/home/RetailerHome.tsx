@@ -8,6 +8,7 @@ import { getCategoryImage } from '@/utils/category'
 import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
+import { ProductCard } from '@/components/product/ProductCard'
 
 // Helper to shuffle array for "random" feed
 const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
@@ -53,7 +54,7 @@ export default function RetailerHome() {
 
         const { data: prods } = await supabase
             .from('products')
-            .select('*, manufacturer:users!manufacturer_id(is_verified, business_name)')
+            .select('*, manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name)')
             .eq('is_active', true)
             .range(from, to)
 
@@ -256,53 +257,4 @@ function CategoryCard({ cat }: { cat: any }) {
     )
 }
 
-function ProductCard({ product }: { product: any }) {
-    return (
-        <Link
-            href={`/products/${product.id}`}
-            className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col group active:scale-[0.98]"
-        >
-            <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                {product.images?.[0] ? (
-                    <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                        <Package className="w-8 h-8 text-gray-300" />
-                    </div>
-                )}
-                {/* MOQ Badge - Compact */}
-                <div className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-[2px] px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                    MOQ: {product.moq}
-                </div>
-            </div>
-            <div className="p-2 sm:p-3 flex flex-col flex-1">
-                <h4 className="font-medium text-gray-900 text-xs sm:text-sm line-clamp-2 mb-1.5 leading-snug min-h-[2.5em]">
-                    {product.name}
-                </h4>
-                <div className="mt-auto flex items-center justify-between gap-2">
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                        <span className="text-emerald-700 font-bold text-sm sm:text-base">
-                            {formatCurrency(product.display_price || product.base_price)}
-                        </span>
-                    </div>
-
-                    <button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            useStore.getState().addToCart(product, product.moq);
-                            toast.success('Added to cart!');
-                        }}
-                        className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50"
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-        </Link>
-    )
-}
+// ProductCard is now imported from @/components/product/ProductCard

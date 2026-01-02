@@ -14,6 +14,7 @@ import { useStore } from '@/lib/store'
 
 import { MobileFilterBar } from '@/components/product/MobileFilterBar'
 import { MobileCategorySheet } from '@/components/product/MobileCategorySheet'
+import { ProductCard } from '@/components/product/ProductCard'
 
 interface ProductsClientProps {
     initialProducts: Product[]
@@ -136,7 +137,7 @@ export default function ProductsClient({
             .from('products')
             .select(`
                 *,
-                manufacturer:users!manufacturer_id(business_name, city, is_verified),
+                manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
                 category:categories!products_category_id_fkey(name, slug)
             `)
             .eq('is_active', true)
@@ -305,85 +306,12 @@ export default function ProductsClient({
 
                                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                                     {filteredProducts.map(product => (
-                                        <div key={product.id} className="relative group bg-white rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-emerald-100 flex flex-col h-full overflow-hidden">
-                                            <Link href={`/products/${product.id}`} className="flex-1 flex flex-col">
-                                                {/* Image */}
-                                                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                                                    {product.images?.[0] ? (
-                                                        <img
-                                                            src={product.images[0]}
-                                                            alt={product.name}
-                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <Package className="w-12 h-12 text-gray-300" />
-                                                        </div>
-                                                    )}
-
-                                                    {/* Category Badge */}
-                                                    {product.category && (
-                                                        <span className="absolute top-2 left-2 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider text-gray-800 shadow-sm border border-gray-100/50">
-                                                            {product.category.name}
-                                                        </span>
-                                                    )}
-
-                                                    {/* Quick View / Add Overlay (Desktop) */}
-                                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center justify-center">
-                                                        <span className="bg-white text-gray-900 px-4 py-2 rounded-full font-medium text-sm shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                                                            View Details
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Content */}
-                                                <div className="p-4 flex flex-col flex-1">
-                                                    {product.manufacturer && (
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
-                                                            <MapPin className="w-3 h-3" />
-                                                            <span className="truncate max-w-[150px]">{product.manufacturer.business_name}</span>
-                                                        </div>
-                                                    )}
-
-                                                    <h3 className="font-semibold text-gray-900 text-sm md:text-base leading-snug mb-1 line-clamp-2 group-hover:text-emerald-700 transition-colors">
-                                                        {product.name}
-                                                    </h3>
-
-                                                    <div className="mt-auto pt-3 flex items-end justify-between gap-3">
-                                                        <div>
-                                                            <div className="text-lg md:text-xl font-bold text-gray-900 tracking-tight">
-                                                                {formatCurrency(product.display_price)}
-                                                            </div>
-                                                            <div className="text-xs font-medium text-gray-400 mt-0.5">
-                                                                Min. {product.moq} pcs
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                useStore.getState().addToCart(product, product.moq);
-                                                                toast.success('Added to cart!');
-                                                            }}
-                                                            className="h-10 w-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm border border-emerald-100"
-                                                            title="Quick Add to Cart"
-                                                        >
-                                                            <Plus className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </Link>
-
-                                            <button
-                                                onClick={(e) => toggleWishlist(e, product.id)}
-                                                className={`absolute top-2 right-2 p-2 rounded-full shadow-sm border border-gray-100 transition-all z-10 ${wishlist.includes(product.id)
-                                                    ? 'bg-red-50 text-red-500 border-red-100'
-                                                    : 'bg-white/90 text-gray-400 hover:text-red-500 hover:bg-white backdrop-blur-sm'
-                                                    }`}
-                                            >
-                                                <Heart className={`w-4 h-4 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
-                                            </button>
-                                        </div>
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            wishlist={wishlist}
+                                            onToggleWishlist={toggleWishlist}
+                                        />
                                     ))}
                                 </div>
                             </>

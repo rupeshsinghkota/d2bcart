@@ -48,6 +48,12 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
         }
     }, [product])
 
+    console.log('ProductDetailClient Debug:', {
+        product,
+        manufacturer: product?.manufacturer,
+        manufacturerProducts
+    })
+
     const checkRequestStatus = async (productId: string) => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
@@ -353,15 +359,18 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
 
                         {/* Manufacturer Info Card */}
                         {product.manufacturer && (
-                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                            <Link
+                                href={`/seller/${product.manufacturer_id || product.manufacturer.id}`}
+                                className="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all group/seller"
+                            >
                                 <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Building className="w-5 h-5 text-gray-400" />
+                                    <Building className="w-5 h-5 text-gray-400 group-hover/seller:text-emerald-600 transition-colors" />
                                     Seller Information
                                 </h3>
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-gray-900">
+                                            <span className="font-semibold text-gray-900 group-hover/seller:text-emerald-700 transition-colors">
                                                 {product.manufacturer.business_name}
                                             </span>
                                             {product.manufacturer.is_verified && (
@@ -376,8 +385,11 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                                             {product.manufacturer.city}, {product.manufacturer.state}
                                         </div>
                                     </div>
+                                    <div className="text-emerald-600 opacity-0 group-hover/seller:opacity-100 transition-opacity text-sm font-medium">
+                                        View Profile
+                                    </div>
                                 </div>
-                            </div>
+                            </Link>
                         )}
 
                         {/* More Products from this Manufacturer */}
