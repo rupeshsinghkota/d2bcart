@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { calculateDisplayPrice, calculateMargin } from '@/lib/utils'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 
 export async function syncCategoryPrices(categoryId: string, markupPercentage: number) {
     try {
@@ -50,9 +50,9 @@ export async function syncCategoryPrices(categoryId: string, markupPercentage: n
             throw new Error(`Failed to update ${errors.length} products`)
         }
 
-        revalidateTag('products')
-        revalidateTag('shop')
-        revalidateTag('marketplace')
+        revalidatePath('/', 'layout')
+        revalidatePath('/products')
+        revalidatePath('/categories')
 
         return { success: true, count: products.length }
     } catch (error: any) {
