@@ -40,7 +40,8 @@ export const getMarketplaceData = unstable_cache(
                 .select(`
                     *,
                     manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
-                    category:categories!products_category_id_fkey(name, slug)
+                    category:categories!products_category_id_fkey(name, slug),
+                    variations:products!products_parent_id_fkey(display_price)
                 `)
                 .eq('is_active', true)
                 .is('parent_id', null)

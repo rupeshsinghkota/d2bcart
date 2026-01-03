@@ -348,7 +348,11 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         ) : (
                                             <div className="flex items-baseline gap-2">
                                                 <span className="text-2xl md:text-4xl font-bold text-gray-900 tracking-tight">
-                                                    {formatCurrency(currentProduct.display_price)}
+                                                    {formatCurrency(
+                                                        variations && variations.length > 0
+                                                            ? Math.min(...variations.map(v => v.display_price))
+                                                            : currentProduct.display_price || currentProduct.base_price
+                                                    )}
                                                 </span>
                                                 <span className="text-xs md:text-sm font-medium text-gray-500">
                                                     / unit (min)

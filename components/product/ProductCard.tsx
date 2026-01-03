@@ -72,7 +72,17 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist }: Produc
                     <div className="mt-auto flex items-end justify-between gap-2">
                         <div>
                             <span className="text-emerald-700 font-bold text-sm sm:text-base">
-                                {product.type === 'variable' && 'From '}{formatCurrency(product.display_price || product.base_price)}
+                                {product.type === 'variable' ? (
+                                    <>
+                                        From {formatCurrency(
+                                            product.variations && product.variations.length > 0
+                                                ? Math.min(...product.variations.map((v: any) => v.display_price))
+                                                : product.display_price || product.base_price
+                                        )}
+                                    </>
+                                ) : (
+                                    formatCurrency(product.display_price || product.base_price)
+                                )}
                             </span>
                         </div>
 
