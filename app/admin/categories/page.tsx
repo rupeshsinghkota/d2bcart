@@ -221,7 +221,10 @@ export default function AdminCategoriesPage() {
                             </div>
 
                             <div>
-                                <label className="label">Platform Margin %</label>
+                                <div className="flex justify-between items-end mb-2">
+                                    <label className="label mb-0">Platform Margin %</label>
+                                    <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Suggested for Mobile Acc.</span>
+                                </div>
                                 <input
                                     type="number"
                                     required
@@ -230,6 +233,39 @@ export default function AdminCategoriesPage() {
                                     onChange={e => setMarkup(Number(e.target.value))}
                                     className="input"
                                 />
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMarkup(25)}
+                                        className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border border-gray-200"
+                                    >
+                                        Cables (25%)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMarkup(40)}
+                                        className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border border-gray-200"
+                                    >
+                                        Covers (40%)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMarkup(50)}
+                                        className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border border-gray-200"
+                                    >
+                                        Tempered (50%)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMarkup(15)}
+                                        className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors border border-gray-200"
+                                    >
+                                        Basics (15%)
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-2 italic px-1">
+                                    * This margin is added to the manufacturer's price to calculate the listed retail price.
+                                </p>
                             </div>
 
                             <div>
