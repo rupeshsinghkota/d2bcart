@@ -44,11 +44,14 @@ export async function getMarketplaceData() {
             .is('parent_id', null)
             .limit(10)
 
+        // Redundant filter to be 100% sure variations are excluded
+        const filteredProducts = (products as Product[] || []).filter(p => !p.parent_id)
+
         if (prodError) console.error('Error fetching products:', prodError)
 
         return {
             categories: (categories as Category[]) || [],
-            products: (products as Product[]) || []
+            products: filteredProducts
         }
     } catch (error) {
         console.error('Server Action Error:', error)

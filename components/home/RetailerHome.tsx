@@ -60,9 +60,11 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
             .range(from, to)
 
         if (prods) {
-            const verified = prods.filter((p: any) => p.manufacturer?.is_verified)
+            // Redundant filter to be 100% sure variations are excluded
+            const parentsOnly = prods.filter((p: any) => !p.parent_id)
+            const verified = parentsOnly.filter((p: any) => p.manufacturer?.is_verified)
             // Mix verified and unverified for variety, but prioritize verified
-            const newProds = shuffle(verified.length > 0 ? verified : prods)
+            const newProds = shuffle(verified.length > 0 ? verified : parentsOnly)
 
             if (pageNum === 1) {
                 setProducts(newProds)
