@@ -17,6 +17,7 @@ interface Variation {
     sku: string
     price: string
     stock: string
+    moq: string
 }
 
 export default function NewProductPage() {
@@ -499,6 +500,7 @@ export default function NewProductPage() {
                             parentName={formData.name}
                             parentPrice={formData.base_price}
                             parentStock={formData.stock}
+                            parentMoq={formData.moq}
                         />
                     )}
 
