@@ -7,8 +7,19 @@ import { supabase } from '@/lib/supabase'
 import { Category, Product } from '@/types'
 import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Package, Info, Save } from 'lucide-react'
+import { ArrowLeft, Package, Info, Save, Trash2 } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
+import VariationManager from '@/components/product/VariationManager'
+
+interface Variation {
+    id: string
+    name: string
+    sku: string
+    price: string
+    stock: string
+    moq: string
+    dbId?: string  // Database ID for existing variations
+}
 
 export default function EditProductPage() {
     const router = useRouter()
@@ -19,6 +30,9 @@ export default function EditProductPage() {
     const [loading, setLoading] = useState(true)
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
     const [images, setImages] = useState<string[]>([])
+    const [productType, setProductType] = useState<'simple' | 'variable'>('simple')
+    const [variations, setVariations] = useState<Variation[]>([])
+    const [existingVariations, setExistingVariations] = useState<any[]>([])
 
     const [formData, setFormData] = useState({
         name: '',
@@ -53,7 +67,7 @@ export default function EditProductPage() {
                 .from('products')
                 .select('*')
                 .eq('id', id)
-                .single() as { data: Product | null, error: any }
+                .single() as { data: any, error: any }
 
             if (error) throw error
             if (!product) throw new Error('Product not found')
@@ -61,9 +75,9 @@ export default function EditProductPage() {
             setFormData({
                 name: product.name,
                 description: product.description || '',
-                base_price: product.base_price.toString(),
-                moq: product.moq.toString(),
-                stock: product.stock.toString(),
+                base_price: product.base_price?.toString() || '0',
+                moq: product.moq?.toString() || '1',
+                stock: product.stock?.toString() || '0',
                 category_id: product.category_id,
                 weight: product.weight?.toString() || '0.5',
                 length: product.length?.toString() || '10',
@@ -73,10 +87,31 @@ export default function EditProductPage() {
                 tax_rate: product.tax_rate?.toString() || '18'
             })
             setImages(product.images || [])
+            setProductType(product.type || 'simple')
 
-            // Set initial category for calculations
-            // Categories might be empty if fetched async, so handle in effect or check later
-            // Better to rely on categories being fetched.
+            // If variable product, fetch variations
+            if (product.type === 'variable') {
+                const { data: existingVars } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('parent_id', id)
+                    .order('created_at')
+
+                if (existingVars && existingVars.length > 0) {
+                    setExistingVariations(existingVars)
+                    // Convert to Variation format for editing
+                    const variationsList: Variation[] = existingVars.map((v: any) => ({
+                        id: v.id,
+                        name: v.name.replace(`${product.name} - `, ''),
+                        sku: v.sku || '',
+                        price: v.base_price?.toString() || '',
+                        stock: v.stock?.toString() || '0',
+                        moq: v.moq?.toString() || '1',
+                        dbId: v.id
+                    }))
+                    setVariations(variationsList)
+                }
+            }
         } catch (error) {
             console.error('Error fetching product:', error)
             toast.error('Failed to load product')
@@ -109,11 +144,25 @@ export default function EditProductPage() {
             if (!user) throw new Error('Not authenticated')
 
             // Calculate display price and margin
-            const basePrice = parseFloat(formData.base_price)
+            let basePrice = parseFloat(formData.base_price) || 0
+            let stock = parseInt(formData.stock) || 0
             const markupPercentage = selectedCategory?.markup_percentage || 15
+
+            // For variable products, calculate price and stock from variations
+            if (productType === 'variable' && variations.length > 0) {
+                // Price = minimum variation price
+                const variationPrices = variations.map(v => parseFloat(v.price) || 0).filter(p => p > 0)
+                if (variationPrices.length > 0) {
+                    basePrice = Math.min(...variationPrices)
+                }
+                // Stock = sum of all variation stocks
+                stock = variations.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)
+            }
+
             const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
             const margin = displayPrice - basePrice
 
+            // Update parent product
             const { error } = await (supabase.from('products') as any).update({
                 category_id: formData.category_id,
                 name: formData.name,
@@ -122,7 +171,7 @@ export default function EditProductPage() {
                 display_price: displayPrice,
                 your_margin: margin,
                 moq: parseInt(formData.moq),
-                stock: parseInt(formData.stock),
+                stock: stock,
                 images: images,
                 weight: parseFloat(formData.weight) || 0.5,
                 length: parseFloat(formData.length) || 10,
@@ -134,8 +183,59 @@ export default function EditProductPage() {
 
             if (error) throw error
 
+            // Handle variations for variable products
+            if (productType === 'variable') {
+                // Get current variation IDs from the form
+                const currentVariationIds = variations.filter(v => v.dbId).map(v => v.dbId)
+                const existingVariationIds = existingVariations.map(v => v.id)
+
+                // Delete removed variations
+                const toDelete = existingVariationIds.filter(id => !currentVariationIds.includes(id))
+                if (toDelete.length > 0) {
+                    await supabase.from('products').delete().in('id', toDelete)
+                }
+
+                // Update existing & add new variations
+                for (const v of variations) {
+                    const varPrice = parseFloat(v.price) || basePrice
+                    const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
+
+                    const variationData = {
+                        manufacturer_id: user.id,
+                        category_id: formData.category_id,
+                        name: `${formData.name} - ${v.name}`,
+                        description: formData.description,
+                        base_price: varPrice,
+                        display_price: varDisplayPrice,
+                        your_margin: varDisplayPrice - varPrice,
+
+                        moq: parseInt(v.moq) || parseInt(formData.moq) || 1,
+                        stock: parseInt(v.stock) || 0,
+                        images: images,
+                        is_active: true,
+                        sku: v.sku,
+                        type: 'variation',
+                        parent_id: id,
+                        weight: parseFloat(formData.weight) || 0.5,
+                        length: parseFloat(formData.length) || 10,
+                        breadth: parseFloat(formData.breadth) || 10,
+                        height: parseFloat(formData.height) || 10,
+                        hsn_code: formData.hsn_code,
+                        tax_rate: parseFloat(formData.tax_rate) || 0
+                    }
+
+                    if (v.dbId) {
+                        // Update existing
+                        await (supabase.from('products') as any).update(variationData).eq('id', v.dbId)
+                    } else {
+                        // Insert new
+                        await (supabase.from('products') as any).insert(variationData)
+                    }
+                }
+            }
+
             toast.success('Product updated successfully!')
-            router.push('/manufacturer')
+            router.push('/manufacturer/products')
         } catch (error: any) {
             toast.error(error.message || 'Failed to update product')
         } finally {
@@ -267,50 +367,69 @@ export default function EditProductPage() {
                         <h2 className="font-semibold text-lg mb-4">Pricing</h2>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Your Price (per unit) *
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                                    <input
-                                        type="number"
-                                        value={formData.base_price}
-                                        onChange={(e) => updateForm('base_price', e.target.value)}
-                                        className="input pl-8"
-                                        placeholder="0"
-                                        min="1"
-                                        required
-                                    />
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    This is the amount you'll receive per unit sold
-                                </p>
-                            </div>
+                            {/* Show price input only for simple products */}
+                            {productType === 'simple' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Your Price (per unit) *
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                                            <input
+                                                type="number"
+                                                value={formData.base_price}
+                                                onChange={(e) => updateForm('base_price', e.target.value)}
+                                                className="input pl-8"
+                                                placeholder="0"
+                                                min="1"
+                                                required
+                                            />
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            This is the amount you'll receive per unit sold
+                                        </p>
+                                    </div>
 
-                            {/* Price Preview */}
-                            {basePrice > 0 && selectedCategory && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                                    <div className="flex items-start gap-3">
-                                        <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                                        <div className="space-y-2 flex-1">
-                                            <p className="text-sm text-emerald-800">
-                                                Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
-                                            </p>
-                                            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Your Price</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(basePrice)}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Listed Price</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(displayPrice)}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Platform Fee</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(margin)}</div>
+                                    {/* Price Preview */}
+                                    {basePrice > 0 && selectedCategory && (
+                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                                            <div className="flex items-start gap-3">
+                                                <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                                <div className="space-y-2 flex-1">
+                                                    <p className="text-sm text-emerald-800">
+                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
+                                                    </p>
+                                                    <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Your Price</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(basePrice)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Listed Price</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(displayPrice)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Platform Fee</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(margin)}</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-purple-800 font-medium">
+                                                Variable Product Pricing
+                                            </p>
+                                            <p className="text-sm text-purple-600 mt-1">
+                                                Price and stock are managed per variation below. Parent product values are auto-calculated.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -330,18 +449,20 @@ export default function EditProductPage() {
                                         required
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Available Stock
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.stock}
-                                        onChange={(e) => updateForm('stock', e.target.value)}
-                                        className="input"
-                                        min="0"
-                                    />
-                                </div>
+                                {productType === 'simple' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Available Stock
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.stock}
+                                            onChange={(e) => updateForm('stock', e.target.value)}
+                                            className="input"
+                                            min="0"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -413,6 +534,30 @@ export default function EditProductPage() {
                             First image will be used as the main product image
                         </p>
                     </div>
+
+                    {/* Variations Section - Only for Variable Products */}
+                    {productType === 'variable' && (
+                        <div className="space-y-4">
+                            <VariationManager
+                                variations={variations}
+                                onVariationsChange={setVariations}
+                                parentName={formData.name}
+                                parentPrice={formData.base_price}
+                                parentStock={formData.stock}
+                                parentMoq={formData.moq}
+                            />
+
+                            {/* Info about existing variations */}
+                            {existingVariations.length > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+                                    <p className="text-blue-800">
+                                        <strong>{existingVariations.length}</strong> variations loaded from database.
+                                        Changes will be saved when you click Update Product.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Submit */}
                     <div className="flex gap-4">

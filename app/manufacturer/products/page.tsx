@@ -9,14 +9,11 @@ import { formatCurrency } from '@/lib/utils'
 import {
     Plus,
     Search,
-    Filter,
     Edit,
     Trash2,
-    MoreVertical,
     Package,
     ArrowLeft,
-    Upload,
-    Download
+    Upload
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
@@ -27,6 +24,8 @@ export default function ManufacturerProductsPage() {
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [filter, setFilter] = useState('all') // 'all', 'active', 'inactive', 'low_stock'
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         fetchProducts()
@@ -43,10 +42,109 @@ export default function ManufacturerProductsPage() {
             .from('products')
             .select('*, category:categories(name)')
             .eq('manufacturer_id', user.id)
+            .is('parent_id', null) // Only show main products, not variations
             .order('created_at', { ascending: false })
 
         if (data) setProducts(data as Product[])
         setLoading(false)
+    }
+
+    const handleToggleSelect = (id: string) => {
+        const newSelected = new Set(selectedIds)
+        if (newSelected.has(id)) {
+            newSelected.delete(id)
+        } else {
+            newSelected.add(id)
+        }
+        setSelectedIds(newSelected)
+    }
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === filteredProducts.length) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredProducts.map(p => p.id)))
+        }
+    }
+
+    const handleToggleActive = async (product: Product) => {
+        const newStatus = !product.is_active
+
+        // Optimistic Update
+        setProducts(prev => prev.map(p =>
+            p.id === product.id ? { ...p, is_active: newStatus } : p
+        ))
+
+        const { error } = await supabase
+            .from('products')
+            .update({ is_active: newStatus } as any)
+            .eq('id', product.id)
+
+        if (error) {
+            console.error('Update error:', error)
+            toast.error('Failed to update status')
+            // Revert
+            setProducts(prev => prev.map(p =>
+                p.id === product.id ? { ...p, is_active: !newStatus } : p
+            ))
+        } else {
+            toast.success(`Product ${newStatus ? 'activated' : 'deactivated'}`)
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return
+        if (!confirm(`Are you sure you want to delete ${selectedIds.size} products?`)) return
+
+        setIsDeleting(true)
+        const ids = Array.from(selectedIds)
+
+        // 1. Delete variations first (if any)
+        await supabase.from('products').delete().in('parent_id', ids)
+
+        // 2. Try to Delete the products physically
+        const { data, error } = await supabase
+            .from('products')
+            .delete()
+            .in('id', ids)
+            .select('id')
+
+        if (error) {
+            console.error('Delete error:', error)
+
+            // Check for Foreign Key Violation (Orders exist)
+            if (error.code === '23503') {
+                // Fallback: Soft Delete (Deactivate)
+                const { error: updateError } = await supabase
+                    .from('products')
+                    .update({ is_active: false } as any)
+                    .in('id', ids)
+
+                if (updateError) {
+                    toast.error('Failed to delete or deactivate products.')
+                } else {
+                    toast.success(`Products deactivated (orders exist).`)
+                    // Update local state to show as inactive
+                    setProducts(prev => prev.map(p =>
+                        ids.includes(p.id) ? { ...p, is_active: false } : p
+                    ))
+                    setSelectedIds(new Set())
+                }
+            } else {
+                toast.error('Failed to delete products. Please check permissions.')
+            }
+        } else {
+            const deletedCount = (data as any[])?.length || 0
+            toast.success('Products deleted successfully')
+
+            // Update local state to remove verified deleted items
+            if (deletedCount > 0) {
+                const deletedIds = new Set((data as any[])?.map(d => d.id))
+                setProducts(prev => prev.filter(p => !deletedIds.has(p.id)))
+                setSelectedIds(new Set())
+            }
+        }
+        setIsDeleting(false)
     }
 
     const filteredProducts = products.filter(product => {
@@ -70,7 +168,34 @@ export default function ManufacturerProductsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 pb-20">
+            {/* Bulk Action Bar - Sticky Top when Items Selected */}
+            <div className={`fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-md transform transition-transform duration-300 ${selectedIds.size > 0 ? 'translate-y-0' : '-translate-y-full'}`}>
+                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <span className="font-semibold text-gray-900">{selectedIds.size} Selected</span>
+                    </div>
+                    <button
+                        onClick={handleBulkDelete}
+                        disabled={isDeleting}
+                        className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-100 flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isDeleting ? 'Deleting...' : (
+                            <>
+                                <Trash2 className="w-5 h-5" />
+                                <span>Delete Selected</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -105,7 +230,7 @@ export default function ManufacturerProductsPage() {
                     </div>
                 </div>
 
-                {/* Filters & Search */}
+                {/* Filters & Search - Hide when selecting? Optional, keeping it visible */}
                 <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row gap-4 justify-between">
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -117,19 +242,32 @@ export default function ManufacturerProductsPage() {
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
                         />
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                        {['all', 'active', 'inactive', 'low_stock'].map((f) => (
+
+                    <div className="flex items-center gap-4">
+                        {/* Select All Checkbox */}
+                        {filteredProducts.length > 0 && (
                             <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === f
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                onClick={handleSelectAll}
+                                className="text-sm font-medium text-emerald-600 hover:underline px-2"
                             >
-                                {f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                {selectedIds.size === filteredProducts.length ? 'Deselect All' : 'Select All'}
                             </button>
-                        ))}
+                        )}
+
+                        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                            {['all', 'active', 'inactive', 'low_stock'].map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === f
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    {f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -155,75 +293,121 @@ export default function ManufacturerProductsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {filteredProducts.map(product => (
-                            <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
-                                <div className="aspect-[4/3] bg-gray-100 relative">
-                                    {product.images?.[0] ? (
-                                        <Image
-                                            src={product.images[0]}
-                                            alt={product.name}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Package className="w-12 h-12 text-gray-300" />
-                                        </div>
-                                    )}
-                                    <div className="absolute top-2 right-2">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active
-                                            ? 'bg-white/90 text-green-700'
-                                            : 'bg-gray-900/90 text-white'
-                                            }`}>
-                                            {product.is_active ? 'Active' : 'Inactive'}
-                                        </span>
+                        {filteredProducts.map(product => {
+                            const isSelected = selectedIds.has(product.id)
+                            return (
+                                <div
+                                    key={product.id}
+                                    className={`bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all group relative border-2 ${isSelected ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-transparent'}`}
+                                >
+                                    {/* Selection Checkbox - Always visible on mobile, visible on hover/selected on desktop */}
+                                    <div className={`absolute top-2 left-2 z-20 md:opacity-0 md:group-hover:opacity-100 transition-opacity ${isSelected ? '!opacity-100' : ''}`}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                handleToggleSelect(product.id)
+                                            }}
+                                            className={`w-6 h-6 rounded border bg-white flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`}
+                                        >
+                                            {isSelected && <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>}
+                                        </button>
                                     </div>
-                                    {product.stock < 10 && (
-                                        <div className="absolute top-2 left-2">
-                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                                Low Stock: {product.stock}
+
+                                    <div className="aspect-[4/3] bg-gray-100 relative">
+                                        {/* Click on image toggles selection if in selection mode, otherwise normal navigation? 
+                                            Currently linking via Edit button overlay, so clicking image does nothing special unless we link it.
+                                            Let's make clicking image go to edit or detail. 
+                                        */}
+                                        {product.images?.[0] ? (
+                                            <Image
+                                                src={product.images[0]}
+                                                alt={product.name}
+                                                fill
+                                                className={`object-cover ${isSelected ? 'opacity-90' : ''}`}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Package className="w-12 h-12 text-gray-300" />
+                                            </div>
+                                        )}
+                                        <div className="absolute top-2 right-2 flex gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    handleToggleActive(product)
+                                                }}
+                                                className={`p-1.5 rounded-full transition-colors hidden group-hover:block ${product.is_active
+                                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                                                    }`}
+                                                title={product.is_active ? "Deactivate" : "Activate"}
+                                            >
+                                                <div className={`w-3 h-3 rounded-full ${product.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                                            </button>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active
+                                                ? 'bg-white/90 text-green-700'
+                                                : 'bg-gray-900/90 text-white'
+                                                }`}>
+                                                {product.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </div>
-                                    )}
+                                        {product.stock < 10 && (
+                                            <div className="absolute top-8 right-2">
+                                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                                    Low Stock: {product.stock}
+                                                </span>
+                                            </div>
+                                        )}
 
-                                    {/* Quick Actions Overlay */}
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Link
-                                            href={`/manufacturer/products/${product.id}/edit`}
-                                            className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
-                                        >
-                                            Edit Product
-                                        </Link>
-                                    </div>
-                                </div>
-
-                                <div className="p-4">
-                                    <div className="mb-2">
-                                        <h3 className="font-semibold text-gray-900 line-clamp-1" title={product.name}>
-                                            {product.name}
-                                        </h3>
-                                        <p className="text-sm text-gray-500">
-                                            {product.category?.name || 'Uncategorized'}
-                                        </p>
+                                        {/* Quick Actions Overlay - Hide when selected to avoid confusion? Or just keep it. */}
+                                        {!isSelected && (
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Link
+                                                    href={`/manufacturer/products/${product.id}/edit`}
+                                                    className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
+                                                >
+                                                    Edit Product
+                                                </Link>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="flex items-end justify-between">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase">Price</p>
-                                            <p className="font-semibold text-emerald-600">
-                                                {formatCurrency(product.base_price)}
+                                    <div
+                                        className="p-4 cursor-pointer"
+                                        onClick={(e) => {
+                                            // Allow clicking card body to toggle select if already in selection mode
+                                            if (selectedIds.size > 0) handleToggleSelect(product.id)
+                                        }}
+                                    >
+                                        <div className="mb-2">
+                                            <h3 className="font-semibold text-gray-900 line-clamp-1" title={product.name}>
+                                                {product.name}
+                                            </h3>
+                                            <p className="text-sm text-gray-500">
+                                                {product.category?.name || 'Uncategorized'}
                                             </p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 uppercase">Stock</p>
-                                            <p className="font-medium text-gray-900">
-                                                {product.stock} units
-                                            </p>
+
+                                        <div className="flex items-end justify-between">
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase">Price</p>
+                                                <p className="font-semibold text-emerald-600">
+                                                    {formatCurrency(product.base_price)}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-gray-500 uppercase">Stock</p>
+                                                <p className="font-medium text-gray-900">
+                                                    {product.stock} units
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
             </div>

@@ -30,6 +30,18 @@ async function getProduct(id: string) {
     return data as Product | null
 }
 
+async function getVariations(product: Product) {
+    const parentId = product.parent_id || product.id
+
+    const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('parent_id', parentId)
+        .order('name', { ascending: true })
+
+    return (data as Product[]) || []
+}
+
 async function getManufacturerProducts(manufacturerId: string, currentProductId: string) {
     const { data } = await supabase
         .from('products')
@@ -41,6 +53,7 @@ async function getManufacturerProducts(manufacturerId: string, currentProductId:
         category:categories!products_category_id_fkey(name, slug)
     `)
         .eq('manufacturer_id', manufacturerId)
+        .is('parent_id', null) // Only show main products in "More from Seller"
         .neq('id', currentProductId)
         .limit(6)
 
@@ -86,18 +99,12 @@ export default async function ProductPage({ params }: Props) {
         notFound()
     }
 
+    const variations = await getVariations(product)
+
     let manufacturerProducts: Product[] = []
     if (product.manufacturer?.id) {
         manufacturerProducts = await getManufacturerProducts(product.manufacturer.id, product.id)
     }
-
-    console.log('ProductPage Debug:', {
-        productId: product.id,
-        manufacturer: product.manufacturer,
-        manufacturerId: product.manufacturer_id,
-        // Check if the alias worked
-        rawData: product
-    })
 
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -126,6 +133,7 @@ export default async function ProductPage({ params }: Props) {
             <ProductDetailClient
                 product={product}
                 manufacturerProducts={manufacturerProducts}
+                variations={variations}
             />
         </>
     )

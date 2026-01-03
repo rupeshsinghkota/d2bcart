@@ -49,7 +49,7 @@ export default function BottomNav() {
     ]
 
     // Add role-specific item
-    if (user?.user_type === 'retailer') {
+    if (!user || user.user_type === 'retailer') {
         navItems.push({ href: '/cart', icon: ShoppingCart, label: 'Cart' })
     } else if (user?.user_type === 'manufacturer') {
         navItems.push({ href: '/manufacturer/orders', icon: Package, label: 'Orders' })

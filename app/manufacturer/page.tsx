@@ -10,9 +10,7 @@ import {
     ShoppingBag,
     TrendingUp,
     Plus,
-    Eye,
     Edit,
-    MoreVertical,
     Clock,
     CheckCircle,
     Truck,
@@ -62,6 +60,7 @@ export default function ManufacturerDashboard() {
             .from('products')
             .select('*, category:categories(name)')
             .eq('manufacturer_id', user.id)
+            .is('parent_id', null) // Only fetch parent products
             .order('created_at', { ascending: false })
 
         if (productsData) setProducts(productsData as Product[])

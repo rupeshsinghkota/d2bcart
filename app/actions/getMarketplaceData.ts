@@ -32,7 +32,6 @@ export const getMarketplaceData = unstable_cache(
             }
 
             const categories = (allCategories as Category[])
-                .filter(c => c.parent_id === null)
                 .filter(c => hasActiveDescendant(c.id))
 
             const { data: products, error: prodError } = await supabaseAdmin
@@ -58,7 +57,7 @@ export const getMarketplaceData = unstable_cache(
     },
     ['marketplace-data'],
     {
-        revalidate: 1800, // Cache for 30 minutes
+        revalidate: 1, // Cache for 1 second (effectively dynamic)
         tags: ['marketplace']
     }
 )

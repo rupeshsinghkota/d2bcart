@@ -9,6 +9,15 @@ import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Package, Info } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
+import VariationManager from '@/components/product/VariationManager'
+
+interface Variation {
+    id: string
+    name: string
+    sku: string
+    price: string
+    stock: string
+}
 
 export default function NewProductPage() {
     const router = useRouter()
@@ -16,6 +25,8 @@ export default function NewProductPage() {
     const [loading, setLoading] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
     const [images, setImages] = useState<string[]>([])
+    const [productType, setProductType] = useState<'simple' | 'variable'>('simple')
+    const [variations, setVariations] = useState<Variation[]>([])
 
     const [formData, setFormData] = useState({
         name: '',
@@ -107,12 +118,29 @@ export default function NewProductPage() {
             const userId = (user as any).id
 
             // Calculate display price and margin
-            const basePrice = parseFloat(formData.base_price)
+            let basePrice = parseFloat(formData.base_price) || 0
+            let stock = parseInt(formData.stock) || 0
             const markupPercentage = selectedCategory?.markup_percentage || 15
+
+            // For variable products, calculate price and stock from variations
+            if (productType === 'variable' && variations.length > 0) {
+                // Price = minimum variation price
+                const variationPrices = variations.map(v => parseFloat(v.price) || 0).filter(p => p > 0)
+                if (variationPrices.length > 0) {
+                    basePrice = Math.min(...variationPrices)
+                }
+                // Stock = sum of all variation stocks
+                stock = variations.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)
+            }
+
             const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
             const margin = displayPrice - basePrice
 
-            const { error } = await (supabase.from('products') as any).insert({
+            // Generate SKU for parent
+            const parentSku = `${formData.name.substring(0, 30).replace(/\s+/g, '-').toUpperCase()}-${Date.now()}`
+
+            // Create parent product
+            const { data: parentProduct, error: parentError } = await (supabase.from('products') as any).insert({
                 manufacturer_id: userId,
                 category_id: formData.category_id,
                 name: formData.name,
@@ -121,21 +149,60 @@ export default function NewProductPage() {
                 display_price: displayPrice,
                 your_margin: margin,
                 moq: parseInt(formData.moq),
-                stock: parseInt(formData.stock),
+                stock: stock,
                 images: images,
                 is_active: true,
+                sku: parentSku,
+                type: productType,
                 weight: parseFloat(formData.weight) || 0.5,
                 length: parseFloat(formData.length) || 10,
                 breadth: parseFloat(formData.breadth) || 10,
                 height: parseFloat(formData.height) || 10,
                 hsn_code: formData.hsn_code,
                 tax_rate: parseFloat(formData.tax_rate) || 0
-            })
+            }).select().single()
 
-            if (error) throw error
+            if (parentError) throw parentError
 
-            toast.success('Product added successfully!')
-            router.push('/manufacturer')
+            // Create variations if variable product
+            if (productType === 'variable' && variations.length > 0 && parentProduct) {
+                const variationInserts = variations.map(v => {
+                    const varPrice = parseFloat(v.price) || basePrice
+                    const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
+                    return {
+                        manufacturer_id: userId,
+                        category_id: formData.category_id,
+                        name: `${formData.name} - ${v.name}`,
+                        description: formData.description,
+                        base_price: varPrice,
+                        display_price: varDisplayPrice,
+                        your_margin: varDisplayPrice - varPrice,
+                        moq: parseInt(formData.moq),
+                        stock: parseInt(v.stock) || 1000,
+                        images: images, // Inherit parent images
+                        is_active: true,
+                        sku: v.sku,
+                        type: 'variation',
+                        parent_id: parentProduct.id,
+                        weight: parseFloat(formData.weight) || 0.5,
+                        length: parseFloat(formData.length) || 10,
+                        breadth: parseFloat(formData.breadth) || 10,
+                        height: parseFloat(formData.height) || 10,
+                        hsn_code: formData.hsn_code,
+                        tax_rate: parseFloat(formData.tax_rate) || 0
+                    }
+                })
+
+                const { error: varError } = await (supabase.from('products') as any).insert(variationInserts)
+                if (varError) {
+                    console.error('Variation insert error:', varError)
+                    toast.error(`Product created but some variations failed: ${varError.message}`)
+                }
+            }
+
+            const varCount = productType === 'variable' ? ` with ${variations.length} variations` : ''
+            toast.success(`Product added successfully${varCount}!`)
+            router.push('/manufacturer/products')
         } catch (error: any) {
             toast.error(error.message || 'Failed to add product')
         } finally {
@@ -175,6 +242,48 @@ export default function NewProductPage() {
                         <h2 className="font-semibold text-lg mb-4">Product Information</h2>
 
                         <div className="space-y-4">
+                            {/* Product Type Selector */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    Product Type *
+                                </label>
+                                <div className="flex gap-4">
+                                    <label className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${productType === 'simple' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <input
+                                            type="radio"
+                                            name="productType"
+                                            value="simple"
+                                            checked={productType === 'simple'}
+                                            onChange={() => setProductType('simple')}
+                                            className="hidden"
+                                        />
+                                        <div className="text-center">
+                                            <Package className="w-6 h-6 mx-auto mb-2 text-emerald-600" />
+                                            <div className="font-medium">Simple Product</div>
+                                            <div className="text-xs text-gray-500">Single item, no variations</div>
+                                        </div>
+                                    </label>
+                                    <label className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${productType === 'variable' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <input
+                                            type="radio"
+                                            name="productType"
+                                            value="variable"
+                                            checked={productType === 'variable'}
+                                            onChange={() => setProductType('variable')}
+                                            className="hidden"
+                                        />
+                                        <div className="text-center">
+                                            <div className="w-6 h-6 mx-auto mb-2 flex">
+                                                <Package className="w-4 h-4 text-purple-600" />
+                                                <Package className="w-4 h-4 text-purple-400 -ml-1" />
+                                            </div>
+                                            <div className="font-medium">Variable Product</div>
+                                            <div className="text-xs text-gray-500">Multiple models/sizes/colors</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Product Name *
@@ -269,50 +378,69 @@ export default function NewProductPage() {
                         <h2 className="font-semibold text-lg mb-4">Pricing</h2>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Your Price (per unit) *
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                                    <input
-                                        type="number"
-                                        value={formData.base_price}
-                                        onChange={(e) => updateForm('base_price', e.target.value)}
-                                        className="input pl-8"
-                                        placeholder="0"
-                                        min="1"
-                                        required
-                                    />
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    This is the amount you'll receive per unit sold
-                                </p>
-                            </div>
+                            {/* Show price input only for simple products */}
+                            {productType === 'simple' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Your Price (per unit) *
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                                            <input
+                                                type="number"
+                                                value={formData.base_price}
+                                                onChange={(e) => updateForm('base_price', e.target.value)}
+                                                className="input pl-8"
+                                                placeholder="0"
+                                                min="1"
+                                                required
+                                            />
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            This is the amount you'll receive per unit sold
+                                        </p>
+                                    </div>
 
-                            {/* Price Preview */}
-                            {basePrice > 0 && selectedCategory && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                                    <div className="flex items-start gap-3">
-                                        <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                                        <div className="space-y-2 flex-1">
-                                            <p className="text-sm text-emerald-800">
-                                                Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
-                                            </p>
-                                            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Your Price</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(basePrice)}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Listed Price</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(displayPrice)}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-emerald-600">Platform Fee</div>
-                                                    <div className="font-bold text-emerald-800">{formatCurrency(margin)}</div>
+                                    {/* Price Preview */}
+                                    {basePrice > 0 && selectedCategory && (
+                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                                            <div className="flex items-start gap-3">
+                                                <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                                <div className="space-y-2 flex-1">
+                                                    <p className="text-sm text-emerald-800">
+                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
+                                                    </p>
+                                                    <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Your Price</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(basePrice)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Listed Price</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(displayPrice)}</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-xs text-emerald-600">Platform Fee</div>
+                                                            <div className="font-bold text-emerald-800">{formatCurrency(margin)}</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm text-purple-800 font-medium">
+                                                Variable Product Pricing
+                                            </p>
+                                            <p className="text-sm text-purple-600 mt-1">
+                                                Set prices individually for each variation below. The lowest variation price will be shown as the starting price.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -332,18 +460,20 @@ export default function NewProductPage() {
                                         required
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Available Stock
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.stock}
-                                        onChange={(e) => updateForm('stock', e.target.value)}
-                                        className="input"
-                                        min="0"
-                                    />
-                                </div>
+                                {productType === 'simple' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Available Stock
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.stock}
+                                            onChange={(e) => updateForm('stock', e.target.value)}
+                                            className="input"
+                                            min="0"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -360,6 +490,17 @@ export default function NewProductPage() {
                             First image will be used as the main product image
                         </p>
                     </div>
+
+                    {/* Variations Section - Only for Variable Products */}
+                    {productType === 'variable' && (
+                        <VariationManager
+                            variations={variations}
+                            onVariationsChange={setVariations}
+                            parentName={formData.name}
+                            parentPrice={formData.base_price}
+                            parentStock={formData.stock}
+                        />
+                    )}
 
                     {/* Submit */}
                     <div className="flex gap-4">

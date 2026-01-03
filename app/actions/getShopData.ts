@@ -1,26 +1,29 @@
-import { createClient } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Product, Category } from '@/types'
 import { unstable_cache } from 'next/cache'
 
 export const getShopData = unstable_cache(
-    async (categoryId?: string) => {
+    async (categoryId?: string, page: number = 1, limit: number = 20) => {
         try {
-            const supabase = await createClient()
-            console.log('Fetching shop data from DB...', categoryId || 'all')
+            console.log('Fetching shop data from DB...', { categoryId: categoryId || 'all', page, limit })
+
+            // Calculate range
+            const from = (page - 1) * limit
+            const to = from + limit - 1
 
             // 1. Fetch all categories for hierarchy
-            const { data: allCategories, error: catFetchError } = await supabase
+            const { data: allCategories, error: catFetchError } = await supabaseAdmin
                 .from('categories')
                 .select('*')
                 .order('name')
 
             if (catFetchError) {
                 console.error('Error fetching categories:', catFetchError)
-                return { categories: [], products: [] }
+                return { categories: [], products: [], totalProducts: 0 }
             }
 
             // 2. Fetch active products to determine valid categories
-            const { data: activeLinkages, error: prodErr } = await supabase
+            const { data: activeLinkages, error: prodErr } = await supabaseAdmin
                 .from('products')
                 .select('category_id')
                 .eq('is_active', true)
@@ -28,7 +31,7 @@ export const getShopData = unstable_cache(
 
             if (prodErr) {
                 console.error('Error fetching active linkages:', prodErr)
-                return { categories: [], products: [] }
+                return { categories: [], products: [], totalProducts: 0 }
             }
 
             const activeIds = new Set(activeLinkages?.map(p => p.category_id))
@@ -41,15 +44,16 @@ export const getShopData = unstable_cache(
 
             const validCategories = (allCategories as Category[]).filter(cat => hasActiveDescendant(cat.id))
 
-            // 3. Fetch Products
-            let query = supabase
+            // 3. Fetch Products (exclude variations - only show parent products)
+            let query = supabaseAdmin
                 .from('products')
                 .select(`
                     *,
-                    manufacturer:users!manufacturer_id(business_name, city, is_verified),
+                    manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
                     category:categories!products_category_id_fkey(name, slug)
-                `)
+                `, { count: 'exact' })
                 .eq('is_active', true)
+                .is('parent_id', null) // Only fetch main products, not variations
                 .order('created_at', { ascending: false })
 
             if (categoryId) {
@@ -65,25 +69,29 @@ export const getShopData = unstable_cache(
                 query = query.in('category_id', targetIds)
             }
 
-            const { data: products, error: productsError } = await query
+            // Apply Pagination
+            query = query.range(from, to)
+
+            const { data: products, error: productsError, count } = await query
 
             if (productsError) {
                 console.error('Error fetching products:', productsError)
-                return { categories: validCategories, products: [] }
+                return { categories: allCategories as Category[], products: [], totalProducts: 0 }
             }
 
             return {
                 categories: validCategories,
-                products: (products as Product[]) || []
+                products: (products as Product[]) || [],
+                totalProducts: count || 0
             }
         } catch (error) {
             console.error('Server Action Error (Shop):', error)
-            return { categories: [], products: [] }
+            return { categories: [], products: [], totalProducts: 0 }
         }
     },
     ['shop-data'],
     {
-        revalidate: 1800, // 30 minutes
+        revalidate: 1, // Disable cache for dev (effectively)
         tags: ['shop', 'products', 'categories']
     }
 )

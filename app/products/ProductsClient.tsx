@@ -2,12 +2,14 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation' // Added useRouter
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Product, Category } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Filter, Package, MapPin, Heart, Plus } from 'lucide-react'
+import { Search, Filter, Package, MapPin, Heart, Plus, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useInView } from 'react-intersection-observer'
+
 import { Breadcrumbs } from '@/components/product/Breadcrumbs'
 import { CategorySidebar } from '@/components/product/CategorySidebar'
 import { useStore } from '@/lib/store'
@@ -20,20 +22,30 @@ interface ProductsClientProps {
     initialProducts: Product[]
     initialCategories: Category[]
     initialSelectedCategory: string
+    initialTotal?: number
 }
 
 export default function ProductsClient({
     initialProducts,
     initialCategories,
-    initialSelectedCategory
+    initialSelectedCategory,
+    initialTotal = 0
 }: ProductsClientProps) {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { ref, inView } = useInView()
 
     // Initialize state with server-provided prop
     const [products, setProducts] = useState<Product[]>(initialProducts)
     const [categories, setCategories] = useState<Category[]>(initialCategories)
-    const [loading, setLoading] = useState(false) // Initially false as we have data
+
+    // Pagination State
+    const [page, setPage] = useState(1)
+    const PRODUCTS_PER_PAGE = 20
+    const [hasMore, setHasMore] = useState(initialProducts.length >= PRODUCTS_PER_PAGE)
+    const [isFetchingMore, setIsFetchingMore] = useState(false)
+    const [loading, setLoading] = useState(false) // For initial/filter loads
+
     const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
     const [selectedCategory, setSelectedCategory] = useState<string>(initialSelectedCategory)
     const [wishlist, setWishlist] = useState<string[]>([])
@@ -54,20 +66,28 @@ export default function ProductsClient({
         }
     }, [searchParams])
 
-    // Fetch Only if params change significantly or component specifically needs update
-    // We skip the initial fetch because we have `initialProducts`
-    // But if `selectedCategory` or `sortBy` changes in Client state, we must fetch
-
+    // Reset and Fetch when Filters Change
     useEffect(() => {
-        // Only fetch if we are NOT in the initial state match
-        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest';
+        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest' && page === 1;
 
         if (!isInitialMount) {
-            fetchProducts()
+            setPage(1)
+            setHasMore(true)
+            fetchProducts(1, true)
         }
+    }, [selectedCategory, sortBy, searchQuery])
 
+    // Fetch Wishlist
+    useEffect(() => {
         fetchWishlist()
-    }, [selectedCategory, sortBy])
+    }, [])
+
+    // Infinite Scroll Trigger
+    useEffect(() => {
+        if (inView && hasMore && !isFetchingMore && !loading) {
+            loadMore()
+        }
+    }, [inView, hasMore, isFetchingMore, loading])
 
     const fetchWishlist = async () => {
         const { data: { user } } = await supabase.auth.getUser()
@@ -112,7 +132,6 @@ export default function ProductsClient({
         }
     }
 
-    // Handle Category Handling Wrapper
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug)
         // Update URL shallowly
@@ -125,9 +144,20 @@ export default function ProductsClient({
         router.push(`/products?${params.toString()}`, { scroll: false })
     }
 
-    const fetchProducts = async () => {
-        setLoading(true)
-        console.log('Fetching products client-side...', { selectedCategory, sortBy })
+    const fetchProducts = async (pageNumber: number, isReset: boolean = false) => {
+        const isLoadingMore = pageNumber > 1
+
+        if (isLoadingMore) {
+            setIsFetchingMore(true)
+        } else {
+            setLoading(true)
+        }
+
+        console.log(`Fetching products... Page: ${pageNumber}, Reset: ${isReset}`)
+
+        // Calculate Range
+        const from = (pageNumber - 1) * PRODUCTS_PER_PAGE
+        const to = from + PRODUCTS_PER_PAGE - 1
 
         let query = supabase
             .from('products')
@@ -135,8 +165,14 @@ export default function ProductsClient({
                 *,
                 manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
                 category:categories!products_category_id_fkey(name, slug)
-            `)
+            `, { count: 'exact' })
             .eq('is_active', true)
+            .is('parent_id', null) // Only show main products, not variations
+            .range(from, to)
+
+        if (searchQuery) {
+            query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        }
 
         // Sorting
         switch (sortBy) {
@@ -168,30 +204,63 @@ export default function ProductsClient({
                 }
                 const targetIds = [categoryId, ...getDescendants(categoryId)]
                 query = query.in('category_id', targetIds)
+            } else {
+                // Category selected but not found (likely inactive or empty)
+                // Return empty result instead of all products
+                setProducts([])
+                setHasMore(false)
+                setLoading(false)
+                setIsFetchingMore(false)
+                return
             }
         }
 
-        const { data, error } = await query
+        const { data, error, count } = await query
 
         if (error) {
             console.error('Error fetching products:', error)
             toast.error('Failed to load products')
         } else if (data) {
-            setProducts(data as Product[])
+            const newProducts = data as Product[]
+
+            if (isReset) {
+                setProducts(newProducts)
+            } else {
+                setProducts(prev => [...prev, ...newProducts])
+            }
+
+            // Check if we reached the end
+            if (newProducts.length < PRODUCTS_PER_PAGE) {
+                setHasMore(false)
+            } else {
+                setHasMore(true)
+            }
         }
-        setLoading(false)
+
+        if (isLoadingMore) {
+            setIsFetchingMore(false)
+        } else {
+            setLoading(false)
+        }
     }
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const loadMore = () => {
+        const nextPage = page + 1
+        setPage(nextPage)
+        fetchProducts(nextPage, false)
+    }
 
     const getPageTitle = () => {
         if (searchQuery) return `Results for "${searchQuery}"`
         if (selectedCategory) {
             const cat = categories.find(c => c.slug === selectedCategory)
-            return cat ? cat.name : 'Products'
+            if (cat) return cat.name
+
+            // Fallback: Format the slug (e.g. "mobile-accessories" -> "Mobile Accessories")
+            return selectedCategory
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ')
         }
         return 'All Products'
     }
@@ -244,7 +313,7 @@ export default function ProductsClient({
                     <div className="flex-1 min-w-0">
 
                         {/* Products Grid */}
-                        {loading ? (
+                        {loading && page === 1 ? (
                             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                                     <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100/50 shadow-sm">
@@ -257,7 +326,7 @@ export default function ProductsClient({
                                     </div>
                                 ))}
                             </div>
-                        ) : filteredProducts.length === 0 ? (
+                        ) : products.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                                     <Package className="w-10 h-10 text-gray-300" />
@@ -283,12 +352,12 @@ export default function ProductsClient({
                             <>
                                 <div className="flex items-center justify-between mb-6">
                                     <p className="text-sm text-gray-500 font-medium">
-                                        Showing <span className="text-gray-900 font-bold">{filteredProducts.length}</span> products
+                                        Showing <span className="text-gray-900 font-bold">{products.length}</span> products
                                     </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                    {filteredProducts.map(product => (
+                                    {products.map(product => (
                                         <ProductCard
                                             key={product.id}
                                             product={product}
@@ -296,6 +365,17 @@ export default function ProductsClient({
                                             onToggleWishlist={toggleWishlist}
                                         />
                                     ))}
+                                </div>
+
+                                {/* Infinite Scroll Trigger / Spinner */}
+                                <div ref={ref} className="py-8 flex justify-center w-full">
+                                    {isFetchingMore ? (
+                                        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                                    ) : (
+                                        !hasMore && products.length > 0 && (
+                                            <p className="text-gray-400 text-sm">You&apos;ve reached the end</p>
+                                        )
+                                    )}
                                 </div>
                             </>
                         )}

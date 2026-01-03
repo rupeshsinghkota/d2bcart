@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
     ShoppingCart,
     User,
@@ -68,8 +68,12 @@ export default function Navbar() {
         return '/'
     }
 
+    const pathname = usePathname()
+    const isProductPage = pathname?.startsWith('/products/') && pathname.split('/').length > 2
+    const isCartPage = pathname === '/cart'
+
     return (
-        <nav className="bg-white shadow-sm sticky top-0 z-50">
+        <nav className={`bg-white shadow-sm sticky top-0 z-50 ${(isProductPage || isCartPage) ? 'hidden md:block' : ''}`}>
             {/* Main Header Row */}
             <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center gap-3 sm:gap-4">
 
@@ -115,6 +119,21 @@ export default function Navbar() {
                         <span className="text-xs font-medium mt-0.5">Categories</span>
                     </Link>
 
+                    {/* Cart (Retailer & Guests) */}
+                    {(!user || user?.user_type === 'retailer') && (
+                        <Link href="/cart" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 relative">
+                            <div className="relative">
+                                <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
+                                {cart.length > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 bg-emerald-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
+                                        {cart.length}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-xs font-medium mt-0.5">Cart</span>
+                        </Link>
+                    )}
+
                     {user ? (
                         <>
                             {/* Dashboard Role Icon (Hidden on mobile as it's in bottom nav) */}
@@ -131,20 +150,7 @@ export default function Navbar() {
                                 </Link>
                             )}
 
-                            {/* Cart (Retailer Only - Hidden on mobile as it's in bottom nav) */}
-                            {user.user_type === 'retailer' && (
-                                <Link href="/cart" className="hidden md:flex flex-col items-center text-gray-600 hover:text-emerald-600 relative">
-                                    <div className="relative">
-                                        <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
-                                        {cart.length > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5 bg-emerald-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
-                                                {cart.length}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className="text-xs font-medium mt-0.5">Cart</span>
-                                </Link>
-                            )}
+
 
                             {/* Profile Dropdown */}
                             <div className="relative hidden md:block">

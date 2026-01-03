@@ -275,118 +275,83 @@ export default function CartPage() {
                             {cart.map((item) => (
                                 <div
                                     key={item.product.id}
-                                    className="bg-white rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-4"
+                                    className="bg-white rounded-2xl p-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden"
                                 >
                                     {/* Product Image */}
-                                    <div className="w-full sm:w-24 h-48 sm:h-24 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
                                         {item.product.images?.[0] ? (
                                             <div className="relative w-full h-full">
                                                 <Image
                                                     src={item.product.images[0]}
                                                     alt={item.product.name}
                                                     fill
-                                                    className="object-cover rounded-lg"
+                                                    className="object-cover"
                                                 />
                                             </div>
                                         ) : (
-                                            <Package className="w-8 h-8 text-gray-400" />
+                                            <Package className="w-8 h-8 text-gray-300" />
                                         )}
                                     </div>
 
-                                    {/* Product Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-gray-900 truncate">
-                                            {item.product.name}
-                                        </h3>
-                                        <p className="text-emerald-600 font-bold mt-1">
-                                            {formatCurrency(item.product.display_price)} / unit
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            MOQ: {item.product.moq} units
-                                        </p>
+                                    {/* Content Container */}
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                        <div>
+                                            {/* Header Row: Title & Remove */}
+                                            <div className="flex justify-between items-start gap-3">
+                                                <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">
+                                                    {item.product.name}
+                                                </h3>
+                                                <button
+                                                    onClick={() => removeFromCart(item.product.id)}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors -mt-1 -mr-1 p-1"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
 
-                                        {/* Quantity Controls */}
-                                        <div className="flex items-center gap-4 mt-3">
-                                            <div className="flex items-center border rounded-lg">
+                                            {/* Price & MOQ */}
+                                            <div className="mt-1 flex items-baseline gap-2">
+                                                <span className="font-bold text-emerald-600">
+                                                    {formatCurrency(item.product.display_price)}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 font-medium">
+                                                    MOQ: {item.product.moq}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer Row: Quantity & Total */}
+                                        <div className="flex items-end justify-between mt-3">
+                                            {/* Compact Quantity Selector */}
+                                            <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-8">
                                                 <button
                                                     onClick={() => updateQuantity(
                                                         item.product.id,
                                                         Math.max(item.product.moq, item.quantity - 1)
                                                     )}
-                                                    className="p-2 hover:bg-gray-100"
+                                                    className="w-8 h-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors rounded-l-lg border-r border-gray-200"
                                                 >
-                                                    <Minus className="w-4 h-4" />
+                                                    <Minus className="w-3 h-3 text-gray-600" />
                                                 </button>
-                                                <span className="px-4 font-medium">{item.quantity}</span>
+                                                <span className="w-8 text-center text-xs font-bold text-gray-900">
+                                                    {item.quantity}
+                                                </span>
                                                 <button
                                                     onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                                    className="p-2 hover:bg-gray-100"
+                                                    className="w-8 h-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors rounded-r-lg border-l border-gray-200"
                                                 >
-                                                    <Plus className="w-4 h-4" />
+                                                    <Plus className="w-3 h-3 text-gray-600" />
                                                 </button>
                                             </div>
-                                            <button
-                                                onClick={() => removeFromCart(item.product.id)}
-                                                className="text-red-500 hover:text-red-600 p-2"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
 
-                                    {/* Item Total */}
-                                    <div className="text-left sm:text-right min-w-[100px] mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0">
-                                        <div className="flex justify-between sm:block items-center">
-                                            <span className="sm:hidden text-gray-500 font-medium">Subtotal</span>
-                                            <p className="text-lg font-bold text-gray-900">
-                                                {formatCurrency(item.product.display_price * item.quantity)}
-                                            </p>
+                                            {/* Item Subtotal */}
+                                            <div className="flex flex-col items-end leading-none">
+                                                <span className="text-[10px] text-gray-400 mb-0.5 font-medium">Total</span>
+                                                <span className="text-sm font-bold text-gray-900">
+                                                    {formatCurrency(item.product.display_price * item.quantity)}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-gray-500 mb-1">{item.quantity} units</p>
-
-                                        {/* Shipping Selection */}
-                                        {user?.pincode ? (
-                                            shippingEstimates[item.product.id] ? (
-                                                shippingEstimates[item.product.id].error ? (
-                                                    <p className="text-xs text-red-500">Not Deliverable</p>
-                                                ) : (
-                                                    <div className="mt-2 text-left bg-gray-50 p-2 rounded-lg">
-                                                        <p className="text-xs font-semibold text-gray-500 mb-1">Select Shipping:</p>
-                                                        <div className="space-y-1">
-                                                            {shippingEstimates[item.product.id].options.map((option: any, index: number) => (
-                                                                <div
-                                                                    key={option.id}
-                                                                    onClick={() => setCourierForProduct(item.product.id, option)}
-                                                                    className={`flex items-center justify-between p-1.5 rounded cursor-pointer border ${shippingEstimates[item.product.id].selected.id === option.id
-                                                                        ? 'bg-emerald-50 border-emerald-200'
-                                                                        : 'bg-white border-transparent hover:border-gray-200'
-                                                                        }`}
-                                                                >
-                                                                    <div className="text-xs">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-medium text-gray-900">{option.courier}</span>
-                                                                            {index === 0 && (
-                                                                                <span className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full font-medium">
-                                                                                    Best Value
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <span className="text-gray-500">Est. {option.etd || '2-5 Days'}</span>
-                                                                    </div>
-                                                                    <div className="text-xs font-bold text-gray-900">
-                                                                        {formatCurrency(option.rate)}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            ) : (
-                                                <p className="text-xs text-gray-400 animate-pulse mt-2">Checking Couriers...</p>
-                                            )
-                                        ) : (
-                                            <p className="text-xs text-amber-600 mt-2">Add Address for Rates</p>
-                                        )}
                                     </div>
                                 </div>
                             ))}

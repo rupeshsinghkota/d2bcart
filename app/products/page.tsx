@@ -66,7 +66,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     }
 
     // 2. Fetch Initial Products (Scoped to category if selected)
-    const { products } = await getShopData(currentCategory?.id)
+    const { products, totalProducts } = await getShopData(currentCategory?.id)
 
     // Collection Page JSON-LD
     const jsonLd = {
@@ -93,6 +93,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 initialProducts={products}
                 initialCategories={allCategories}
                 initialSelectedCategory={categorySlug || ''}
+                initialTotal={totalProducts}
             />
         </>
     )

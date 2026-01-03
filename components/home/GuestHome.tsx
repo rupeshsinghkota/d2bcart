@@ -6,22 +6,14 @@ import { getMarketplaceData } from '@/app/actions/getMarketplaceData'
 import { supabase } from '@/lib/supabase'
 import {
     ChevronRight,
-    ChevronLeft,
-    Sparkles,
-    Package,
     ArrowRight,
     Loader2,
     Shield,
     Truck,
     CheckCircle,
-    Plus,
     Store,
     TrendingUp
 } from 'lucide-react'
-import { getCategoryImage } from '@/utils/category'
-import { formatCurrency } from '@/lib/utils'
-import { useStore } from '@/lib/store'
-import { toast } from 'react-hot-toast'
 import { ProductCard } from '@/components/product/ProductCard'
 import Image from 'next/image'
 
@@ -107,60 +99,82 @@ export default function GuestHome({ initialCategories = [], initialProducts = []
                 </div>
             ) : (
                 <>
-                    {/* Featured Categories */}
-                    <section className="py-12 md:py-16 bg-gray-50/50">
+                    {/* Hierarchical Categories Section */}
+                    <section className="pt-4 pb-8 md:pt-8 md:pb-12 bg-gray-50/50">
                         <div className="max-w-7xl mx-auto">
-                            <div className="px-4 flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Browse Categories</h2>
-                                    <p className="text-gray-500 text-sm mt-1">Discover products by industry</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="hidden md:flex gap-1.5">
-                                        <button onClick={() => scroll('left')} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm">
-                                            <ChevronLeft className="w-5 h-5" />
-                                        </button>
-                                        <button onClick={() => scroll('right')} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm">
-                                            <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                    <Link href="/categories" className="text-emerald-600 font-bold hover:text-emerald-700 text-sm">
-                                        See all
-                                    </Link>
-                                </div>
-                            </div>
 
-                            <div
-                                ref={scrollContainerRef}
-                                className="flex overflow-x-auto pb-4 px-4 gap-4 md:gap-6 no-scrollbar snap-x scroll-smooth"
-                            >
-                                {categories.map(cat => (
-                                    <Link
-                                        key={cat.id}
-                                        href={`/products?category=${cat.slug}`}
-                                        className="flex flex-col items-center min-w-[100px] md:min-w-[140px] snap-start group"
-                                    >
-                                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-white shadow-sm border border-gray-100 overflow-hidden flex items-center justify-center group-hover:shadow-xl group-hover:border-emerald-200 transition-all duration-300 relative">
-                                            {(() => {
-                                                const img = getCategoryImage(cat.name)
-                                                return img ? (
-                                                    <Image
-                                                        src={img}
-                                                        alt={cat.name}
-                                                        fill
-                                                        sizes="(max-width: 768px) 80px, 112px"
-                                                        className="object-cover transform group-hover:scale-110 transition-transform duration-500"
-                                                    />
-                                                ) : (
-                                                    <div className="text-2xl font-bold text-emerald-700">{cat.name?.[0]}</div>
-                                                )
-                                            })()}
+
+                            <div className="space-y-12">
+                                {categories.filter(c => c.slug === 'mobile-accessories').map((parent) => {
+                                    const children = categories.filter(c => c.parent_id === parent.id)
+                                    // Always show if found, since we are explicitly targeting it.
+                                    const itemsToShow = children.length > 0 ? children : [parent]
+                                    const isBranch = children.length > 0
+
+                                    return (
+                                        <div key={parent.id} className="relative group/section py-6">
+                                            {/* Section Header */}
+                                            <div className="px-4 md:px-0 flex items-end justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
+                                                        {parent.name}
+                                                    </h3>
+                                                    {isBranch && (
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            {children.length} collections
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <Link
+                                                    href={`/products?category=${parent.slug}`}
+                                                    className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 group/link"
+                                                >
+                                                    View All
+                                                    <ChevronRight className="w-4 h-4 transition-transform group-hover/link:translate-x-1" />
+                                                </Link>
+                                            </div>
+
+                                            {/* Horizontal Scroll Container */}
+                                            <div className="flex overflow-x-auto pb-4 px-3 gap-4 md:gap-6 md:px-4 no-scrollbar snap-x scroll-padding-x-4">
+                                                {itemsToShow.map(child => (
+                                                    <Link
+                                                        key={child.id}
+                                                        href={`/products?category=${child.slug}`}
+                                                        className="snap-start shrink-0 w-20 md:w-24 group cursor-pointer flex flex-col items-center gap-2"
+                                                    >
+                                                        {/* Circular Image Container */}
+                                                        <div className="w-16 h-16 md:w-20 md:h-20 relative rounded-full overflow-hidden bg-gray-100 shadow-sm ring-2 ring-gray-100 group-hover:ring-emerald-500 transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
+                                                            {child.image_url ? (
+                                                                <Image
+                                                                    src={child.image_url}
+                                                                    alt={child.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                    sizes="(max-width: 768px) 64px, 80px"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-50 text-emerald-600 font-bold text-xl">
+                                                                    {child.name.charAt(0)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Text Label */}
+                                                        <span className="text-xs md:text-sm font-medium text-gray-700 text-center line-clamp-2 leading-tight group-hover:text-emerald-700 transition-colors">
+                                                            {child.name}
+                                                        </span>
+                                                    </Link>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <span className="mt-3 text-xs md:text-sm font-semibold text-gray-700 text-center uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
-                                            {cat.name}
-                                        </span>
-                                    </Link>
-                                ))}
+                                    )
+                                })}
+
+                                {/* Also handle "Standalone" parents (no subcats) separately if needed? 
+                                    User said "Mobile Accessories only", implying hierarchy. 
+                                    I will include a fallback row for Active Categories that were NOT rendered above (i.e. orphans or parents without displayed children) if necessary.
+                                    For now, let's Stick to Hierarchy as requested. 
+                                */}
                             </div>
                         </div>
                     </section>
