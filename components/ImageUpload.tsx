@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Image from 'next/image'
 
 interface ImageUploadProps {
     images: string[]
@@ -86,10 +87,11 @@ export default function ImageUpload({ images, onImagesChange, maxImages = 5 }: I
                 <div className="grid grid-cols-3 gap-3">
                     {images.map((url, index) => (
                         <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
-                            <img
+                            <Image
                                 src={url}
                                 alt={`Product ${index + 1}`}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                             />
                             <button
                                 type="button"

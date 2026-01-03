@@ -5,6 +5,7 @@ import { getChildren } from '@/utils/category-helpers'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { getCategoryImage } from '@/utils/category'
+import Image from 'next/image'
 
 interface CategorySidebarProps {
     categories: Category[]
@@ -60,8 +61,8 @@ export const CategorySidebar = ({ categories, selectedCategory, onSelectCategory
                                     {level === 0 && (() => {
                                         const img = getCategoryImage(cat.name)
                                         return img ? (
-                                            <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                                                <img src={img} className="w-full h-full object-cover" alt="" />
+                                            <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 relative">
+                                                <Image src={img} fill className="object-cover" alt="" />
                                             </div>
                                         ) : null
                                     })()}

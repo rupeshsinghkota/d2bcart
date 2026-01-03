@@ -19,6 +19,7 @@ import {
     Building2,
     Upload
 } from 'lucide-react'
+import Image from 'next/image'
 import { SalesChart } from '@/components/analytics/SalesChart'
 import { TopProducts } from '@/components/analytics/TopProducts'
 
@@ -306,9 +307,9 @@ export default function ManufacturerDashboard() {
                                 <div className="divide-y max-h-[400px] overflow-y-auto">
                                     {filteredProducts.slice(0, 10).map(product => (
                                         <div key={product.id} className="p-4 hover:bg-gray-50 flex items-center gap-4">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 relative">
                                                 {product.images?.[0] ? (
-                                                    <img src={product.images[0]} alt="" className="w-full h-full object-cover rounded-lg" />
+                                                    <Image src={product.images[0]} alt="" fill className="object-cover rounded-lg" />
                                                 ) : (
                                                     <Package className="w-6 h-6 text-gray-400" />
                                                 )}

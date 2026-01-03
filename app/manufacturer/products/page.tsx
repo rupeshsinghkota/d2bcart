@@ -19,6 +19,7 @@ import {
     Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Image from 'next/image'
 
 export default function ManufacturerProductsPage() {
     const router = useRouter()
@@ -122,8 +123,8 @@ export default function ManufacturerProductsPage() {
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === f
-                                        ? 'bg-emerald-100 text-emerald-700'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 {f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
@@ -158,10 +159,11 @@ export default function ManufacturerProductsPage() {
                             <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
                                 <div className="aspect-[4/3] bg-gray-100 relative">
                                     {product.images?.[0] ? (
-                                        <img
+                                        <Image
                                             src={product.images[0]}
                                             alt={product.name}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            className="object-cover"
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center">
@@ -170,8 +172,8 @@ export default function ManufacturerProductsPage() {
                                     )}
                                     <div className="absolute top-2 right-2">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active
-                                                ? 'bg-white/90 text-green-700'
-                                                : 'bg-gray-900/90 text-white'
+                                            ? 'bg-white/90 text-green-700'
+                                            : 'bg-gray-900/90 text-white'
                                             }`}>
                                             {product.is_active ? 'Active' : 'Inactive'}
                                         </span>

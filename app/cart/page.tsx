@@ -16,6 +16,7 @@ import {
     Package,
     CreditCard
 } from 'lucide-react'
+import Image from 'next/image'
 import { calculateTax } from '@/utils/tax'
 
 export default function CartPage() {
@@ -279,11 +280,14 @@ export default function CartPage() {
                                     {/* Product Image */}
                                     <div className="w-full sm:w-24 h-48 sm:h-24 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
                                         {item.product.images?.[0] ? (
-                                            <img
-                                                src={item.product.images[0]}
-                                                alt={item.product.name}
-                                                className="w-full h-full object-cover rounded-lg"
-                                            />
+                                            <div className="relative w-full h-full">
+                                                <Image
+                                                    src={item.product.images[0]}
+                                                    alt={item.product.name}
+                                                    fill
+                                                    className="object-cover rounded-lg"
+                                                />
+                                            </div>
                                         ) : (
                                             <Package className="w-8 h-8 text-gray-400" />
                                         )}

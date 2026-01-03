@@ -5,6 +5,7 @@ import { Package, Plus, MapPin, Heart } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
+import Image from 'next/image'
 import { Product } from '@/types' // Assuming types exist, or use any
 
 interface ProductCardProps {
@@ -20,10 +21,12 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist }: Produc
                 <Link href={`/products/${product.id}`} className="block">
                     <div className="aspect-square bg-gray-100 relative overflow-hidden">
                         {product.images?.[0] ? (
-                            <img
+                            <Image
                                 src={product.images[0]}
                                 alt={product.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                fill
+                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-50">

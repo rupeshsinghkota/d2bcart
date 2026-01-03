@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
 import { ProductCard } from '@/components/product/ProductCard'
+import Image from 'next/image'
 
 // Helper to shuffle array for "random" feed
 const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
@@ -234,14 +235,16 @@ function CategoryCard({ cat }: { cat: any }) {
                 {(() => {
                     const generatedImg = getCategoryImage(cat.name)
                     if (generatedImg) return (
-                        <img
+                        <Image
                             src={generatedImg}
                             alt={cat.name}
+                            fill
+                            sizes="(max-width: 640px) 72px, 90px"
                             className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                         />
                     )
                     if (cat.image_url) return (
-                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                        <Image src={cat.image_url} alt={cat.name} fill className="w-full h-full object-cover" />
                     )
                     return (
                         <div className="w-full h-full flex items-center justify-center text-xl sm:text-3xl bg-gray-100">

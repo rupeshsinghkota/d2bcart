@@ -9,24 +9,27 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+export const revalidate = 3600 // Revalidate every hour
+
 export const metadata: Metadata = {
     title: 'Browse Categories | D2BCart',
     description: 'Explore all product categories on D2BCart. Wholesale electronics, fashion, home goods, and more directly from manufacturers.',
 }
 
 async function getCategories() {
-    // 1. Get all active product category IDs
+    // 1. Get unique category IDs that have active products
     const { data: activeLinkages, error: prodErr } = await supabase
         .from('products')
         .select('category_id')
         .eq('is_active', true)
+        .not('category_id', 'is', null)
 
     if (prodErr) {
         console.error('Error fetching active product categories:', prodErr)
         return []
     }
 
-    const activeIds = new Set(activeLinkages?.map(p => p.category_id).filter(Boolean))
+    const activeIds = new Set(activeLinkages?.map(p => p.category_id))
 
     if (activeIds.size === 0) return []
 

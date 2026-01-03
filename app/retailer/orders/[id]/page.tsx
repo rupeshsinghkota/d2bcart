@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import Image from 'next/image'
 import {
     ArrowLeft,
     Package,
@@ -132,9 +133,9 @@ export default function RetailerOrderDetails() {
                                 Product Details
                             </h2>
                             <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border">
+                                <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border relative">
                                     {order.product?.images?.[0] && (
-                                        <img src={order.product.images[0]} className="w-full h-full object-cover" />
+                                        <Image src={order.product.images[0]} alt="" fill className="object-cover" />
                                     )}
                                 </div>
                                 <div>

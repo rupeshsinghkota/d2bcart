@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Order } from '@/types'
+import Image from 'next/image'
 import { formatCurrency } from '@/lib/utils'
 import {
     ArrowLeft,
@@ -198,12 +199,13 @@ export default function RetailerOrdersPage() {
 
                                         {/* Order Content */}
                                         <div className="p-4 flex gap-4">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200 relative">
                                                 {(order as any).product?.images?.[0] ? (
-                                                    <img
+                                                    <Image
                                                         src={(order as any).product.images[0]}
                                                         alt=""
-                                                        className="w-full h-full object-cover"
+                                                        fill
+                                                        className="object-cover"
                                                     />
                                                 ) : (
                                                     <Package className="w-6 h-6 text-gray-400" />
@@ -285,9 +287,9 @@ export default function RetailerOrdersPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                                                        <div className="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative">
                                                             {(order as any).product?.images?.[0] && (
-                                                                <img src={(order as any).product.images[0]} alt="" className="w-full h-full object-cover" />
+                                                                <Image src={(order as any).product.images[0]} alt="" fill className="object-cover" />
                                                             )}
                                                         </div>
                                                         <div className="max-w-[200px]">

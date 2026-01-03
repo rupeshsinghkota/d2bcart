@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Category } from '@/types'
 import { Package, ChevronRight } from 'lucide-react'
 import { getCategoryImage } from '@/utils/category'
+import Image from 'next/image'
 
 interface CategoriesClientProps {
     initialCategories: Category[]
@@ -72,8 +73,18 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                 `}>
                                     {(() => {
                                         const img = getCategoryImage(parent.name)
-                                        if (img) return <img src={img} alt={parent.name} className="w-full h-full object-cover" />
-                                        if (parent.image_url) return <img src={parent.image_url} alt={parent.name} className="w-full h-full object-cover" />
+                                        const src = img || parent.image_url
+                                        if (src) return (
+                                            <div className="relative w-full h-full">
+                                                <Image
+                                                    src={src}
+                                                    alt={parent.name}
+                                                    fill
+                                                    className="object-cover"
+                                                    priority={selectedCategoryId === parent.id}
+                                                />
+                                            </div>
+                                        )
                                         return <span className="text-sm md:text-lg font-bold text-gray-400">{parent.name[0]}</span>
                                     })()}
                                 </div>
@@ -96,8 +107,8 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                         {(() => {
                                             const img = getCategoryImage(selectedCategory.name)
                                             return img ? (
-                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center overflow-hidden border border-emerald-100">
-                                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 flex items-center justify-center overflow-hidden border border-emerald-100 relative">
+                                                    <Image src={img} alt="" fill className="object-cover" />
                                                 </div>
                                             ) : null
                                         })()}
@@ -138,11 +149,11 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                                             href={`/products?category=${leaf.slug}`}
                                                             className="group flex flex-col items-center text-center p-3 rounded-xl bg-gray-50/50 hover:bg-white border border-transparent hover:border-emerald-200 hover:shadow-sm transition-all duration-200"
                                                         >
-                                                            <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm border border-gray-100 overflow-hidden group-hover:scale-105 transition-transform">
+                                                            <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center mb-2 shadow-sm border border-gray-100 overflow-hidden group-hover:scale-105 transition-transform relative">
                                                                 {(() => {
                                                                     const img = getCategoryImage(leaf.name)
-                                                                    if (leaf.image_url) return <img src={leaf.image_url} alt={leaf.name} className="w-full h-full object-cover" />
-                                                                    if (img) return <img src={img} alt={leaf.name} className="w-full h-full object-cover" />
+                                                                    const src = leaf.image_url || img
+                                                                    if (src) return <Image src={src} alt={leaf.name} fill className="object-cover" />
                                                                     return <span className="text-sm font-bold text-gray-400">{leaf.name[0]}</span>
                                                                 })()}
                                                             </div>
@@ -165,7 +176,9 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                             {(() => {
                                                 const img = getCategoryImage(selectedCategory.name)
                                                 return img ? (
-                                                    <img src={img} alt="" className="w-16 h-16 object-cover opacity-80" />
+                                                    <div className="relative w-16 h-16">
+                                                        <Image src={img} alt="" fill className="object-cover opacity-80" />
+                                                    </div>
                                                 ) : (
                                                     <Package className="w-10 h-10 text-emerald-600" />
                                                 )

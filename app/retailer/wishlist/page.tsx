@@ -9,6 +9,7 @@ import { ArrowLeft, Package, MapPin, Trash2, ShoppingCart } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function WishlistPage() {
     const [products, setProducts] = useState<Product[]>([])
@@ -115,10 +116,11 @@ export default function WishlistPage() {
                                     {/* Image */}
                                     <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
                                         {product.images?.[0] ? (
-                                            <img
+                                            <Image
                                                 src={product.images[0]}
                                                 alt={product.name}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                                fill
+                                                className="object-cover group-hover:scale-105 transition-transform"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center">

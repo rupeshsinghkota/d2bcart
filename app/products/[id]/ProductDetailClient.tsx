@@ -8,6 +8,7 @@ import { useStore } from '@/lib/store'
 import { Product } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import Image from 'next/image'
 import {
     ArrowLeft,
     Package,
@@ -182,10 +183,12 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                                 className="absolute inset-0 w-full h-full flex items-center justify-center p-4 cursor-zoom-in"
                             >
                                 {product.images?.[activeImageIndex] ? (
-                                    <img
+                                    <Image
                                         src={product.images[activeImageIndex]}
                                         alt={product.name}
-                                        className="w-full h-full object-contain transition-opacity duration-300"
+                                        fill
+                                        priority
+                                        className="object-contain transition-opacity duration-300"
                                     />
                                 ) : (
                                     <Package className="w-24 h-24 text-gray-300" />
@@ -218,7 +221,13 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                                         onClick={() => setActiveImageIndex(idx)}
                                         className={`w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
                                     >
-                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                        <Image
+                                            src={img}
+                                            alt=""
+                                            width={80}
+                                            height={80}
+                                            className="w-full h-full object-cover"
+                                        />
                                     </button>
                                 ))}
                             </div>
@@ -415,11 +424,14 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                                         >
                                             <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 mb-2 border border-gray-100 group-hover:border-emerald-300 transition-colors">
                                                 {item.images?.[0] ? (
-                                                    <img
-                                                        src={item.images[0]}
-                                                        alt={item.name}
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                    />
+                                                    <div className="relative w-full h-full">
+                                                        <Image
+                                                            src={item.images[0]}
+                                                            alt={item.name}
+                                                            fill
+                                                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        />
+                                                    </div>
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
                                                         <Package className="w-8 h-8 text-gray-300" />
@@ -528,12 +540,15 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                     )}
 
                     {/* Main Image */}
-                    <img
-                        src={product.images[activeImageIndex]}
-                        alt={product.name}
-                        className="max-w-[90vw] max-h-[85vh] object-contain"
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <div className="relative max-w-[90vw] max-h-[85vh] w-full h-[85vh]">
+                        <Image
+                            src={product.images[activeImageIndex]}
+                            alt={product.name}
+                            fill
+                            className="object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
 
                     {/* Next Button */}
                     {product.images.length > 1 && (
@@ -560,7 +575,9 @@ export default function ProductDetailClient({ product, manufacturerProducts }: P
                                     }}
                                     className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${activeImageIndex === idx ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                 >
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                    <div className="relative w-full h-full">
+                                        <Image src={img} alt="" fill className="object-cover" />
+                                    </div>
                                 </button>
                             ))}
                         </div>

@@ -19,6 +19,7 @@ import {
     Plus,
     ShoppingCart as CartIcon
 } from 'lucide-react'
+import Image from 'next/image'
 import { SalesChart } from '@/components/analytics/SalesChart'
 import { generateInvoice } from '@/lib/invoice-generator'
 import { useStore } from '@/lib/store'
@@ -242,9 +243,9 @@ export default function RetailerDashboard() {
                                         href={`/products/${product.id}`}
                                         className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
                                     >
-                                        <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                                        <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
                                             {product.images?.[0] && (
-                                                <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                                                <Image src={product.images[0]} alt="" fill className="object-cover" />
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -312,12 +313,13 @@ export default function RetailerDashboard() {
                                         </div>
 
                                         <div className="flex gap-4">
-                                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative">
                                                 {(order as any).product?.images?.[0] ? (
-                                                    <img
+                                                    <Image
                                                         src={(order as any).product.images[0]}
                                                         alt=""
-                                                        className="w-full h-full object-cover"
+                                                        fill
+                                                        className="object-cover"
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -360,12 +362,13 @@ export default function RetailerDashboard() {
                             <div className="hidden md:block divide-y divide-gray-100">
                                 {orders.slice(0, 5).map(order => (
                                     <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors flex items-center gap-6">
-                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative">
                                             {(order as any).product?.images?.[0] ? (
-                                                <img
+                                                <Image
                                                     src={(order as any).product.images[0]}
                                                     alt=""
-                                                    className="w-full h-full object-cover"
+                                                    fill
+                                                    className="object-cover"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-gray-400">

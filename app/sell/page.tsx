@@ -2,6 +2,7 @@
 
 import { ArrowRight, CheckCircle2, MessageSquare, Package, Smartphone, Truck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function SellerPage() {
     const whatsappNumber = '919117474683'; // Verified support number
@@ -14,10 +15,12 @@ export default function SellerPage() {
             <div className="relative bg-slate-900 text-white min-h-[70vh] flex items-center overflow-hidden">
                 {/* Background Image - Optimized for Desktop */}
                 <div className="absolute inset-0 z-0">
-                    <img
+                    <Image
                         src="/marketing/desktop-landscape-warehouse-hero.png"
                         alt="High-tech Warehouse"
-                        className="w-full h-full object-cover opacity-40 scale-105 animate-slow-zoom"
+                        fill
+                        priority
+                        className="object-cover opacity-40 scale-105 animate-slow-zoom"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent"></div>
                 </div>
@@ -148,9 +151,11 @@ export default function SellerPage() {
                             <div className="relative group">
                                 <div className="absolute -inset-4 bg-blue-500/20 rounded-[40px] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative bg-white rounded-[40px] p-4 shadow-2xl border border-gray-100 overflow-hidden transform group-hover:scale-[1.02] transition-transform">
-                                    <img
+                                    <Image
                                         src="/marketing/supply-chain-process.png"
                                         alt="Supply Chain Process"
+                                        width={800}
+                                        height={600}
                                         className="w-full h-auto rounded-[32px]"
                                     />
                                 </div>

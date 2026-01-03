@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import slugify from 'slugify'
+import Image from 'next/image'
 
 export default function AdminCategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([])
@@ -125,7 +126,7 @@ export default function AdminCategoriesPage() {
                     <div className="flex items-center gap-3" style={{ paddingLeft: `${depth * 24}px` }}>
                         {depth > 0 && <span className="text-gray-300">└</span>}
                         {cat.image_url ? (
-                            <img src={cat.image_url} className="w-8 h-8 rounded object-cover bg-gray-100" />
+                            <Image src={cat.image_url} alt="" width={32} height={32} className="rounded object-cover bg-gray-100" />
                         ) : (
                             <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
                                 <span className="text-gray-400 text-xs">IMG</span>

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import Image from 'next/image'
 import { Order } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -269,12 +270,13 @@ const OrdersContent = () => {
                                 {/* Order Content */}
                                 <div className="p-4">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative">
                                             {(order as any).product?.images?.[0] ? (
-                                                <img
+                                                <Image
                                                     src={(order as any).product.images[0]}
                                                     alt=""
-                                                    className="w-full h-full object-cover rounded-lg"
+                                                    fill
+                                                    className="object-cover rounded-lg"
                                                 />
                                             ) : (
                                                 <Package className="w-6 h-6 text-gray-400" />

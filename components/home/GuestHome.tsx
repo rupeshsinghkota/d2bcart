@@ -23,6 +23,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
 import { ProductCard } from '@/components/product/ProductCard'
+import Image from 'next/image'
 
 export default function GuestHome() {
     const [categories, setCategories] = useState<any[]>([])
@@ -132,14 +133,16 @@ export default function GuestHome() {
                                         href={`/products?category=${cat.slug}`}
                                         className="flex flex-col items-center min-w-[100px] md:min-w-[140px] snap-start group"
                                     >
-                                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-white shadow-sm border border-gray-100 overflow-hidden flex items-center justify-center group-hover:shadow-xl group-hover:border-emerald-200 transition-all duration-300">
+                                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-white shadow-sm border border-gray-100 overflow-hidden flex items-center justify-center group-hover:shadow-xl group-hover:border-emerald-200 transition-all duration-300 relative">
                                             {(() => {
                                                 const img = getCategoryImage(cat.name)
                                                 return img ? (
-                                                    <img
+                                                    <Image
                                                         src={img}
                                                         alt={cat.name}
-                                                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                        fill
+                                                        sizes="(max-width: 768px) 80px, 112px"
+                                                        className="object-cover transform group-hover:scale-110 transition-transform duration-500"
                                                     />
                                                 ) : (
                                                     <div className="text-2xl font-bold text-emerald-700">{cat.name?.[0]}</div>
