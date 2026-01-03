@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Category } from '@/types'
 import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
+import { revalidateData } from '@/app/actions/revalidate'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Package, Info } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
@@ -203,6 +204,7 @@ export default function NewProductPage() {
 
             const varCount = productType === 'variable' ? ` with ${variations.length} variations` : ''
             toast.success(`Product added successfully${varCount}!`)
+            await revalidateData('/')
             router.push('/manufacturer/products')
         } catch (error: any) {
             toast.error(error.message || 'Failed to add product')

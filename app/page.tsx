@@ -4,20 +4,25 @@ import RetailerHome from '@/components/home/RetailerHome'
 import ManufacturerHome from '@/components/home/ManufacturerHome'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { Suspense } from 'react'
 import { getMarketplaceData } from './actions/getMarketplaceData'
 
-export const dynamic = 'force-dynamic'
-// export const revalidate = 3600 // Cache homepage for 1 hour -> Removed to allow Auth checks
+// export const dynamic = 'force-dynamic'
+// export const revalidate = 3600 // Cache homepage for 1 hour
 
 export default async function Home() {
+  return (
+    <Suspense fallback={<HomeSkeleton />}>
+      <HomeContent />
+    </Suspense>
+  )
+}
+
+async function HomeContent() {
   const supabase = await createClient()
 
   // Get Auth User
   const { data: { user: authUser } } = await supabase.auth.getUser()
-  if (authUser) {
-    console.log('[Home] Auth User found:', authUser.email)
-  }
-
 
   // Pre-fetch marketplace data (Cached in Server Action)
   const { categories, products } = await getMarketplaceData()
@@ -48,13 +53,27 @@ export default async function Home() {
     redirect('/admin')
   }
 
-  console.log('[Home] User Profile Type:', profile.user_type)
-
   if (profile.user_type === 'manufacturer') {
     return <ManufacturerHome user={profile} />
   }
 
-  // Default to Retailer Home for 'retailer' or any other authenticated role (fallback)
-  // This prevents logged-in users from seeing Guest Home
   return <RetailerHome initialCategories={categories} initialProducts={products} user={profile} />
+}
+
+function HomeSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="animate-pulse">
+        <div className="h-48 md:h-64 bg-emerald-800" />
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+          <div className="h-8 bg-gray-200 w-48 rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="aspect-square bg-gray-200 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

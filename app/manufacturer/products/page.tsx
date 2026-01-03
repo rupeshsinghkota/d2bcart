@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { revalidateData } from '@/app/actions/revalidate'
 import {
     Plus,
     Search,
@@ -131,13 +132,17 @@ export default function ManufacturerProductsPage() {
                         ids.includes(p.id) ? { ...p, is_active: false } : p
                     ))
                     setSelectedIds(new Set())
+                    await revalidateData('/')
                 }
             } else {
                 toast.error('Failed to delete products. Please check permissions.')
+                setSelectedIds(new Set())
+                await revalidateData('/')
             }
         } else {
             const deletedCount = (data as any[])?.length || 0
             toast.success('Products deleted successfully')
+            await revalidateData('/')
 
             // Update local state to remove verified deleted items
             if (deletedCount > 0) {

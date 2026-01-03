@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { Category, Product } from '@/types'
 import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Package, Info, Save, Trash2 } from 'lucide-react'
+import { revalidateData } from '@/app/actions/revalidate'
+import { ArrowLeft, Package, Info, Save, Trash2, Loader2, Sparkles, Image as ImageIcon, Plus } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import VariationManager from '@/components/product/VariationManager'
 
@@ -235,6 +236,7 @@ export default function EditProductPage() {
             }
 
             toast.success('Product updated successfully!')
+            await revalidateData('/')
             router.push('/manufacturer/products')
         } catch (error: any) {
             toast.error(error.message || 'Failed to update product')

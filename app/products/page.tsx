@@ -4,7 +4,9 @@ import { Category } from '@/types'
 import { getShopData } from '../actions/getShopData'
 import { createClient } from '@/lib/supabase-server'
 
-export const dynamic = 'force-dynamic'
+import { Suspense } from 'react'
+
+// export const dynamic = 'force-dynamic'
 
 interface Props {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -53,9 +55,16 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function ProductsPage({ searchParams }: Props) {
+    return (
+        <Suspense fallback={<ProductsSkeleton />}>
+            <ProductsContent searchParams={searchParams} />
+        </Suspense>
+    )
+}
+
+async function ProductsContent({ searchParams }: Props) {
     const params = await searchParams
     const categorySlug = typeof params.category === 'string' ? params.category : undefined
-    const searchQuery = typeof params.search === 'string' ? params.search : undefined
 
     // 1. Fetch Categories (Always needed for sidebar)
     const { categories: allCategories } = await getShopData()
@@ -96,5 +105,28 @@ export default async function ProductsPage({ searchParams }: Props) {
                 initialTotal={totalProducts}
             />
         </>
+    )
+}
+
+function ProductsSkeleton() {
+    return (
+        <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col md:flex-row gap-8">
+                {/* Sidebar Skeleton */}
+                <div className="hidden md:block w-64 space-y-4">
+                    <div className="h-40 bg-gray-100 rounded-xl" />
+                    <div className="h-64 bg-gray-100 rounded-xl" />
+                </div>
+                {/* Main Content Skeleton */}
+                <div className="flex-1 space-y-6">
+                    <div className="h-12 bg-gray-100 rounded-xl w-3/4" />
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="aspect-[3/4] bg-gray-100 rounded-xl" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
