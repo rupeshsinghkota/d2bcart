@@ -61,7 +61,7 @@ export const getMarketplaceData = unstable_cache(
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v2'],
+    ['marketplace-data-v3'],
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']

@@ -90,7 +90,7 @@ export const getShopData = unstable_cache(
             return { categories: [], products: [], totalProducts: 0 }
         }
     },
-    ['shop-data-v2'],
+    ['shop-data-v3'],
     {
         revalidate: 300, // 5 minutes
         tags: ['shop', 'products', 'categories']
