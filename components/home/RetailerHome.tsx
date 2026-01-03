@@ -39,7 +39,14 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
     }
 
     useEffect(() => {
-        console.log('RetailerHome Mounted. Initial Categories:', initialCategories.length)
+        console.log('RetailerHome Mounted. Initial Products:', initialProducts.length)
+        if (initialProducts.length > 0) {
+            const hasVariants = initialProducts.some(p => p.parent_id)
+            if (hasVariants) {
+                console.warn('⚠️ Variants detected in initialProducts! Filtering them out...')
+                setProducts(initialProducts.filter(p => !p.parent_id))
+            }
+        }
         fetchData()
     }, [])
 

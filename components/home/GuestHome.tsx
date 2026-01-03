@@ -29,6 +29,14 @@ export default function GuestHome({ initialCategories = [], initialProducts = []
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
+        if (initialProducts.length > 0) {
+            console.log('GuestHome Mounted. Initial Products:', initialProducts.length)
+            const hasVariants = initialProducts.some(p => p.parent_id)
+            if (hasVariants) {
+                console.warn('⚠️ Variants detected in initialProducts! Filtering them out...')
+                setProducts(initialProducts.filter(p => !p.parent_id))
+            }
+        }
         if (initialCategories.length === 0 && initialProducts.length === 0) {
             fetchData()
         }
@@ -38,7 +46,10 @@ export default function GuestHome({ initialCategories = [], initialProducts = []
         const { categories: cats, products: prods } = await getMarketplaceData()
 
         if (cats) setCategories(cats)
-        if (prods) setProducts(prods)
+        if (prods) {
+            const parentsOnly = (prods as any[]).filter(p => !p.parent_id)
+            setProducts(parentsOnly)
+        }
         setLoading(false)
     }
 
