@@ -60,17 +60,11 @@ export default function ProductsClient({
 
     useEffect(() => {
         // Only fetch if we are NOT in the initial state match
-        // Or honestly, just fetching is safer to ensure consistent sort/filter behavior
-        // But to avoid double-fetch on mount:
-        const isInitialMount = initialProducts.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest';
+        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest';
 
         if (!isInitialMount) {
             fetchProducts()
         }
-
-        // Fetch categories is not needed as we have them from props, 
-        // but if we want to keep them fresh we could. 
-        // For now, let's trust server props.
 
         fetchWishlist()
     }, [selectedCategory, sortBy])
@@ -121,18 +115,20 @@ export default function ProductsClient({
     // Handle Category Handling Wrapper
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug)
-        // Update URL shallowly so back button works and URL is shareable
+        // Update URL shallowly
         const params = new URLSearchParams(searchParams.toString())
         if (slug) {
             params.set('category', slug)
         } else {
             params.delete('category')
         }
-        router.push(`/products?${params.toString()}`)
+        router.push(`/products?${params.toString()}`, { scroll: false })
     }
 
     const fetchProducts = async () => {
         setLoading(true)
+        console.log('Fetching products client-side...', { selectedCategory, sortBy })
+
         let query = supabase
             .from('products')
             .select(`
@@ -157,43 +153,30 @@ export default function ProductsClient({
         }
 
         if (selectedCategory) {
-            // 1. Get the selected category
-            const { data: cat } = await supabase
-                .from('categories')
-                .select('id, parent_id')
-                .eq('slug', selectedCategory)
-                .single()
+            const cat = categories.find(c => c.slug === selectedCategory)
 
             if (cat) {
-                // 2. Get all subcategories (children) of this category
-                // We reuse the passed 'categories' prop to find descendants to avoid extra network call if possible?
-                // But relying on API is more robust in this function scope for now.
-                const { data }: any = await supabase.from('categories').select('id, parent_id')
-                const allCats = data as { id: string, parent_id: string | null }[] | null
-                const categoryId = (cat as any).id
-
-                if (allCats) {
-                    // Find all IDs that are descendants of categoryId
-                    const getDescendants = (parentId: string): string[] => {
-                        const children = allCats.filter(c => c.parent_id === parentId)
-                        let ids = children.map(c => c.id)
-                        children.forEach(child => {
-                            ids = [...ids, ...getDescendants(child.id)]
-                        })
-                        return ids
-                    }
-                    const targetIds = [categoryId, ...getDescendants(categoryId)]
-                    query = query.in('category_id', targetIds)
-                } else {
-                    // Fallback to just the category itself
-                    query = query.eq('category_id', categoryId)
+                const categoryId = cat.id
+                // Use the categories prop (which should be current) to find descendants
+                const getDescendants = (parentId: string): string[] => {
+                    const children = categories.filter(c => c.parent_id === parentId)
+                    let ids = children.map(c => c.id)
+                    children.forEach(child => {
+                        ids = [...ids, ...getDescendants(child.id)]
+                    })
+                    return ids
                 }
+                const targetIds = [categoryId, ...getDescendants(categoryId)]
+                query = query.in('category_id', targetIds)
             }
         }
 
         const { data, error } = await query
 
-        if (data) {
+        if (error) {
+            console.error('Error fetching products:', error)
+            toast.error('Failed to load products')
+        } else if (data) {
             setProducts(data as Product[])
         }
         setLoading(false)
