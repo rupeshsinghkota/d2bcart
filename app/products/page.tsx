@@ -4,7 +4,7 @@ import { Category } from '@/types'
 import { getShopData } from '../actions/getShopData'
 import { createClient } from '@/lib/supabase-server'
 
-export const revalidate = 1800 // Revalidate every 30 minutes
+export const dynamic = 'force-dynamic'
 
 interface Props {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>

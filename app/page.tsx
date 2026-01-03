@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { getMarketplaceData } from './actions/getMarketplaceData'
 
+export const dynamic = 'force-dynamic'
 // export const revalidate = 3600 // Cache homepage for 1 hour -> Removed to allow Auth checks
 
 export default async function Home() {
