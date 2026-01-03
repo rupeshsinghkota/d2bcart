@@ -10,11 +10,13 @@ import { User as UserType } from '@/types'
 
 export default function BottomNav() {
     const pathname = usePathname()
-    const [user, setUser] = React.useState<UserType | null>(null)
+    // Use global store
+    const user = useStore((state) => state.user)
+    const setUser = useStore((state) => state.setUser)
     const cart = useStore((state) => state.cart)
 
     React.useEffect(() => {
-        checkUser()
+        if (!user) checkUser()
     }, [])
 
     const checkUser = async () => {

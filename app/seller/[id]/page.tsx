@@ -1,11 +1,11 @@
 import { Metadata } from 'next'
-import { ProductCard } from '@/components/product/ProductCard'
-import { MapPin, ShieldCheck, Calendar, Store, Package } from 'lucide-react'
+import { MapPin, ShieldCheck, Store, Package } from 'lucide-react' // ProductCard removed, it is in client component
 import { notFound } from 'next/navigation'
-
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSellerProductsAction } from '@/app/actions/seller'
+import { SellerProductGrid } from '@/components/seller/SellerProductGrid'
 
-// Initialize Supabase client
+// Initialize Supabase client for getSeller
 const supabase = supabaseAdmin
 
 interface Props {
@@ -22,23 +22,6 @@ async function getSeller(id: string) {
         .eq('user_type', 'manufacturer') // Ensure it is a seller
         .single()
     return seller
-}
-
-async function getSellerProducts(id: string) {
-    const { data: products } = await supabase
-        .from('products')
-        .select(`
-            *,
-            manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-            category:categories!products_category_id_fkey(name, slug)
-        `)
-        .eq('manufacturer_id', id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-    console.log(`Debug SellerProducts ${id}:`, products?.length || 0)
-
-    return products || []
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -65,7 +48,8 @@ export default async function SellerPage({ params }: Props) {
         notFound()
     }
 
-    const products = await getSellerProducts(id)
+    // Fetch initial products using the shared action
+    const { products, total: totalCount } = await getSellerProductsAction(id, 1, 12)
 
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
@@ -150,21 +134,11 @@ export default async function SellerPage({ params }: Props) {
                     All Products
                 </h2>
 
-                {products.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                        {products.map((product: any) => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-xl p-12 text-center border border-dashed border-gray-200">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Package className="w-8 h-8 text-gray-300" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900">No products listed</h3>
-                        <p className="text-gray-500 text-sm mt-1">This seller hasn't added any products yet.</p>
-                    </div>
-                )}
+                <SellerProductGrid
+                    initialProducts={products}
+                    sellerId={id}
+                    initialTotal={totalCount}
+                />
             </div>
         </div>
     )

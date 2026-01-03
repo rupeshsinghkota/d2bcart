@@ -77,7 +77,8 @@ export default function ManufacturerProductsPage() {
 
         const { error } = await supabase
             .from('products')
-            .update({ is_active: newStatus } as any)
+            // @ts-ignore
+            .update({ is_active: newStatus })
             .eq('id', product.id)
 
         if (error) {
@@ -117,7 +118,8 @@ export default function ManufacturerProductsPage() {
                 // Fallback: Soft Delete (Deactivate)
                 const { error: updateError } = await supabase
                     .from('products')
-                    .update({ is_active: false } as any)
+                    // @ts-ignore
+                    .update({ is_active: false })
                     .in('id', ids)
 
                 if (updateError) {

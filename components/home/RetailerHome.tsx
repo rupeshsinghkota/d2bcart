@@ -17,9 +17,10 @@ const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
 interface RetailerHomeProps {
     initialCategories?: any[]
     initialProducts?: any[]
+    user?: any
 }
 
-export default function RetailerHome({ initialCategories = [], initialProducts = [] }: RetailerHomeProps) {
+export default function RetailerHome({ initialCategories = [], initialProducts = [], user }: RetailerHomeProps) {
     const [categories, setCategories] = useState<any[]>(initialCategories)
     const [products, setProducts] = useState<any[]>(initialProducts)
     const [loading, setLoading] = useState(initialCategories.length === 0 && initialProducts.length === 0)
@@ -38,20 +39,13 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
     }
 
     useEffect(() => {
+        console.log('RetailerHome Mounted. Initial Categories:', initialCategories.length)
         fetchData()
     }, [])
 
     const fetchData = async () => {
-        // Fetch top level categories
-        const { data: cats } = await supabase
-            .from('categories')
-            .select('*')
-            .is('parent_id', null)
-            .limit(12)
-
+        // Fetch products
         await fetchProducts(1)
-
-        if (cats) setCategories(cats)
     }
 
     const fetchProducts = async (pageNum: number) => {
@@ -112,12 +106,26 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
                                     <Sparkles className="w-3 h-3" />
                                     <span>Special Offer</span>
                                 </div>
-                                <h1 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-1.5 leading-tight">
-                                    Maximize Your <span className="text-emerald-200">Profits</span>
-                                </h1>
-                                <p className="text-emerald-50 text-[10px] sm:text-sm md:text-base mb-3 max-w-md opacity-90 leading-relaxed line-clamp-1 sm:line-clamp-none">
-                                    Direct from 500+ verified factories. Save big.
-                                </p>
+                                {user ? (
+                                    <>
+                                        <h1 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-1.5 leading-tight">
+                                            Welcome back, <br />
+                                            <span className="text-emerald-200">{user.business_name}</span>
+                                        </h1>
+                                        <p className="text-emerald-50 text-[10px] sm:text-sm md:text-base mb-3 max-w-md opacity-90 leading-relaxed">
+                                            Continue sourcing from 500+ verified factories.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h1 className="text-xl sm:text-4xl lg:text-5xl font-bold text-white mb-1.5 leading-tight">
+                                            Maximize Your <span className="text-emerald-200">Profits</span>
+                                        </h1>
+                                        <p className="text-emerald-50 text-[10px] sm:text-sm md:text-base mb-3 max-w-md opacity-90 leading-relaxed line-clamp-1 sm:line-clamp-none">
+                                            Direct from 500+ verified factories. Save big.
+                                        </p>
+                                    </>
+                                )}
                                 <div className="flex gap-2">
                                     <Link
                                         href="/products"
@@ -149,34 +157,73 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
 
 
 
-            {/* Categories Section */}
-            <section className="mt-3 sm:mt-6">
+            {/* Hierarchical Categories Section */}
+            <section className="pt-4 pb-8 md:pt-8 md:pb-12 bg-gray-50/50">
                 <div className="max-w-7xl mx-auto">
-                    <div className="px-4 sm:px-6 lg:px-8 flex items-center justify-between mb-2 sm:mb-3.5">
-                        <h2 className="text-sm sm:text-xl font-bold text-gray-900">Shop by Category</h2>
-                        <div className="flex items-center gap-2">
-                            {/* Desktop Scroll Arrows */}
-                            <div className="hidden md:flex gap-1">
-                                <button onClick={() => scroll('left')} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-emerald-600 transition-colors">
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => scroll('right')} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-emerald-600 transition-colors">
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                            <Link href="/categories" className="text-emerald-600 text-[10px] sm:text-sm font-semibold hover:underline">
-                                See All
-                            </Link>
-                        </div>
-                    </div>
-                    {/* Horizontal Scroll with Generated Images */}
-                    <div
-                        ref={scrollContainerRef}
-                        className="flex overflow-x-auto pb-4 px-4 sm:px-8 gap-3 sm:gap-5 no-scrollbar snap-x scroll-smooth"
-                    >
-                        {categories.map(cat => (
-                            <CategoryCard key={cat.id} cat={cat} />
-                        ))}
+                    <div className="space-y-12">
+                        {categories.filter(c => c.slug === 'mobile-accessories').map((parent) => {
+                            const children = categories.filter(c => c.parent_id === parent.id)
+                            const itemsToShow = children.length > 0 ? children : [parent]
+                            const isBranch = children.length > 0
+
+                            return (
+                                <div key={parent.id} className="relative group/section py-6">
+                                    {/* Section Header */}
+                                    <div className="px-4 md:px-0 flex items-end justify-between mb-6">
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">
+                                                {parent.name}
+                                            </h3>
+                                            {isBranch && (
+                                                <p className="text-sm text-gray-500 mt-1">
+                                                    {children.length} collections
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Link
+                                            href={`/products?category=${parent.slug}`}
+                                            className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 group/link"
+                                        >
+                                            View All
+                                            <ChevronRight className="w-4 h-4 transition-transform group-hover/link:translate-x-1" />
+                                        </Link>
+                                    </div>
+
+                                    {/* Horizontal Scroll Container */}
+                                    <div className="flex overflow-x-auto pb-4 px-3 gap-4 md:gap-6 md:px-4 no-scrollbar snap-x scroll-padding-x-4">
+                                        {itemsToShow.map(child => (
+                                            <Link
+                                                key={child.id}
+                                                href={`/products?category=${child.slug}`}
+                                                className="snap-start shrink-0 w-20 md:w-24 group cursor-pointer flex flex-col items-center gap-2"
+                                            >
+                                                {/* Circular Image Container */}
+                                                <div className="w-16 h-16 md:w-20 md:h-20 relative rounded-full overflow-hidden bg-gray-100 shadow-sm ring-2 ring-gray-100 group-hover:ring-emerald-500 transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
+                                                    {child.image_url ? (
+                                                        <Image
+                                                            src={child.image_url}
+                                                            alt={child.name}
+                                                            fill
+                                                            className="object-cover"
+                                                            sizes="(max-width: 768px) 64px, 80px"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-gray-50 text-emerald-600 font-bold text-xl">
+                                                            {child.name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Text Label */}
+                                                <span className="text-xs md:text-sm font-medium text-gray-700 text-center line-clamp-2 leading-tight group-hover:text-emerald-700 transition-colors">
+                                                    {child.name}
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             </section>

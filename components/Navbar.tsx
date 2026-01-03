@@ -20,18 +20,23 @@ import { User as UserType } from '@/types'
 
 export default function Navbar() {
     const router = useRouter()
-    const [user, setUser] = useState<UserType | null>(null)
+    // Use global store for user state to ensure instant updates
+    const user = useStore((state) => state.user)
+    const setUser = useStore((state) => state.setUser)
     const [searchQuery, setSearchQuery] = useState('')
     const cart = useStore((state) => state.cart)
-    const [isMenuOpen, setIsMenuOpen] = useState(false) // Keeping for desktop sidebar trigger if needed later
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
 
     useEffect(() => {
-        checkUser()
+        // Only fetch if no user in store? Or always re-verify?
+        // Re-verify is safer but UI should show store state immediately.
+        if (!user) checkUser()
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') checkUser()
-            else if (event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                checkUser()
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null)
-                useStore.getState().setUser(null)
             }
         })
         return () => subscription.unsubscribe()
@@ -47,8 +52,8 @@ export default function Navbar() {
                 .eq('id', authUser.id)
                 .single()
             if (profile) {
+                // Update global store
                 setUser(profile as UserType)
-                useStore.getState().setUser(profile as UserType)
             }
         }
     }
