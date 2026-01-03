@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast'
 import slugify from 'slugify'
 import Image from 'next/image'
+import { syncCategoryPrices } from '@/app/actions/syncCategoryPrices'
 
 export default function AdminCategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([])
@@ -28,6 +29,8 @@ export default function AdminCategoriesPage() {
     const [markup, setMarkup] = useState(20) // default 20%
     const [imageUrl, setImageUrl] = useState('')
     const [parentId, setParentId] = useState<string>('')
+    const [shouldSync, setShouldSync] = useState(false)
+    const [syncing, setSyncing] = useState(false)
 
     useEffect(() => {
         fetchCategories()
@@ -74,6 +77,18 @@ export default function AdminCategoriesPage() {
         if (error) {
             toast.error(error.message)
         } else {
+            // Apply Sync if requested
+            if (shouldSync && editingCategory) {
+                setSyncing(true)
+                const res = await syncCategoryPrices(editingCategory.id, markup)
+                if (res.success) {
+                    toast.success(`Updated ${res.count} products`)
+                } else {
+                    toast.error(`Price sync failed: ${res.error}`)
+                }
+                setSyncing(false)
+            }
+
             toast.success(editingCategory ? 'Category updated' : 'Category created')
             setIsModalOpen(false)
             resetForm()
@@ -103,6 +118,7 @@ export default function AdminCategoriesPage() {
         setMarkup(20)
         setImageUrl('')
         setParentId('')
+        setShouldSync(false)
     }
 
     const openEdit = (cat: Category) => {
@@ -279,6 +295,25 @@ export default function AdminCategoriesPage() {
                                 />
                             </div>
 
+                            {editingCategory && (
+                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={shouldSync}
+                                            onChange={e => setShouldSync(e.target.checked)}
+                                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                                        />
+                                        <span className="text-xs font-semibold text-blue-800">
+                                            Update all existing products in this category
+                                        </span>
+                                    </label>
+                                    <p className="text-[10px] text-blue-600 mt-1 ml-6">
+                                        Recalculates listed prices for all products using this new margin.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
@@ -289,9 +324,11 @@ export default function AdminCategoriesPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 btn-primary justify-center"
+                                    disabled={syncing}
+                                    className="flex-1 btn-primary justify-center gap-2"
                                 >
-                                    {editingCategory ? 'Save Changes' : 'Create Category'}
+                                    {syncing && <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />}
+                                    {editingCategory ? (syncing ? 'Syncing...' : 'Save Changes') : 'Create Category'}
                                 </button>
                             </div>
                         </form>
