@@ -14,10 +14,15 @@ import Image from 'next/image'
 // Helper to shuffle array for "random" feed
 const shuffle = (array: any[]) => [...array].sort(() => Math.random() - 0.5)
 
-export default function RetailerHome() {
-    const [categories, setCategories] = useState<any[]>([])
-    const [products, setProducts] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+interface RetailerHomeProps {
+    initialCategories?: any[]
+    initialProducts?: any[]
+}
+
+export default function RetailerHome({ initialCategories = [], initialProducts = [] }: RetailerHomeProps) {
+    const [categories, setCategories] = useState<any[]>(initialCategories)
+    const [products, setProducts] = useState<any[]>(initialProducts)
+    const [loading, setLoading] = useState(initialCategories.length === 0 && initialProducts.length === 0)
     const [loadingMore, setLoadingMore] = useState(false)
     const [page, setPage] = useState(1)
     const PAGE_SIZE = 24

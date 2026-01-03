@@ -25,15 +25,22 @@ import { toast } from 'react-hot-toast'
 import { ProductCard } from '@/components/product/ProductCard'
 import Image from 'next/image'
 
-export default function GuestHome() {
-    const [categories, setCategories] = useState<any[]>([])
-    const [products, setProducts] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+interface GuestHomeProps {
+    initialCategories?: any[]
+    initialProducts?: any[]
+}
+
+export default function GuestHome({ initialCategories = [], initialProducts = [] }: GuestHomeProps) {
+    const [categories, setCategories] = useState<any[]>(initialCategories)
+    const [products, setProducts] = useState<any[]>(initialProducts)
+    const [loading, setLoading] = useState(initialCategories.length === 0 && initialProducts.length === 0)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        fetchData()
-    }, [])
+        if (initialCategories.length === 0 && initialProducts.length === 0) {
+            fetchData()
+        }
+    }, [initialCategories, initialProducts])
 
     const fetchData = async () => {
         const { categories: cats, products: prods } = await getMarketplaceData()

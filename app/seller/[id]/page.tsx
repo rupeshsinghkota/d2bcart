@@ -12,6 +12,8 @@ interface Props {
     params: Promise<{ id: string }>
 }
 
+export const revalidate = 3600 // Revalidate every hour
+
 async function getSeller(id: string) {
     const { data: seller } = await supabase
         .from('users')

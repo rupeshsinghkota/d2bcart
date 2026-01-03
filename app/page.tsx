@@ -1,47 +1,47 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-server'
 import GuestHome from '@/components/home/GuestHome'
 import RetailerHome from '@/components/home/RetailerHome'
 import ManufacturerHome from '@/components/home/ManufacturerHome'
-import { useRouter } from 'next/navigation'
+import { redirect } from 'next/navigation'
+import { getMarketplaceData } from './actions/getMarketplaceData'
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+export const revalidate = 3600 // Cache homepage for 1 hour
 
-  useEffect(() => {
-    checkUser()
-  }, [])
+export default async function Home() {
+  const supabase = await createClient()
 
-  const checkUser = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser()
-    if (authUser) {
-      const { data: profile } = await supabase.from('users').select('*').eq('id', authUser.id).single()
-      setUser(profile)
-    }
-    setLoading(false)
+  // Get Auth User
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+
+  // Pre-fetch marketplace data (Cached in Server Action)
+  const { categories, products } = await getMarketplaceData()
+
+  if (!authUser) {
+    return <GuestHome initialCategories={categories} initialProducts={products} />
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-      </div>
-    )
+  // Get Profile data
+  const { data: profile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', authUser.id)
+    .single()
+
+  if (!profile) {
+    return <GuestHome initialCategories={categories} initialProducts={products} />
   }
 
-  if (!user) return <GuestHome />
-
-  if (user.email === 'rupeshsingh1103@gmail.com') {
-    router.push('/admin')
-    return null
+  if (profile.email === 'rupeshsingh1103@gmail.com') {
+    redirect('/admin')
   }
 
-  if (user.user_type === 'manufacturer') return <ManufacturerHome user={user} />
-  if (user.user_type === 'retailer') return <RetailerHome />
+  if (profile.user_type === 'manufacturer') {
+    return <ManufacturerHome user={profile} />
+  }
 
-  return <GuestHome />
+  if (profile.user_type === 'retailer') {
+    return <RetailerHome initialCategories={categories} initialProducts={products} />
+  }
+
+  return <GuestHome initialCategories={categories} initialProducts={products} />
 }
