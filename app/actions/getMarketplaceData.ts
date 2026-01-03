@@ -42,6 +42,7 @@ export const getMarketplaceData = unstable_cache(
                     category:categories!products_category_id_fkey(name, slug)
                 `)
                 .eq('is_active', true)
+                .is('parent_id', null)
                 .limit(10)
 
             if (prodError) console.error('Error fetching products:', prodError)
