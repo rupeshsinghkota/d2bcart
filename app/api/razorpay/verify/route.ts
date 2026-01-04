@@ -8,7 +8,7 @@ export async function POST(req: Request) {
             razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature,
-            internal_order_id
+            order_ids // Accept array of internal order IDs
         } = await req.json()
 
         const secret = process.env.RAZORPAY_KEY_SECRET!
@@ -29,17 +29,14 @@ export async function POST(req: Request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        // Update Order to PAID
-        // Also verify that the order belongs to the user or matches amount? 
-        // For now, simple update.
+        // Update Orders to PAID
         const { error } = await supabaseAdmin
             .from('orders')
             .update({
                 status: 'paid',
-                // We could store payment_id here if we had a column
-                // payment_id: razorpay_payment_id 
+                payment_id: razorpay_payment_id
             })
-            .eq('id', internal_order_id)
+            .in('id', order_ids)
 
         if (error) throw error
 

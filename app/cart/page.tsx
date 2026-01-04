@@ -19,6 +19,13 @@ import {
 import Image from 'next/image'
 import { calculateTax } from '@/utils/tax'
 
+// Razorpay Type Definition
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
+
 export default function CartPage() {
     const router = useRouter()
     const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal } = useStore()
@@ -32,7 +39,15 @@ export default function CartPage() {
 
     useEffect(() => {
         checkUser()
+        loadRazorpayScript()
     }, [])
+
+    const loadRazorpayScript = () => {
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.async = true
+        document.body.appendChild(script)
+    }
 
     const checkUser = async () => {
         if (!isSupabaseConfigured) {
@@ -79,8 +94,6 @@ export default function CartPage() {
         const estimates: Record<string, any> = {}
 
         try {
-            // We need to calculate shipping for each item (since they are separate orders)
-            // Optimization: In real app, group by manufacturer. Here, we do per item as per order flow.
             await Promise.all(cart.map(async (item) => {
                 try {
                     const res = await fetch('/api/shiprocket/estimate', {
@@ -99,7 +112,6 @@ export default function CartPage() {
                     const data = await res.json()
 
                     if (data.success) {
-                        // Take top 3 options
                         const top3 = data.couriers.slice(0, 3).map((c: any) => ({
                             rate: c.rate,
                             etd: c.etd,
@@ -154,19 +166,67 @@ export default function CartPage() {
             return
         }
 
+        // Check for shipping errors
+        const hasShippingError = cart.some(item => shippingEstimates[item.product.id]?.error)
+        if (hasShippingError) {
+            toast.error('Some items are not serviceable to your location.')
+            return
+        }
+        // Wait for shipping calculation
+        if (Object.keys(shippingEstimates).length < cart.length) {
+            toast.error('Please wait for shipping estimates to load')
+            return
+        }
+
+
         setPlacingOrder(true)
 
         try {
-            // TEST MODE: Direct Order Placement
-            // Since Razorpay keys are not configured, we simulate a successful payment
+            // 1. Calculate Grand Total
+            let totalProductAmount = 0
+            let totalShippingAmount = 0
+            let totalTaxAmount = 0
+
+            cart.forEach(item => {
+                totalProductAmount += item.product.display_price * item.quantity
+
+                const shipCost = shippingEstimates[item.product.id]?.selected?.rate || 0
+                totalShippingAmount += shipCost
+
+                const taxDetails = calculateTax(
+                    item.product.display_price,
+                    item.quantity,
+                    item.product.tax_rate || 18,
+                    manufacturerStates[item.product.manufacturer_id],
+                    user.state
+                )
+                totalTaxAmount += taxDetails.taxAmount
+            })
+
+            const grandTotal = totalProductAmount + totalShippingAmount + totalTaxAmount
+
+            // 2. Create Razorpay Order
+            const orderRes = await fetch('/api/razorpay/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: grandTotal })
+            })
+
+            if (!orderRes.ok) {
+                const error = await orderRes.json()
+                throw new Error(error.error || 'Failed to create payment order')
+            }
+
+            const razorpayOrder = await orderRes.json()
+
+            // 3. Create 'Pending' Orders in Supabase
+            const dbOrderIds: string[] = []
 
             for (const item of cart) {
                 const orderNumber = `D2B-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
-                const totalAmount = item.product.display_price * item.quantity
                 const manufacturerPayout = item.product.base_price * item.quantity
                 const platformProfit = item.product.your_margin * item.quantity
                 const shipCost = shippingEstimates[item.product.id]?.selected?.rate || 0
-
                 const selectedCourier = shippingEstimates[item.product.id]?.selected
 
                 const taxDetails = calculateTax(
@@ -177,39 +237,91 @@ export default function CartPage() {
                     user.state
                 )
 
-                const { error } = await supabase.from('orders').insert({
+                const { data: orderData, error } = await supabase.from('orders').insert({
                     order_number: orderNumber,
                     retailer_id: user.id,
                     manufacturer_id: item.product.manufacturer_id,
                     product_id: item.product.id,
                     quantity: item.quantity,
                     unit_price: item.product.display_price,
-                    total_amount: taxDetails.totalAmount, // Now includes tax
+                    total_amount: taxDetails.totalAmount, // amount for this item + tax
                     tax_amount: taxDetails.taxAmount,
                     tax_rate_snapshot: item.product.tax_rate || 18,
                     manufacturer_payout: manufacturerPayout,
-                    platform_profit: platformProfit + (shipCost * 0.1),
-                    status: 'paid', // Mark as paid for testing
+                    platform_profit: platformProfit + (shipCost * 0.1), // Example logic
+                    status: 'pending',
                     shipping_address: user.address || '',
                     shipping_cost: shipCost,
                     courier_name: selectedCourier?.courier || null,
                     courier_company_id: selectedCourier?.id?.toString() || null,
-                    payment_id: 'TEST_PAY_SIMULATED_' + Date.now().toString(36),
+                    // payment_id will be updated after success
                     created_at: new Date().toISOString()
-                } as any)
+                } as any).select('id').single()
 
                 if (error) throw error
+                if (orderData) dbOrderIds.push((orderData as any).id)
             }
 
-            toast.success('Order Placed Successfully (Test Mode)')
-            clearCart()
-            router.push('/retailer/orders')
+            // 4. Open Razorpay Checkout
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: razorpayOrder.amount,
+                currency: razorpayOrder.currency,
+                name: 'D2B Cart',
+                description: 'Order Payment',
+                order_id: razorpayOrder.id,
+                handler: async function (response: any) {
+                    // 5. Verify Payment
+                    try {
+                        const verifyRes = await fetch('/api/razorpay/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                order_ids: dbOrderIds
+                            })
+                        })
+
+                        const verifyData = await verifyRes.json()
+                        if (verifyData.success) {
+                            toast.success('Payment Successful!')
+                            clearCart()
+                            router.push('/retailer/orders')
+                        } else {
+                            toast.error('Payment Verification Failed')
+                            console.error('Verification Error', verifyData)
+                        }
+
+                    } catch (verifyError) {
+                        console.error('Verification Exception', verifyError)
+                        toast.error('Payment verification failed after success')
+                    }
+                },
+                prefill: {
+                    name: user.business_name,
+                    email: user.email,
+                    contact: user.phone
+                },
+                theme: {
+                    color: '#059669'
+                },
+                modal: {
+                    ondismiss: function () {
+                        setPlacingOrder(false)
+                        toast('Payment Cancelled')
+                    }
+                }
+            }
+
+            const rzp1 = new window.Razorpay(options)
+            rzp1.open()
 
         } catch (error: any) {
             console.error('Order Placement Failed:', error)
             toast.error(error.message || 'Failed to place order')
-        } finally {
-            setPlacingOrder(false)
+            setPlacingOrder(false) // Only stop loading if error before modal open
         }
     }
 
@@ -423,13 +535,13 @@ export default function CartPage() {
                                     ) : (
                                         <>
                                             <CreditCard className="w-5 h-5" />
-                                            Place Order
+                                            Pay Now
                                         </>
                                     )}
                                 </button>
 
                                 <p className="text-xs text-gray-500 text-center mt-3">
-                                    Secure checkout • Direct from manufacturer
+                                    Secured by Razorpay • Direct from manufacturer
                                 </p>
                             </div>
                         </div>
@@ -467,7 +579,7 @@ export default function CartPage() {
                             ) : (
                                 <>
                                     <CreditCard className="w-5 h-5" />
-                                    Checkout
+                                    Pay Now
                                 </>
                             )}
                         </button>
