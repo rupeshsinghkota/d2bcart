@@ -12,7 +12,8 @@ export async function getSellerProductsAction(sellerId: string, page: number = 1
         .select(`
             *,
             manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-            category:categories!products_category_id_fkey(name, slug)
+            category:categories!products_category_id_fkey(name, slug),
+            variations:products!products_parent_id_fkey(display_price)
         `, { count: 'exact' })
         .eq('manufacturer_id', sellerId)
         .eq('is_active', true)
