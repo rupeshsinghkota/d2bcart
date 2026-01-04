@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Simple in-memory cache for the server instance
+let tokenCache: { token: string | null, expiry: number | null } = {
+    token: null,
+    expiry: null
+}
+
 export async function POST(req: Request) {
     try {
         const { manufacturer_id, delivery_pincode, weight = 0.5, length = 10, breadth = 10, height = 10, cod = 0 } = await req.json()
@@ -39,14 +45,33 @@ export async function POST(req: Request) {
         const email = process.env.SHIPROCKET_EMAIL
         const password = process.env.SHIPROCKET_PASSWORD
 
-        // 1. Auth (Ideally cached)
-        const authRes = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        })
-        const authData = await authRes.json()
-        const token = authData.token
+        // 1. Auth (Cached)
+        const now = Date.now()
+        let token = tokenCache.token
+
+        if (!token || !tokenCache.expiry || now > tokenCache.expiry) {
+            console.log('Shiprocket Token Expired or Missing. Logging in...')
+            const authRes = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+
+            if (!authRes.ok) {
+                throw new Error('Shiprocket Authentication Failed')
+            }
+
+            const authData = await authRes.json()
+            token = authData.token
+
+            // Cache for 24 hours (or slightly less to be safe)
+            tokenCache = {
+                token,
+                expiry: now + (24 * 60 * 60 * 1000) - 60000
+            }
+        } else {
+            // console.log('Using Cached Shiprocket Token')
+        }
 
         // 2. Check Serviceability
         const params = new URLSearchParams({

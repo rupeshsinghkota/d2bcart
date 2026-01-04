@@ -12,9 +12,10 @@ interface ProductCardProps {
     product: any // Using any to match existing flexibility, or ideally Product type
     wishlist?: string[]
     onToggleWishlist?: (e: React.MouseEvent, productId: string) => void
+    priority?: boolean
 }
 
-export function ProductCard({ product, wishlist = [], onToggleWishlist }: ProductCardProps) {
+export function ProductCard({ product, wishlist = [], onToggleWishlist, priority = false }: ProductCardProps) {
 
     return (
         <div className="relative group bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col h-full active:scale-[0.98]">
@@ -28,6 +29,7 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist }: Produc
                                 fill
                                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                priority={priority}
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-50">

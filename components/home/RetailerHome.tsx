@@ -38,22 +38,27 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
         }
     }
 
+    const fetchData = async () => {
+        // Only fetch if we don't have initial products or if we created a filter condition
+        if (products.length === 0) {
+            await fetchProducts(1)
+        }
+    }
+
     useEffect(() => {
-        console.log('RetailerHome Mounted. Initial Products:', initialProducts.length)
+        // console.log('RetailerHome Mounted. Initial Products:', initialProducts.length)
         if (initialProducts.length > 0) {
             const hasVariants = initialProducts.some(p => p.parent_id)
             if (hasVariants) {
-                console.warn('⚠️ Variants detected in initialProducts! Filtering them out...')
-                setProducts(initialProducts.filter(p => !p.parent_id))
+                // console.warn('Variants detected in initialProducts! Filtering them out...')
+                setProducts(initialProducts.filter((p: any) => !p.parent_id))
             }
+            // If we have products, we don't need to load, unless we want to fetch page 2 immediately (which we don't)
+            setLoading(false)
+        } else {
+            fetchData()
         }
-        fetchData()
     }, [])
-
-    const fetchData = async () => {
-        // Fetch products
-        await fetchProducts(1)
-    }
 
     const fetchProducts = async (pageNum: number) => {
         const from = (pageNum - 1) * PAGE_SIZE
@@ -244,8 +249,8 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
                     <h2 className="text-sm sm:text-xl font-bold text-gray-900 mb-3 px-1">Recommended for You</h2>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
-                        {products.map(product => (
-                            <ProductCard key={product.id} product={product} />
+                        {products.map((product, index) => (
+                            <ProductCard key={product.id} product={product} priority={index < 10} />
                         ))}
                     </div>
 
@@ -303,10 +308,17 @@ function CategoryCard({ cat }: { cat: any }) {
                             fill
                             sizes="(max-width: 640px) 72px, 90px"
                             className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                            priority={true} // Prioritize category icons as they are above fold
                         />
                     )
                     if (cat.image_url) return (
-                        <Image src={cat.image_url} alt={cat.name} fill className="w-full h-full object-cover" />
+                        <Image
+                            src={cat.image_url}
+                            alt={cat.name}
+                            fill
+                            className="w-full h-full object-cover"
+                            priority={true}
+                        />
                     )
                     return (
                         <div className="w-full h-full flex items-center justify-center text-xl sm:text-3xl bg-gray-100">
