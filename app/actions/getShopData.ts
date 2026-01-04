@@ -51,7 +51,7 @@ export const getShopData = unstable_cache(
                     *,
                     manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
                     category:categories!products_category_id_fkey(name, slug),
-                    variations:products!products_parent_id_fkey(display_price)
+                    variations:products!parent_id(display_price)
                 `, { count: 'exact' })
                 .eq('is_active', true)
                 .is('parent_id', null) // Only fetch main products, not variations
@@ -90,7 +90,7 @@ export const getShopData = unstable_cache(
             return { categories: [], products: [], totalProducts: 0 }
         }
     },
-    ['shop-data-v3'],
+    ['shop-data-v4'],
     {
         revalidate: 300, // 5 minutes
         tags: ['shop', 'products', 'categories']

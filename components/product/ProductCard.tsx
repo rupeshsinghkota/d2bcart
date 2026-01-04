@@ -15,6 +15,14 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, wishlist = [], onToggleWishlist }: ProductCardProps) {
+    if (product.type === 'variable') {
+        const minVarPrice = product.variations && product.variations.length > 0
+            ? Math.min(...product.variations.map((v: any) => v.display_price))
+            : 0;
+        if (minVarPrice === 0) {
+            console.log('Zero price variable product:', product.name, product);
+        }
+    }
     return (
         <div className="relative group bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all flex flex-col h-full active:scale-[0.98]">
             <div className="flex-1 flex flex-col">

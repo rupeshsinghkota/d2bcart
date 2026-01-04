@@ -41,7 +41,7 @@ export const getMarketplaceData = unstable_cache(
                     *,
                     manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
                     category:categories!products_category_id_fkey(name, slug),
-                    variations:products!products_parent_id_fkey(display_price)
+                    variations:products!parent_id(display_price)
                 `)
                 .eq('is_active', true)
                 .is('parent_id', null)
@@ -61,7 +61,7 @@ export const getMarketplaceData = unstable_cache(
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v3'],
+    ['marketplace-data-v4'],
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']

@@ -58,6 +58,7 @@ export interface Product {
     // Joined fields
     manufacturer?: User
     category?: Category
+    variations?: Product[]
 }
 
 export interface Order {
