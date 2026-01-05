@@ -691,13 +691,13 @@ export default function CartPage() {
                                                     {shippingEstimates[mfId].error}
                                                 </div>
                                             ) : shippingEstimates[mfId] ? (
-                                                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                                     {shippingEstimates[mfId].options?.map((opt: any, idx: number) => (
                                                         <label
                                                             key={idx}
-                                                            className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border cursor-pointer transition-all bg-white min-w-[120px] sm:min-w-[140px] ${shippingEstimates[mfId].selected?.id === opt.id
-                                                                ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-sm'
-                                                                : 'border-gray-200 active:border-emerald-400'
+                                                            className={`relative flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all bg-white ${shippingEstimates[mfId].selected?.id === opt.id
+                                                                ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-sm bg-emerald-50'
+                                                                : 'border-gray-200 hover:border-emerald-300'
                                                                 }`}
                                                         >
                                                             <input
@@ -705,15 +705,15 @@ export default function CartPage() {
                                                                 name={`courier-${mfId}`}
                                                                 checked={shippingEstimates[mfId].selected?.id === opt.id}
                                                                 onChange={() => setCourierForManufacturer(mfId, opt)}
-                                                                className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600"
+                                                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
                                                             />
                                                             <div className="flex-1 min-w-0">
-                                                                <div className="text-[10px] sm:text-xs font-medium text-gray-900 truncate">{opt.courier}</div>
-                                                                <div className="text-[9px] sm:text-[10px] text-gray-500 flex items-center gap-0.5 sm:gap-1">
-                                                                    <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {opt.etd}
+                                                                <div className="text-sm font-medium text-gray-900 truncate">{opt.courier}</div>
+                                                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                    <Clock className="w-3 h-3" /> {opt.etd}
                                                                 </div>
                                                             </div>
-                                                            <div className="text-[10px] sm:text-xs font-bold text-emerald-600">{formatCurrency(opt.rate)}</div>
+                                                            <div className="text-sm font-bold text-emerald-600">{formatCurrency(opt.rate)}</div>
                                                         </label>
                                                     ))}
                                                 </div>
