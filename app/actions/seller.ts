@@ -31,3 +31,28 @@ export async function getSellerProductsAction(sellerId: string, page: number = 1
         total: count || 0
     }
 }
+
+export async function getSellerCategoriesAction(sellerId: string) {
+    const { data, error } = await supabaseAdmin
+        .from('products')
+        .select('category:categories!products_category_id_fkey(name, slug)')
+        .eq('manufacturer_id', sellerId)
+        .eq('is_active', true)
+        .is('parent_id', null)
+
+    if (error) {
+        console.error('Error fetching seller categories:', error)
+        return []
+    }
+
+    // Deduplicate categories based on slug
+    const uniqueCategories = new Map()
+    data?.forEach((item: any) => {
+        if (item.category) {
+            uniqueCategories.set(item.category.slug, item.category)
+        }
+    })
+
+    return Array.from(uniqueCategories.values())
+}
+

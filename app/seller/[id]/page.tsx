@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { MapPin, ShieldCheck, Store, Package } from 'lucide-react' // ProductCard removed, it is in client component
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getSellerProductsAction } from '@/app/actions/seller'
+import { getSellerProductsAction, getSellerCategoriesAction } from '@/app/actions/seller'
 import { SellerProductGrid } from '@/components/seller/SellerProductGrid'
 
 // Initialize Supabase client for getSeller
@@ -51,6 +51,9 @@ export default async function SellerPage({ params }: Props) {
     // Fetch initial products using the shared action
     const { products, total: totalCount } = await getSellerProductsAction(id, 1, 12)
 
+    // Fetch categories independently to show ALL categories, not just from the first page of products
+    const categories = await getSellerCategoriesAction(id)
+
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
             {/* Seller Header */}
@@ -88,12 +91,8 @@ export default async function SellerPage({ params }: Props) {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Package className="w-4 h-4 text-gray-400" />
-                                    <span>{products.length} Products</span>
+                                    <span>{products.length}+ Products</span>
                                 </div>
-                                {/* <div className="flex items-center gap-1.5">
-                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                    <span>Joined {new Date(seller.created_at).toLocaleDateString()}</span>
-                                </div> */}
                             </div>
                         </div>
                     </div>
@@ -101,28 +100,18 @@ export default async function SellerPage({ params }: Props) {
             </div>
 
             {/* Categories Section */}
-            {products.length > 0 && (
+            {categories.length > 0 && (
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Categories</h2>
                     <div className="flex flex-wrap gap-2">
-                        {Array.from(new Set(products.map((p: any) => {
-                            const cat = p.category
-                            if (!cat) return null
-                            return JSON.stringify({
-                                name: cat.name,
-                                slug: cat.slug
-                            })
-                        }))).filter(Boolean).map((catStr: any) => {
-                            const cat = JSON.parse(catStr)
-                            return (
-                                <div
-                                    key={cat.slug}
-                                    className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-emerald-500 hover:text-emerald-700 transition-colors shadow-sm"
-                                >
-                                    {cat.name}
-                                </div>
-                            )
-                        })}
+                        {categories.map((cat: any) => (
+                            <div
+                                key={cat.slug}
+                                className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-emerald-500 hover:text-emerald-700 transition-colors shadow-sm"
+                            >
+                                {cat.name}
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
