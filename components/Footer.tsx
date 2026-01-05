@@ -135,7 +135,7 @@ export default function Footer() {
                             ))}
                             <li className="flex items-start gap-2 pt-2">
                                 <Phone className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                                <a href="tel:+919876543210" className="hover:text-emerald-600 transition-colors font-medium">+91 98765 43210</a>
+                                <a href="https://wa.me/919117474683" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 transition-colors font-medium">WhatsApp: +91 91174 74683</a>
                             </li>
                             <li className="flex items-start gap-2">
                                 <Mail className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
