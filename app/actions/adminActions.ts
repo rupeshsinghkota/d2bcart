@@ -1,7 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 interface UpdateUserParams {
     userId: string
@@ -35,6 +35,9 @@ export async function updateManufacturerDetails(params: UpdateUserParams) {
         }
 
         revalidatePath('/admin/users')
+        revalidatePath('/')
+        revalidatePath('/products')
+        revalidateTag('marketplace')
         return { success: true }
     } catch (error: any) {
         console.error('Server Action Error (updateManufacturerDetails):', error)
