@@ -251,7 +251,7 @@ export default function EditProductPage() {
 
     // Preview pricing
     const basePrice = parseFloat(formData.base_price) || 0
-    const markupPercentage = selectedCategory?.markup_percentage || 0
+    const markupPercentage = selectedCategory?.markup_percentage || 15
     const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
     const margin = displayPrice - basePrice
 

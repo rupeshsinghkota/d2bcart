@@ -166,7 +166,8 @@ export default function ProductsClient({
             .select(`
                 *,
                 manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-                category:categories!products_category_id_fkey(name, slug)
+                category:categories!products_category_id_fkey(name, slug),
+                variations:products!parent_id(display_price, moq)
             `, { count: 'exact' })
             .eq('is_active', true)
             .is('parent_id', null) // Only show main products, not variations

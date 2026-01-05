@@ -404,6 +404,12 @@ export default function ManufacturerProductsPage() {
                                                     {formatCurrency(product.base_price)}
                                                 </p>
                                             </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase">Retailer Price</p>
+                                                <p className="font-semibold text-blue-600">
+                                                    {formatCurrency(product.display_price)}
+                                                </p>
+                                            </div>
                                             <div className="text-right">
                                                 <p className="text-xs text-gray-500 uppercase">Stock</p>
                                                 <p className="font-medium text-gray-900">

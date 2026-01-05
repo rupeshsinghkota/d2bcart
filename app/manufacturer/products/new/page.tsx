@@ -219,7 +219,7 @@ export default function NewProductPage() {
 
     // Preview pricing
     const basePrice = parseFloat(formData.base_price) || 0
-    const markupPercentage = selectedCategory?.markup_percentage || 0
+    const markupPercentage = selectedCategory?.markup_percentage || 15
     const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
     const margin = displayPrice - basePrice
 
@@ -393,7 +393,7 @@ export default function NewProductPage() {
                                                 <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                                                 <div className="space-y-2 flex-1">
                                                     <p className="text-sm text-emerald-800">
-                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
+                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category (Default 15% if invalid)
                                                     </p>
                                                     <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
                                                         <div>
