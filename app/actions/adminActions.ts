@@ -37,7 +37,7 @@ export async function updateManufacturerDetails(params: UpdateUserParams) {
         revalidatePath('/admin/users')
         revalidatePath('/')
         revalidatePath('/products')
-        revalidateTag('marketplace')
+            ; (revalidateTag as any)('marketplace')
         return { success: true }
     } catch (error: any) {
         console.error('Server Action Error (updateManufacturerDetails):', error)
