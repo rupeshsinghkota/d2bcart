@@ -157,56 +157,12 @@ export default function ProductsClient({
 
         console.log(`Fetching products... Page: ${pageNumber}, Reset: ${isReset}`)
 
-        // Calculate Range
-        const from = (pageNumber - 1) * PRODUCTS_PER_PAGE
-        const to = from + PRODUCTS_PER_PAGE - 1
-
-        let query = supabase
-            .from('products')
-            .select(`
-                *,
-                manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-                category:categories!products_category_id_fkey(name, slug),
-                variations:products!parent_id(display_price, moq)
-            `, { count: 'exact' })
-            .eq('is_active', true)
-            .is('parent_id', null) // Only show main products, not variations
-            .range(from, to)
-
-        if (searchQuery) {
-            query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-        }
-
-        // Sorting
-        switch (sortBy) {
-            case 'price_asc':
-                query = query.order('display_price', { ascending: true })
-                break
-            case 'price_desc':
-                query = query.order('display_price', { ascending: false })
-                break
-            case 'newest':
-            default:
-                query = query.order('created_at', { ascending: false })
-                break
-        }
-
+        // Get category ID from slug
+        let categoryId: string | null = null
         if (selectedCategory) {
             const cat = categories.find(c => c.slug === selectedCategory)
-
             if (cat) {
-                const categoryId = cat.id
-                // Use the categories prop (which should be current) to find descendants
-                const getDescendants = (parentId: string): string[] => {
-                    const children = categories.filter(c => c.parent_id === parentId)
-                    let ids = children.map(c => c.id)
-                    children.forEach(child => {
-                        ids = [...ids, ...getDescendants(child.id)]
-                    })
-                    return ids
-                }
-                const targetIds = [categoryId, ...getDescendants(categoryId)]
-                query = query.in('category_id', targetIds)
+                categoryId = cat.id
             } else {
                 // Category selected but not found (likely inactive or empty)
                 // Return empty result instead of all products
@@ -218,26 +174,27 @@ export default function ProductsClient({
             }
         }
 
-        const { data, error, count } = await query
+        // Use server action for fetching (bypasses RLS, includes variations)
+        const { paginateShopProducts } = await import('@/app/actions/getShopData')
+        const { products: newProducts, totalProducts } = await paginateShopProducts(
+            categoryId,
+            pageNumber,
+            PRODUCTS_PER_PAGE,
+            sortBy,
+            searchQuery
+        )
 
-        if (error) {
-            console.error('Error fetching products:', error)
-            toast.error('Failed to load products')
-        } else if (data) {
-            const newProducts = data as Product[]
+        if (isReset) {
+            setProducts(newProducts)
+        } else {
+            setProducts(prev => [...prev, ...newProducts])
+        }
 
-            if (isReset) {
-                setProducts(newProducts)
-            } else {
-                setProducts(prev => [...prev, ...newProducts])
-            }
-
-            // Check if we reached the end
-            if (newProducts.length < PRODUCTS_PER_PAGE) {
-                setHasMore(false)
-            } else {
-                setHasMore(true)
-            }
+        // Check if we reached the end
+        if (newProducts.length < PRODUCTS_PER_PAGE) {
+            setHasMore(false)
+        } else {
+            setHasMore(true)
         }
 
         if (isLoadingMore) {

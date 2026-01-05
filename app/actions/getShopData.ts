@@ -1,3 +1,5 @@
+'use server'
+
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Product, Category } from '@/types'
 import { unstable_cache } from 'next/cache'
@@ -114,4 +116,84 @@ export const getShopData = async (categoryId?: string, page: number = 1, limit: 
     ])
 
     return { categories, products, totalProducts }
+}
+
+// Uncached Server Action for Client-Side Pagination (bypasses RLS with admin)
+export async function paginateShopProducts(
+    categoryId: string | null,
+    page: number = 1,
+    limit: number = 20,
+    sortBy: string = 'newest',
+    searchQuery: string = ''
+) {
+    try {
+        const from = (page - 1) * limit
+        const to = from + limit - 1
+
+        // Build category filter
+        let targetIds: string[] = []
+        if (categoryId) {
+            const { data: allCats } = await supabaseAdmin.from('categories').select('id, parent_id')
+            if (allCats) {
+                const getDescendants = (pid: string): string[] => {
+                    const children = allCats.filter(c => c.parent_id === pid)
+                    let ids = children.map(c => c.id)
+                    children.forEach(child => ids.push(...getDescendants(child.id)))
+                    return ids
+                }
+                targetIds = [categoryId, ...getDescendants(categoryId)]
+            } else {
+                targetIds = [categoryId]
+            }
+        }
+
+        let query = supabaseAdmin
+            .from('products')
+            .select(`
+                *,
+                manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                category:categories!products_category_id_fkey(name, slug),
+                variations:products!parent_id(display_price, moq)
+            `, { count: 'exact' })
+            .eq('is_active', true)
+            .is('parent_id', null)
+
+        // Search filter
+        if (searchQuery) {
+            query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        }
+
+        // Category filter
+        if (categoryId && targetIds.length > 0) {
+            query = query.in('category_id', targetIds)
+        }
+
+        // Sorting
+        switch (sortBy) {
+            case 'price_asc':
+                query = query.order('display_price', { ascending: true })
+                break
+            case 'price_desc':
+                query = query.order('display_price', { ascending: false })
+                break
+            case 'newest':
+            default:
+                query = query.order('created_at', { ascending: false })
+                break
+        }
+
+        query = query.range(from, to)
+
+        const { data: products, error, count } = await query
+
+        if (error) throw error
+
+        return {
+            products: (products as Product[]) || [],
+            totalProducts: count || 0
+        }
+    } catch (error) {
+        console.error('Error paginating products:', error)
+        return { products: [], totalProducts: 0 }
+    }
 }
