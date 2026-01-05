@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
                     state: formData.state,
                     pincode: formData.pincode,
                     gst_number: formData.gst_number
-                })
+                } as any)
                 .eq('id', editingUser.id)
 
             if (error) throw error
