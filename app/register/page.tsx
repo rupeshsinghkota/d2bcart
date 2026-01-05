@@ -17,6 +17,7 @@ const RegisterContent = () => {
     const router = useRouter()
 
     const [formData, setFormData] = useState({
+        user_type: 'retailer', // Default
         email: '',
         password: '',
         business_name: '',
@@ -24,6 +25,7 @@ const RegisterContent = () => {
         gst_number: '',
         city: '',
         state: '',
+        pincode: '',
         address: '',
     })
 
@@ -31,55 +33,60 @@ const RegisterContent = () => {
         const type = searchParams.get('type')
         if (type === 'manufacturer' || type === 'retailer') {
             setUserType(type)
+            setFormData(prev => ({ ...prev, user_type: type }))
         }
     }, [searchParams])
+
+    // Keep formData synced with local userType state change
+    useEffect(() => {
+        setFormData(prev => ({ ...prev, user_type: userType }))
+    }, [userType])
+
+    const updateForm = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }))
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
         try {
-            // 1. Create auth user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
+            // Call API to create user (Bypasses RLS)
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
             })
 
-            if (authError) throw authError
+            const data = await res.json()
 
-            // 2. Create user profile
-            const { error: profileError } = await (supabase.from('users') as any).insert({
-                id: authData.user?.id,
+            if (!res.ok) {
+                throw new Error(data.error || 'Registration failed')
+            }
+
+            // Auto-login after successful registration
+            const { error: loginError } = await supabase.auth.signInWithPassword({
                 email: formData.email,
-                user_type: userType,
-                business_name: formData.business_name,
-                phone: formData.phone,
-                gst_number: formData.gst_number || null,
-                city: formData.city,
-                state: formData.state,
-                address: formData.address,
-                is_verified: false,
+                password: formData.password
             })
 
-            if (profileError) throw profileError
-
-            toast.success('Registration successful!')
-
-            // Redirect based on user type
-            if (userType === 'manufacturer') {
-                router.push('/manufacturer')
+            if (loginError) {
+                toast.success('Registration successful! Please login.')
+                router.push('/login')
             } else {
-                router.push('/products')
+                toast.success('Registration successful!')
+                // Redirect based on user type
+                if (userType === 'manufacturer') {
+                    router.push('/manufacturer')
+                } else {
+                    router.push('/products')
+                }
             }
         } catch (error: any) {
             toast.error(error.message || 'Registration failed')
         } finally {
             setLoading(false)
         }
-    }
-
-    const updateForm = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
     }
 
     return (
@@ -295,6 +302,22 @@ const RegisterContent = () => {
                                                 required
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-gray-900">Pincode</label>
+                                        <input
+                                            type="text"
+                                            value={formData.pincode}
+                                            onChange={(e) => {
+                                                // Only allow numbers and max 6 chars
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                                                updateForm('pincode', val)
+                                            }}
+                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
+                                            placeholder="110001"
+                                            required
+                                        />
                                     </div>
 
                                     <div className="space-y-2">

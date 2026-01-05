@@ -66,7 +66,7 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
 
         const { data: prods } = await supabase
             .from('products')
-            .select('*, manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name), variations:products!products_parent_id_fkey(display_price)')
+            .select('*, manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name), variations:products!products_parent_id_fkey(display_price, moq)')
             .eq('is_active', true)
             .is('parent_id', null)
             .range(from, to)

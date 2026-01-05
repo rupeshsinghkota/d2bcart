@@ -342,36 +342,17 @@ export default function NewProductPage() {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        HSN Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.hsn_code}
-                                        onChange={(e) => updateForm('hsn_code', e.target.value)}
-                                        className="input"
-                                        placeholder="Enter HSN Code"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        GST Rate (%) *
-                                    </label>
-                                    <select
-                                        value={formData.tax_rate}
-                                        onChange={(e) => updateForm('tax_rate', e.target.value)}
-                                        className="input"
-                                        required
-                                    >
-                                        <option value="0">0%</option>
-                                        <option value="5">5%</option>
-                                        <option value="12">12%</option>
-                                        <option value="18">18%</option>
-                                        <option value="28">28%</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    HSN Code
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.hsn_code}
+                                    onChange={(e) => updateForm('hsn_code', e.target.value)}
+                                    className="input"
+                                    placeholder="Enter HSN Code (optional)"
+                                />
                             </div>
                         </div>
                     </div>
@@ -477,6 +458,61 @@ export default function NewProductPage() {
                                         />
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Shipping Details */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                        <h2 className="font-semibold text-lg mb-4">Shipping Details (Used for Rates)</h2>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.weight}
+                                    onChange={(e) => updateForm('weight', e.target.value)}
+                                    className="input"
+                                    placeholder="0.5"
+                                    min="0.01"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Length (cm)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.length}
+                                    onChange={(e) => updateForm('length', e.target.value)}
+                                    className="input"
+                                    placeholder="10"
+                                    min="1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Breadth (cm)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.breadth}
+                                    onChange={(e) => updateForm('breadth', e.target.value)}
+                                    className="input"
+                                    placeholder="10"
+                                    min="1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Height (cm)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.height}
+                                    onChange={(e) => updateForm('height', e.target.value)}
+                                    className="input"
+                                    placeholder="10"
+                                    min="1"
+                                />
                             </div>
                         </div>
                     </div>

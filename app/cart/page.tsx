@@ -14,7 +14,14 @@ import {
     Plus,
     ArrowLeft,
     Package,
-    CreditCard
+    CreditCard,
+    Truck,
+    Clock,
+    ChevronDown,
+    Store,
+    ChevronUp,
+    Shield,
+    Percent
 } from 'lucide-react'
 import Image from 'next/image'
 import { calculateTax } from '@/utils/tax'
@@ -26,16 +33,65 @@ declare global {
     }
 }
 
+// Minimum order value per seller (₹5000)
+const MIN_ORDER_PER_SELLER = 5000
+
+// Advance payment percentage
+const ADVANCE_PAYMENT_PERCENT = 20
+
+type PaymentOption = 'advance' | 'full'
+
 export default function CartPage() {
     const router = useRouter()
     const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal } = useStore()
     const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [placingOrder, setPlacingOrder] = useState(false)
-    // State structure: { [productId]: { selected: { rate, etd, courier, id }, options: [] } }
+    // State structure: { [manufacturerId]: { selected: { rate, etd, courier, id }, options: [], totalWeight: number } }
     const [shippingEstimates, setShippingEstimates] = useState<Record<string, any>>({})
     const [calculatingShipping, setCalculatingShipping] = useState(false)
     const [manufacturerStates, setManufacturerStates] = useState<Record<string, string>>({})
+
+    // Payment option: 'advance' = 20% + shipping, 'full' = 100% + shipping
+    const [paymentOption, setPaymentOption] = useState<PaymentOption>('full')
+
+    // Group cart items by manufacturer
+    const getItemsByManufacturer = () => {
+        const grouped: Record<string, typeof cart> = {}
+        cart.forEach(item => {
+            const mfId = item.product.manufacturer_id
+            if (!grouped[mfId]) grouped[mfId] = []
+            grouped[mfId].push(item)
+        })
+        return grouped
+    }
+
+    // Calculate total product value for a seller (without shipping)
+    const getSellerProductTotal = (mfId: string) => {
+        const items = getItemsByManufacturer()[mfId] || []
+        return items.reduce((sum, item) => sum + (item.product.display_price * item.quantity), 0)
+    }
+
+    // Check if all sellers meet the minimum order value
+    const getSellersBelowMinimum = () => {
+        const itemsByMfr = getItemsByManufacturer()
+        const belowMinimum: { mfId: string; total: number; shortfall: number }[] = []
+
+        Object.keys(itemsByMfr).forEach(mfId => {
+            const total = getSellerProductTotal(mfId)
+            if (total < MIN_ORDER_PER_SELLER) {
+                belowMinimum.push({
+                    mfId,
+                    total,
+                    shortfall: MIN_ORDER_PER_SELLER - total
+                })
+            }
+        })
+
+        return belowMinimum
+    }
+
+    const allSellersMeetMinimum = () => getSellersBelowMinimum().length === 0
 
     useEffect(() => {
         checkUser()
@@ -71,42 +127,67 @@ export default function CartPage() {
         if (user?.pincode && cart.length > 0) {
             calculateShippingForCart()
         }
-    }, [user, cart])
+    }, [user, cart, paymentOption])
 
-    // Fetch Manufacturer States for Tax Calculation
+    // Store manufacturer info for display
+    const [manufacturerInfo, setManufacturerInfo] = useState<Record<string, { state: string; name: string }>>({})
+
+    // Fetch Manufacturer States and Names for Tax Calculation & Display
     useEffect(() => {
-        const fetchManufacturerStates = async () => {
+        const fetchManufacturerInfo = async () => {
             const ids = Array.from(new Set(cart.map(item => item.product.manufacturer_id)))
             if (ids.length === 0) return
 
-            const { data } = await supabase.from('users').select('id, state').in('id', ids)
+            const { data } = await supabase.from('users').select('id, state, business_name').in('id', ids)
             if (data) {
-                const map: Record<string, string> = {}
-                data.forEach((u: any) => map[u.id] = u.state || '')
-                setManufacturerStates(map)
+                const stateMap: Record<string, string> = {}
+                const infoMap: Record<string, { state: string; name: string }> = {}
+                data.forEach((u: any) => {
+                    stateMap[u.id] = u.state || ''
+                    infoMap[u.id] = { state: u.state || '', name: u.business_name || 'Seller' }
+                })
+                setManufacturerStates(stateMap)
+                setManufacturerInfo(infoMap)
             }
         }
-        if (cart.length > 0) fetchManufacturerStates()
+        if (cart.length > 0) fetchManufacturerInfo()
     }, [cart])
 
+    // Calculate shipping GROUPED BY MANUFACTURER
     const calculateShippingForCart = async () => {
         setCalculatingShipping(true)
         const estimates: Record<string, any> = {}
+        const itemsByMfr = getItemsByManufacturer()
 
         try {
-            await Promise.all(cart.map(async (item) => {
+            await Promise.all(Object.entries(itemsByMfr).map(async ([manufacturerId, items]) => {
                 try {
+                    // Combine weight and find max dimensions
+                    let totalWeight = 0
+                    let maxLength = 10, maxBreadth = 10, maxHeight = 10
+
+                    items.forEach(item => {
+                        // Weight is per MOQ pack, so calculate effective weight per unit
+                        const moq = item.product.moq || 1
+                        const weightPerUnit = (item.product.weight || 0.5) / moq
+                        totalWeight += weightPerUnit * item.quantity
+
+                        maxLength = Math.max(maxLength, item.product.length || 10)
+                        maxBreadth = Math.max(maxBreadth, item.product.breadth || 10)
+                        maxHeight = Math.max(maxHeight, item.product.height || 10)
+                    })
+
                     const res = await fetch('/api/shiprocket/estimate', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            manufacturer_id: item.product.manufacturer_id,
+                            manufacturer_id: manufacturerId,
                             delivery_pincode: user.pincode,
-                            weight: (item.product.weight || 0.5) * item.quantity,
-                            length: item.product.length || 10,
-                            breadth: item.product.breadth || 10,
-                            height: item.product.height || 10,
-                            cod: 0 // Prepaid
+                            weight: totalWeight,
+                            length: maxLength,
+                            breadth: maxBreadth,
+                            height: maxHeight,
+                            cod: paymentOption === 'advance' ? 1 : 0 // 1 = COD, 0 = Prepaid
                         })
                     })
                     const data = await res.json()
@@ -119,16 +200,18 @@ export default function CartPage() {
                             id: c.courier_company_id
                         }))
 
-                        estimates[item.product.id] = {
+                        estimates[manufacturerId] = {
                             selected: top3[0], // Default to cheapest
-                            options: top3
+                            options: top3,
+                            totalWeight: totalWeight.toFixed(2),
+                            itemCount: items.length
                         }
                     } else {
-                        estimates[item.product.id] = { error: 'Not serviceable' }
+                        estimates[manufacturerId] = { error: 'Not serviceable' }
                     }
                 } catch (e) {
                     console.error(e)
-                    estimates[item.product.id] = { error: 'Error' }
+                    estimates[manufacturerId] = { error: 'Error calculating shipping' }
                 }
             }))
 
@@ -140,11 +223,11 @@ export default function CartPage() {
         }
     }
 
-    const setCourierForProduct = (productId: string, courierOption: any) => {
+    const setCourierForManufacturer = (manufacturerId: string, courierOption: any) => {
         setShippingEstimates(prev => ({
             ...prev,
-            [productId]: {
-                ...prev[productId],
+            [manufacturerId]: {
+                ...prev[manufacturerId],
                 selected: courierOption
             }
         }))
@@ -152,6 +235,27 @@ export default function CartPage() {
 
     const getTotalShipping = () => {
         return Object.values(shippingEstimates).reduce((sum, est: any) => sum + (est.selected?.rate || 0), 0)
+    }
+
+    // Calculate payment amounts based on selected option
+    const getAdvanceAmount = () => {
+        const productTotal = getCartTotal()
+        const shipping = getTotalShipping()
+        const advanceProductAmount = Math.ceil(productTotal * (ADVANCE_PAYMENT_PERCENT / 100))
+        return advanceProductAmount + shipping
+    }
+
+    const getFullAmount = () => {
+        return getCartTotal() + getTotalShipping()
+    }
+
+    const getRemainingAmount = () => {
+        const productTotal = getCartTotal()
+        return Math.floor(productTotal * ((100 - ADVANCE_PAYMENT_PERCENT) / 100))
+    }
+
+    const getPayableAmount = () => {
+        return paymentOption === 'advance' ? getAdvanceAmount() : getFullAmount()
     }
 
     const handlePlaceOrder = async () => {
@@ -166,50 +270,58 @@ export default function CartPage() {
             return
         }
 
-        // Check for shipping errors
-        const hasShippingError = cart.some(item => shippingEstimates[item.product.id]?.error)
+        // Check for shipping errors (now keyed by manufacturer, not product)
+        const manufacturerIds = Array.from(new Set(cart.map(item => item.product.manufacturer_id)))
+        const hasShippingError = manufacturerIds.some(mfId => shippingEstimates[mfId]?.error)
         if (hasShippingError) {
             toast.error('Some items are not serviceable to your location.')
             return
         }
-        // Wait for shipping calculation
-        if (Object.keys(shippingEstimates).length < cart.length) {
+
+        // Check minimum order value per seller
+        const belowMinimum = getSellersBelowMinimum()
+        if (belowMinimum.length > 0) {
+            const sellerName = manufacturerInfo[belowMinimum[0].mfId]?.name || 'Seller'
+            toast.error(`Minimum order value per seller is ₹${MIN_ORDER_PER_SELLER.toLocaleString()}. Add ₹${belowMinimum[0].shortfall.toLocaleString()} more from ${sellerName}.`)
+            return
+        }
+
+        // Wait for shipping calculation (one estimate per manufacturer)
+        if (Object.keys(shippingEstimates).length < manufacturerIds.length) {
             toast.error('Please wait for shipping estimates to load')
             return
         }
 
-
         setPlacingOrder(true)
 
         try {
-            // 1. Calculate Grand Total
+            // Group items by manufacturer for shipping cost distribution
+            const itemsByMfr = getItemsByManufacturer()
+
+            // 1. Calculate Totals (prices are GST-inclusive)
             let totalProductAmount = 0
-            let totalShippingAmount = 0
-            let totalTaxAmount = 0
+            let totalShippingAmount = getTotalShipping() // Uses manufacturer-based rates
 
             cart.forEach(item => {
                 totalProductAmount += item.product.display_price * item.quantity
-
-                const shipCost = shippingEstimates[item.product.id]?.selected?.rate || 0
-                totalShippingAmount += shipCost
-
-                const taxDetails = calculateTax(
-                    item.product.display_price,
-                    item.quantity,
-                    item.product.tax_rate || 18,
-                    manufacturerStates[item.product.manufacturer_id],
-                    user.state
-                )
-                totalTaxAmount += taxDetails.taxAmount
             })
 
-            const grandTotal = totalProductAmount + totalShippingAmount + totalTaxAmount
+            const grandTotal = totalProductAmount + totalShippingAmount
 
-            // 2. Create Razorpay Order
+            // Calculate payable amount based on payment option
+            const payableAmount = paymentOption === 'advance'
+                ? Math.ceil(totalProductAmount * (ADVANCE_PAYMENT_PERCENT / 100)) + totalShippingAmount
+                : grandTotal
+
+            const remainingBalance = paymentOption === 'advance'
+                ? Math.floor(totalProductAmount * ((100 - ADVANCE_PAYMENT_PERCENT) / 100))
+                : 0
+
+            // 2. Create Razorpay Order with payable amount
             const orderRes = await fetch('/api/razorpay/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: grandTotal })
+                body: JSON.stringify({ amount: payableAmount })
             })
 
             if (!orderRes.ok) {
@@ -220,22 +332,34 @@ export default function CartPage() {
             const razorpayOrder = await orderRes.json()
 
             // 3. Create 'Pending' Orders in Supabase
+            // Distribute shipping cost: first item per manufacturer gets the full shipping cost
             const dbOrderIds: string[] = []
+            const manufacturerOrderNumbers = new Map<string, string>()
+            const processedManufacturers = new Set<string>()
 
             for (const item of cart) {
-                const orderNumber = `D2B-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
+                const mfId = item.product.manufacturer_id
+
+                // Get or create order number for this manufacturer
+                if (!manufacturerOrderNumbers.has(mfId)) {
+                    manufacturerOrderNumbers.set(mfId, `D2B-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`)
+                }
+                const orderNumber = manufacturerOrderNumbers.get(mfId)
                 const manufacturerPayout = item.product.base_price * item.quantity
                 const platformProfit = item.product.your_margin * item.quantity
-                const shipCost = shippingEstimates[item.product.id]?.selected?.rate || 0
-                const selectedCourier = shippingEstimates[item.product.id]?.selected
 
-                const taxDetails = calculateTax(
-                    item.product.display_price,
-                    item.quantity,
-                    item.product.tax_rate || 18,
-                    manufacturerStates[item.product.manufacturer_id],
-                    user.state
-                )
+                // Only first item from each manufacturer gets shipping cost
+                const isFirstItemFromMfr = !processedManufacturers.has(mfId)
+                const shipCost = isFirstItemFromMfr ? (shippingEstimates[mfId]?.selected?.rate || 0) : 0
+                const selectedCourier = shippingEstimates[mfId]?.selected
+
+                processedManufacturers.add(mfId)
+
+                const itemTotal = item.product.display_price * item.quantity
+
+                // Calculate pending amount per item proportionally
+                const itemPendingRatio = itemTotal / totalProductAmount
+                const itemPendingAmount = Math.round(remainingBalance * itemPendingRatio)
 
                 const { data: orderData, error } = await supabase.from('orders').insert({
                     order_number: orderNumber,
@@ -244,17 +368,19 @@ export default function CartPage() {
                     product_id: item.product.id,
                     quantity: item.quantity,
                     unit_price: item.product.display_price,
-                    total_amount: taxDetails.totalAmount, // amount for this item + tax
-                    tax_amount: taxDetails.taxAmount,
+                    total_amount: itemTotal + shipCost, // Full price (GST-inclusive)
+                    tax_amount: 0, // GST included in price
                     tax_rate_snapshot: item.product.tax_rate || 18,
                     manufacturer_payout: manufacturerPayout,
-                    platform_profit: platformProfit + (shipCost * 0.1), // Example logic
+                    platform_profit: platformProfit + (shipCost * 0.1),
                     status: 'pending',
-                    shipping_address: user.address || '',
+                    shipping_address: `${user.address}, ${user.city}, ${user.state} - ${user.pincode}`,
                     shipping_cost: shipCost,
                     courier_name: selectedCourier?.courier || null,
                     courier_company_id: selectedCourier?.id?.toString() || null,
-                    // payment_id will be updated after success
+                    payment_type: paymentOption, // 'advance' or 'full'
+                    paid_amount: paymentOption === 'advance' ? Math.ceil((itemTotal * ADVANCE_PAYMENT_PERCENT / 100)) + shipCost : itemTotal + shipCost,
+                    pending_amount: itemPendingAmount, // Amount to collect on delivery
                     created_at: new Date().toISOString()
                 } as any).select('id').single()
 
@@ -334,32 +460,58 @@ export default function CartPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-32 md:pb-8">
-            {/* Mobile Header */}
-            <div className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex items-center gap-3">
-                <Link href="/products" className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
-                    <ArrowLeft className="w-5 h-5 text-gray-700" />
-                </Link>
-                <h1 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-emerald-600" />
-                    Cart ({cart.length})
-                </h1>
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-36 md:pb-8">
+            {/* Mobile Header - Enhanced */}
+            <div className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 px-4 py-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Link href="/products" className="p-2 -ml-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-gray-700" />
+                        </Link>
+                        <div>
+                            <h1 className="font-bold text-gray-900 flex items-center gap-2">
+                                <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                                Cart
+                            </h1>
+                            <p className="text-xs text-gray-500">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+                    {cart.length > 0 && (
+                        <div className="text-right">
+                            <p className="text-xs text-gray-500">Total</p>
+                            <p className="font-bold text-emerald-600">{formatCurrency(getCartTotal())}</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 py-4 md:py-8">
-                {/* Desktop Header */}
-                <div className="hidden md:block mb-8">
-                    <Link
-                        href="/products"
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                        Continue Shopping
-                    </Link>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <ShoppingCart className="w-8 h-8 text-emerald-600" />
-                        Your Cart
-                    </h1>
+            <div className="max-w-6xl mx-auto px-4 py-4 md:py-8">
+                {/* Desktop Header - Enhanced */}
+                <div className="hidden md:flex md:items-center md:justify-between mb-8">
+                    <div>
+                        <Link
+                            href="/products"
+                            className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-3 transition-colors text-sm"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Continue Shopping
+                        </Link>
+                        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                            </div>
+                            Your Cart
+                            <span className="text-lg font-normal text-gray-400">({cart.length} items)</span>
+                        </h1>
+                    </div>
+                    {cart.length > 0 && (
+                        <div className="text-right">
+                            <p className="text-sm text-gray-500">Estimated Total</p>
+                            <p className="text-2xl font-bold text-emerald-600">
+                                {formatCurrency(getCartTotal() + getTotalShipping())}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {cart.length === 0 ? (
@@ -381,208 +533,383 @@ export default function CartPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid lg:grid-cols-3 gap-8">
-                        {/* Cart Items */}
-                        <div className="lg:col-span-2 space-y-4">
-                            {cart.map((item) => (
-                                <div
-                                    key={item.product.id}
-                                    className="bg-white rounded-2xl p-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden"
-                                >
-                                    {/* Product Image */}
-                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-100">
-                                        {item.product.images?.[0] ? (
-                                            <div className="relative w-full h-full">
-                                                <Image
-                                                    src={item.product.images[0]}
-                                                    alt={item.product.name}
-                                                    fill
-                                                    className="object-cover"
-                                                />
+                    <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+                        {/* Cart Items - Grouped by Seller */}
+                        <div className="lg:col-span-2 space-y-6">
+                            {Object.entries(getItemsByManufacturer()).map(([mfId, items]) => {
+                                const sellerTotal = getSellerProductTotal(mfId)
+                                const isBelowMinimum = sellerTotal < MIN_ORDER_PER_SELLER
+                                const shortfall = MIN_ORDER_PER_SELLER - sellerTotal
+
+                                return (
+                                    <div key={mfId} className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${isBelowMinimum ? 'border-amber-300' : 'border-gray-100'}`}>
+                                        {/* Seller Header */}
+                                        <div className="bg-gradient-to-r from-gray-50 to-white px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isBelowMinimum ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+                                                    <Store className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isBelowMinimum ? 'text-amber-600' : 'text-emerald-600'}`} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate">
+                                                        {manufacturerInfo[mfId]?.name || 'Seller'}
+                                                    </h3>
+                                                    <p className="text-[10px] sm:text-xs text-gray-500">
+                                                        {items.length} item{items.length > 1 ? 's' : ''}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        ) : (
-                                            <Package className="w-8 h-8 text-gray-300" />
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-[10px] sm:text-xs text-gray-500">Subtotal</p>
+                                                <p className={`font-bold text-sm sm:text-base ${isBelowMinimum ? 'text-amber-600' : 'text-gray-900'}`}>
+                                                    {formatCurrency(sellerTotal)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Minimum Order Warning */}
+                                        {isBelowMinimum && (
+                                            <div className="bg-amber-50 px-3 sm:px-4 py-2 border-b border-amber-100 flex items-center gap-2">
+                                                <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <span className="text-amber-600 text-xs font-bold">!</span>
+                                                </div>
+                                                <p className="text-xs text-amber-800">
+                                                    Add <span className="font-bold">{formatCurrency(shortfall)}</span> more to meet ₹{MIN_ORDER_PER_SELLER.toLocaleString()} minimum
+                                                </p>
+                                            </div>
                                         )}
-                                    </div>
 
-                                    {/* Content Container */}
-                                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                                        <div>
-                                            {/* Header Row: Title & Remove */}
-                                            <div className="flex justify-between items-start gap-3">
-                                                <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">
-                                                    {item.product.name}
-                                                </h3>
-                                                <button
-                                                    onClick={() => removeFromCart(item.product.id)}
-                                                    className="text-gray-400 hover:text-red-500 transition-colors -mt-1 -mr-1 p-1"
+                                        {/* Products from this Seller */}
+                                        <div className="divide-y divide-gray-50">
+                                            {items.map((item) => (
+                                                <div
+                                                    key={item.product.id}
+                                                    className="p-3 sm:p-4 flex gap-3 sm:gap-4 hover:bg-gray-50/50 transition-colors"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                                    {/* Product Image */}
+                                                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gray-100 rounded-lg sm:rounded-xl flex-shrink-0 overflow-hidden">
+                                                        {item.product.images?.[0] ? (
+                                                            <div className="relative w-full h-full">
+                                                                <Image
+                                                                    src={item.product.images[0]}
+                                                                    alt={item.product.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <Package className="w-8 h-8 text-gray-300" />
+                                                            </div>
+                                                        )}
+                                                    </div>
 
-                                            {/* Price & MOQ */}
-                                            <div className="mt-1 flex items-baseline gap-2">
-                                                <span className="font-bold text-emerald-600">
-                                                    {formatCurrency(item.product.display_price)}
-                                                </span>
-                                                <span className="text-[10px] text-gray-400 font-medium">
-                                                    MOQ: {item.product.moq}
-                                                </span>
-                                            </div>
+                                                    {/* Content */}
+                                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                                        <div>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <h4 className="font-medium text-gray-900 line-clamp-2 text-xs sm:text-sm md:text-base leading-snug pr-1">
+                                                                    {item.product.name}
+                                                                </h4>
+                                                                <button
+                                                                    onClick={() => removeFromCart(item.product.id)}
+                                                                    className="text-gray-300 hover:text-red-500 active:text-red-600 transition-colors p-1.5 -m-1 flex-shrink-0"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                            <div className="mt-0.5 sm:mt-1 flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                                                <span className="text-emerald-600 font-bold text-sm sm:text-base">
+                                                                    {formatCurrency(item.product.display_price)}
+                                                                </span>
+                                                                <span className="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">
+                                                                    MOQ: {item.product.moq}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Quantity & Total */}
+                                                        <div className="flex items-center justify-between mt-2 sm:mt-3">
+                                                            <div className="flex items-center bg-gray-100 rounded-lg sm:rounded-xl h-8 sm:h-9 md:h-10">
+                                                                <button
+                                                                    onClick={() => updateQuantity(
+                                                                        item.product.id,
+                                                                        Math.max(item.product.moq, item.quantity - 1)
+                                                                    )}
+                                                                    className="w-8 sm:w-9 md:w-10 h-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-l-lg sm:rounded-l-xl"
+                                                                >
+                                                                    <Minus className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-600" />
+                                                                </button>
+                                                                <span className="w-8 sm:w-10 md:w-12 text-center text-xs sm:text-sm font-bold text-gray-900">
+                                                                    {item.quantity}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                                                    className="w-8 sm:w-9 md:w-10 h-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-r-lg sm:rounded-r-xl"
+                                                                >
+                                                                    <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-600" />
+                                                                </button>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
+                                                                <p className="font-bold text-gray-900 text-sm sm:text-base">
+                                                                    {formatCurrency(item.product.display_price * item.quantity)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
 
-                                        {/* Footer Row: Quantity & Total */}
-                                        <div className="flex items-end justify-between mt-3">
-                                            {/* Compact Quantity Selector */}
-                                            <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-8">
-                                                <button
-                                                    onClick={() => updateQuantity(
-                                                        item.product.id,
-                                                        Math.max(item.product.moq, item.quantity - 1)
+                                        {/* Shipping Section for this Seller */}
+                                        <div className="bg-emerald-50/50 px-3 sm:px-4 py-2.5 sm:py-3 border-t border-emerald-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-emerald-800">
+                                                    <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                                                    <span>Shipping</span>
+                                                    {shippingEstimates[mfId] && !shippingEstimates[mfId].error && (
+                                                        <span className="text-[10px] sm:text-xs text-emerald-600 font-normal hidden sm:inline">
+                                                            ({shippingEstimates[mfId].totalWeight}kg)
+                                                        </span>
                                                     )}
-                                                    className="w-8 h-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors rounded-l-lg border-r border-gray-200"
-                                                >
-                                                    <Minus className="w-3 h-3 text-gray-600" />
-                                                </button>
-                                                <span className="w-8 text-center text-xs font-bold text-gray-900">
-                                                    {item.quantity}
-                                                </span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                                    className="w-8 h-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors rounded-r-lg border-l border-gray-200"
-                                                >
-                                                    <Plus className="w-3 h-3 text-gray-600" />
-                                                </button>
+                                                </div>
+                                                {shippingEstimates[mfId]?.selected && (
+                                                    <span className="text-xs sm:text-sm font-bold text-emerald-600">
+                                                        {formatCurrency(shippingEstimates[mfId].selected.rate)}
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            {/* Item Subtotal */}
-                                            <div className="flex flex-col items-end leading-none">
-                                                <span className="text-[10px] text-gray-400 mb-0.5 font-medium">Total</span>
-                                                <span className="text-sm font-bold text-gray-900">
-                                                    {formatCurrency(item.product.display_price * item.quantity)}
-                                                </span>
-                                            </div>
+                                            {calculatingShipping && !shippingEstimates[mfId] ? (
+                                                <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-500 py-1.5 sm:py-2">
+                                                    <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    Calculating...
+                                                </div>
+                                            ) : shippingEstimates[mfId]?.error ? (
+                                                <div className="text-[10px] sm:text-xs text-red-500 flex items-center gap-1 py-1.5 sm:py-2">
+                                                    <Truck className="w-3 h-3" />
+                                                    {shippingEstimates[mfId].error}
+                                                </div>
+                                            ) : shippingEstimates[mfId] ? (
+                                                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                                                    {shippingEstimates[mfId].options?.map((opt: any, idx: number) => (
+                                                        <label
+                                                            key={idx}
+                                                            className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border cursor-pointer transition-all bg-white min-w-[120px] sm:min-w-[140px] ${shippingEstimates[mfId].selected?.id === opt.id
+                                                                ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-sm'
+                                                                : 'border-gray-200 active:border-emerald-400'
+                                                                }`}
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name={`courier-${mfId}`}
+                                                                checked={shippingEstimates[mfId].selected?.id === opt.id}
+                                                                onChange={() => setCourierForManufacturer(mfId, opt)}
+                                                                className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600"
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="text-[10px] sm:text-xs font-medium text-gray-900 truncate">{opt.courier}</div>
+                                                                <div className="text-[9px] sm:text-[10px] text-gray-500 flex items-center gap-0.5 sm:gap-1">
+                                                                    <Clock className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> {opt.etd}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-[10px] sm:text-xs font-bold text-emerald-600">{formatCurrency(opt.rate)}</div>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
 
                         {/* Order Summary */}
                         < div >
-                            <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
-                                <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
-
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Items ({cart.length})</span>
-                                        <span>{formatCurrency(getCartTotal())}</span>
-                                    </div>
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Subtotal ({cart.length} items)</span>
-                                        <span>{formatCurrency(getCartTotal())}</span>
-                                    </div>
-
-                                    {/* Tax Summary */}
-                                    {cart.map(item => {
-                                        const tax = calculateTax(
-                                            item.product.display_price,
-                                            item.quantity,
-                                            item.product.tax_rate || 18,
-                                            manufacturerStates[item.product.manufacturer_id],
-                                            user?.state
-                                        )
-                                        return (
-                                            <div key={item.product.id} className="flex justify-between text-xs text-gray-500">
-                                                <span>Tax ({tax.taxType}) - {item.product.name.substring(0, 15)}...</span>
-                                                <span>{formatCurrency(tax.taxAmount)}</span>
-                                            </div>
-                                        )
-                                    })}
-
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Shipping</span>
-                                        <span className={calculatingShipping ? "animate-pulse" : "text-emerald-600"}>
-                                            {calculatingShipping ? "Calculating..." : formatCurrency(getTotalShipping())}
-                                        </span>
-                                    </div>
-                                    <div className="border-t pt-3 flex justify-between font-bold text-lg">
-                                        <span>Total Payable</span>
-                                        <span className="text-emerald-600">
-                                            {formatCurrency(
-                                                getCartTotal() +
-                                                getTotalShipping() +
-                                                cart.reduce((sum, item) => sum + calculateTax(
-                                                    item.product.display_price,
-                                                    item.quantity,
-                                                    item.product.tax_rate || 18,
-                                                    manufacturerStates[item.product.manufacturer_id],
-                                                    user?.state
-                                                ).taxAmount, 0)
-                                            )}
-                                        </span>
-                                    </div>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
+                                {/* Header */}
+                                <div className="bg-gradient-to-r from-emerald-50 to-white px-5 py-4 border-b border-gray-100">
+                                    <h2 className="font-bold text-lg text-gray-900">Order Summary</h2>
                                 </div>
 
-                                <button
-                                    onClick={handlePlaceOrder}
-                                    disabled={placingOrder || cart.length === 0}
-                                    className="w-full btn-primary flex items-center justify-center gap-2"
-                                >
-                                    {placingOrder ? (
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                        <>
-                                            <CreditCard className="w-5 h-5" />
-                                            Pay Now
-                                        </>
-                                    )}
-                                </button>
+                                <div className="p-5 space-y-4">
+                                    {/* Items Subtotal */}
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Subtotal ({cart.length} items)</span>
+                                        <span className="font-medium text-gray-900">{formatCurrency(getCartTotal())}</span>
+                                    </div>
 
-                                <p className="text-xs text-gray-500 text-center mt-3">
-                                    Secured by Razorpay • Direct from manufacturer
-                                </p>
+                                    {/* Shipping by Seller */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600 flex items-center gap-1">
+                                                <Truck className="w-4 h-4" />
+                                                Shipping
+                                            </span>
+                                            <span className={`font-medium ${calculatingShipping ? 'text-gray-400 animate-pulse' : 'text-emerald-600'}`}>
+                                                {calculatingShipping ? 'Calculating...' : formatCurrency(getTotalShipping())}
+                                            </span>
+                                        </div>
+                                        {!calculatingShipping && Object.keys(shippingEstimates).length > 1 && (
+                                            <div className="text-xs text-gray-500 space-y-1 pl-5">
+                                                {Object.entries(getItemsByManufacturer()).map(([mfId]) => (
+                                                    shippingEstimates[mfId]?.selected && (
+                                                        <div key={mfId} className="flex justify-between">
+                                                            <span className="truncate max-w-[120px]">{manufacturerInfo[mfId]?.name || 'Seller'}</span>
+                                                            <span>{formatCurrency(shippingEstimates[mfId].selected.rate)}</span>
+                                                        </div>
+                                                    )
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* GST Inclusive Note */}
+                                    <p className="text-xs text-gray-400 text-center">
+                                        All prices are inclusive of GST
+                                    </p>
+
+                                    {/* Divider */}
+                                    <div className="border-t border-dashed border-gray-200 my-2"></div>
+
+                                    {/* Payment Options */}
+                                    <div className="space-y-3 pt-2 pb-4">
+                                        <h3 className="text-sm font-semibold text-gray-900">Payment Options</h3>
+
+                                        {/* Full Payment */}
+                                        <label className={`block p-3 border rounded-xl cursor-pointer transition-all ${paymentOption === 'full' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-gray-200 hover:border-emerald-200'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentOption"
+                                                    value="full"
+                                                    checked={paymentOption === 'full'}
+                                                    onChange={() => setPaymentOption('full')}
+                                                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 bg-white border-gray-300"
+                                                />
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between font-medium text-sm text-gray-900">
+                                                        <span>Full Payment</span>
+                                                        <span>{formatCurrency(getFullAmount())}</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-0.5">Pay 100% + Shipping now</p>
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        {/* Advance Payment */}
+                                        <label className={`block p-3 border rounded-xl cursor-pointer transition-all ${paymentOption === 'advance' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-gray-200 hover:border-emerald-200'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="radio"
+                                                    name="paymentOption"
+                                                    value="advance"
+                                                    checked={paymentOption === 'advance'}
+                                                    onChange={() => setPaymentOption('advance')}
+                                                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 bg-white border-gray-300"
+                                                />
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between font-medium text-sm text-gray-900">
+                                                        <span>Pay {(ADVANCE_PAYMENT_PERCENT)}% Advance</span>
+                                                        <span>{formatCurrency(getAdvanceAmount())}</span>
+                                                    </div>
+                                                    <p className="text-xs text-emerald-600 font-medium mt-0.5">Rest {formatCurrency(getRemainingAmount())} on delivery</p>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    {/* Grand Total */}
+                                    <div className="space-y-2 pb-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-lg font-bold text-gray-900">Payable Now</span>
+                                            <span className="text-xl font-bold text-emerald-600">
+                                                {formatCurrency(getPayableAmount())}
+                                            </span>
+                                        </div>
+                                        {paymentOption === 'advance' && (
+                                            <div className="flex justify-between items-center pt-1 border-t border-dashed border-gray-200">
+                                                <span className="text-sm font-medium text-gray-500">Due on Delivery</span>
+                                                <span className="text-sm font-bold text-gray-700">{formatCurrency(getRemainingAmount())}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Pay Button */}
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20 active:scale-[0.98]"
+                                    >
+                                        {placingOrder ? (
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <CreditCard className="w-5 h-5" />
+                                                Pay Now
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Trust Badges */}
+                                    <div className="flex items-center justify-center gap-4 pt-2">
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                                            <Shield className="w-3 h-3" />
+                                            Secure Payment
+                                        </div>
+                                        <div className="text-[10px] text-gray-400">•</div>
+                                        <div className="text-[10px] text-gray-400">
+                                            Powered by Razorpay
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Mobile Sticky Bottom Checkout Bar */}
+            {/* Mobile Sticky Bottom Checkout Bar - Enhanced */}
             {cart.length > 0 && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 z-40 safe-area-inset-bottom">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs text-gray-500">{cart.length} item(s)</p>
-                            <p className="text-lg font-bold text-gray-900">
-                                {formatCurrency(
-                                    getCartTotal() +
-                                    getTotalShipping() +
-                                    cart.reduce((sum, item) => sum + calculateTax(
-                                        item.product.display_price,
-                                        item.quantity,
-                                        item.product.tax_rate || 18,
-                                        manufacturerStates[item.product.manufacturer_id],
-                                        user?.state
-                                    ).taxAmount, 0)
+                <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
+                    {/* Gradient Shadow */}
+                    <div className="absolute inset-x-0 -top-4 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+
+                    <div className="bg-white border-t border-gray-100 px-4 py-3 safe-area-inset-bottom">
+                        <div className="flex items-center gap-3">
+                            {/* Total Section */}
+                            <div className="flex-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-xl font-bold text-gray-900">
+                                        {formatCurrency(getPayableAmount())}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
+                                    <Shield className="w-2.5 h-2.5" />
+                                    {paymentOption === 'advance'
+                                        ? `Paying Advance (${ADVANCE_PAYMENT_PERCENT}%)`
+                                        : 'Full Payment'}
+                                </p>
+                            </div>
+
+                            {/* Pay Button */}
+                            <button
+                                onClick={handlePlaceOrder}
+                                disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
+                                className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/30"
+                            >
+                                {placingOrder ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : calculatingShipping ? (
+                                    <span className="text-sm">Loading...</span>
+                                ) : (
+                                    <>
+                                        <CreditCard className="w-5 h-5" />
+                                        <span>{paymentOption === 'advance' ? 'Pay Advance' : 'Pay Full'}</span>
+                                    </>
                                 )}
-                            </p>
+                            </button>
                         </div>
-                        <button
-                            onClick={handlePlaceOrder}
-                            disabled={placingOrder || cart.length === 0}
-                            className="flex-1 max-w-[200px] py-3 bg-emerald-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-600/20"
-                        >
-                            {placingOrder ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <CreditCard className="w-5 h-5" />
-                                    Pay Now
-                                </>
-                            )}
-                        </button>
                     </div>
                 </div>
             )}

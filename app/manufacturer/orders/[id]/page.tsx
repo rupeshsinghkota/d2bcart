@@ -262,10 +262,27 @@ export default function ManufacturerOrderDetails() {
                                             Unit Price: {formatCurrency(order.unit_price)}
                                         </div>
                                     </div>
-                                    <div className="ml-auto text-right">
+                                    <div className="ml-auto text-right flex flex-col items-end gap-1">
                                         <div className="text-sm text-gray-500">Total Payout</div>
                                         <div className="text-xl font-bold text-emerald-600">
                                             {formatCurrency(order.manufacturer_payout)}
+                                        </div>
+                                        <div className="mt-2 text-xs text-right space-y-1">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <span className="text-gray-500">Type:</span>
+                                                <span className={`px-2 py-0.5 rounded capitalize font-medium ${order.payment_type === 'advance'
+                                                        ? 'bg-amber-100 text-amber-700'
+                                                        : 'bg-green-100 text-green-700'
+                                                    }`}>
+                                                    {order.payment_type === 'advance' ? '20% Advance' : 'Full Payment'}
+                                                </span>
+                                            </div>
+                                            {(order.pending_amount || 0) > 0 && (
+                                                <div className="flex items-center justify-end gap-2 text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
+                                                    <span>Collect COD:</span>
+                                                    <span>{formatCurrency(order.pending_amount || 0)}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

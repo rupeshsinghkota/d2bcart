@@ -38,7 +38,9 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
                         )}
                         {/* MOQ Badge - Compact */}
                         <div className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-[2px] px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                            MOQ: {product.moq}
+                            MOQ: {product.type === 'variable' && product.variations?.length > 0
+                                ? Math.min(...product.variations.map((v: any) => v.moq || product.moq))
+                                : product.moq}
                         </div>
 
                         {/* Category Badge */}

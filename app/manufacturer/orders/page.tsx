@@ -17,7 +17,8 @@ import {
     Phone,
     MapPin,
     Printer,
-    FileText
+    FileText,
+    RefreshCw
 } from 'lucide-react'
 
 const OrdersContent = () => {
@@ -81,9 +82,14 @@ const OrdersContent = () => {
         }
     }
 
-    const createShipment = async (order: Order) => {
+    const createShipment = async (ordersInput: Order | Order[]) => {
+        const ordersList = Array.isArray(ordersInput) ? ordersInput : [ordersInput]
+        if (ordersList.length === 0) return
+
+        const primaryOrder = ordersList[0]
+
         // Validation: Ensure manufacturer has pickup details
-        const manuf = (order as any).manufacturer
+        const manuf = (primaryOrder as any).manufacturer
         if (!manuf?.address || !manuf?.phone || !manuf?.pincode || !manuf?.city) {
             toast.error('Please complete your Business Profile (Address/Phone) before shipping.')
             router.push('/manufacturer/profile')
@@ -96,12 +102,16 @@ const OrdersContent = () => {
             return
         }
 
-        setProcessingId(order.id)
+        // Lock UI. Ideally locking all, but locking primary ID is enough to show spinner on one at least.
+        setProcessingId(primaryOrder.id)
+
         try {
             const response = await fetch('/api/shiprocket/create-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: order.id })
+                body: JSON.stringify({
+                    orderIds: ordersList.map(o => o.id)
+                })
             })
 
             const data = await response.json()
@@ -109,6 +119,7 @@ const OrdersContent = () => {
 
             toast.success('Shipment created successfully!')
             fetchOrders()
+            // Optionally auto-download manifest/label here?
         } catch (error: any) {
             toast.error(error.message)
         } finally {
@@ -146,6 +157,34 @@ const OrdersContent = () => {
                 window.open(data.label_url, '_blank')
                 // Update local state to include label URL so we don't fetch again if they click immediately
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, shipping_label_url: data.label_url } : o))
+            }
+        } catch (error: any) {
+            toast.error(error.message)
+        } finally {
+            setProcessingId(null)
+        }
+    }
+
+    const syncOrder = async (orderId: string) => {
+        setProcessingId(orderId)
+        try {
+            const toastId = toast.loading('Syncing with ShipRocket...')
+            const response = await fetch('/api/shiprocket/sync-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId })
+            })
+
+            const data = await response.json()
+            toast.dismiss(toastId)
+
+            if (!response.ok) throw new Error(data.error || 'Failed to sync')
+
+            if (data.newStatus !== data.oldStatus) {
+                toast.success(`Status updated: ${data.newStatus?.replace('_', ' ')}`)
+                fetchOrders()
+            } else {
+                toast.success('Status up to date')
             }
         } catch (error: any) {
             toast.error(error.message)
@@ -213,7 +252,7 @@ const OrdersContent = () => {
 
                 {/* Filters */}
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
-                    {['all', 'paid', 'confirmed', 'shipped', 'in_transit', 'delivered'].map(status => (
+                    {['all', 'paid', 'confirmed', 'shipped', 'cancelled', 'in_transit', 'delivered'].map(status => (
                         <button
                             key={status}
                             onClick={() => setFilter(status)}
@@ -228,7 +267,12 @@ const OrdersContent = () => {
                 </div>
 
                 {/* Orders List */}
-                {filteredOrders.length === 0 ? (
+                {Object.keys(
+                    filteredOrders.reduce((acc, order) => {
+                        acc[order.order_number] = (acc[order.order_number] || []).concat(order)
+                        return acc
+                    }, {} as Record<string, Order[]>)
+                ).length === 0 ? (
                     <div className="bg-white rounded-xl p-12 text-center shadow-sm">
                         <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h2 className="text-xl font-semibold text-gray-600 mb-2">
@@ -241,184 +285,235 @@ const OrdersContent = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {filteredOrders.map(order => (
-                            <div key={order.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                                {/* Order Header */}
-                                <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
-                                    <div>
-                                        <span className="font-mono text-sm font-medium">
-                                            {order.order_number}
-                                        </span>
-                                        <span className="text-gray-400 mx-2">•</span>
-                                        <span className="text-sm text-gray-500">
-                                            {new Date(order.created_at).toLocaleDateString('en-IN')}
-                                        </span>
+                    <div className="space-y-6">
+                        {Object.entries(
+                            filteredOrders.reduce((acc, order) => {
+                                if (!acc[order.order_number]) acc[order.order_number] = []
+                                acc[order.order_number].push(order)
+                                return acc
+                            }, {} as Record<string, Order[]>)
+                        ).map(([orderNumber, group]) => {
+                            const firstOrder = group[0]
+                            const totalPayout = group.reduce((sum, o) => sum + o.manufacturer_payout, 0)
+                            const totalPending = group.reduce((sum, o) => sum + (o.pending_amount || 0), 0)
+                            const itemsReadyToShip = group.filter(o => o.status === 'paid')
+
+                            // Determine overall status
+                            const isAllDelivered = group.every(o => o.status === 'delivered')
+                            const isAllShipped = group.every(o => o.status === 'shipped' || o.status === 'delivered')
+                            // Fix: Include 'confirmed' items in the 'paid' check if we want them to count as paid, 
+                            // BUT usually 'confirmed' > 'paid'. So let's add specific check.
+                            const isAllConfirmed = group.every(o => ['confirmed', 'shipped', 'delivered'].includes(o.status))
+                            const isAllPaid = group.every(o => ['paid', 'confirmed', 'shipped', 'delivered'].includes(o.status))
+
+                            let overallStatus = 'pending'
+                            if (group.every(o => o.status === 'cancelled')) overallStatus = 'cancelled'
+                            else if (isAllDelivered) overallStatus = 'delivered'
+                            else if (isAllShipped) overallStatus = 'shipped'
+                            else if (isAllConfirmed) overallStatus = 'confirmed'
+                            else if (isAllPaid) overallStatus = 'paid'
+                            else if (group.some(o => o.status !== 'pending')) overallStatus = 'in_progress'
+
+                            // Unified Tracking Logic
+                            const unifiedAwb = group.every(o => o.awb_code && o.awb_code === firstOrder.awb_code) ? firstOrder.awb_code : null
+                            const unifiedLabelUrl = group.every(o => o.shipping_label_url === firstOrder.shipping_label_url) ? firstOrder.shipping_label_url : null
+
+                            return (
+                                <div key={orderNumber} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-6 transition-all hover:shadow-md">
+                                    {/* Unified Order Header */}
+                                    <div className="p-5 border-b border-gray-100 bg-white">
+                                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                                            {/* Left: Order Info */}
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <span className="text-lg font-bold text-gray-900 tracking-tight">
+                                                        {orderNumber}
+                                                    </span>
+                                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadge(overallStatus)}`}>
+                                                        {overallStatus.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm text-gray-500 flex items-center gap-2">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    {new Date(firstOrder.created_at).toLocaleDateString('en-IN', {
+                                                        day: 'numeric', month: 'short', year: 'numeric',
+                                                        hour: '2-digit', minute: '2-digit'
+                                                    })}
+                                                </div>
+                                                <div className="mt-3 flex items-center gap-4 text-sm">
+                                                    <div className="font-medium text-gray-900 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
+                                                        Payout: <span className="text-emerald-700 font-bold">{formatCurrency(totalPayout)}</span>
+                                                    </div>
+                                                    {totalPending > 0 && (
+                                                        <div className="text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-100 font-medium">
+                                                            Pending COD: {formatCurrency(totalPending)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Retailer & Actions */}
+                                            <div className="flex flex-col items-end gap-3">
+                                                <div className="text-right text-sm text-gray-600">
+                                                    <div className="font-medium text-gray-900 flex items-center justify-end gap-1">
+                                                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                                        {(firstOrder as any).retailer?.business_name}
+                                                    </div>
+                                                    <div className="text-xs mt-1">{(firstOrder as any).retailer?.city}, {(firstOrder as any).retailer?.state}</div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex flex-wrap justify-end gap-2">
+                                                    {/* Bulk Ship Button */}
+                                                    {itemsReadyToShip.length > 0 && (
+                                                        <button
+                                                            onClick={() => createShipment(itemsReadyToShip)}
+                                                            disabled={processingId === firstOrder.id}
+                                                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                                        >
+                                                            {processingId === firstOrder.id ? (
+                                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <Truck className="w-4 h-4" />
+                                                            )}
+                                                            Ship {itemsReadyToShip.length} Items
+                                                        </button>
+                                                    )}
+
+                                                    {/* Unified Tracking (Header Level) */}
+                                                    {unifiedAwb && (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => syncOrder(firstOrder.id)}
+                                                                disabled={processingId === firstOrder.id}
+                                                                className="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm font-medium flex items-center gap-1 hover:bg-gray-200 border border-gray-200"
+                                                                title="Sync Status from ShipRocket"
+                                                            >
+                                                                <RefreshCw className={`w-4 h-4 ${processingId === firstOrder.id ? 'animate-spin' : ''}`} />
+                                                            </button>
+                                                            <a
+                                                                href={`https://shiprocket.co/tracking/${unifiedAwb}`}
+                                                                target="_blank"
+                                                                className="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-sm font-medium flex items-center gap-1 hover:bg-indigo-100 border border-indigo-100"
+                                                            >
+                                                                <Truck className="w-4 h-4" /> Track
+                                                            </a>
+                                                            {/* Label Download */}
+                                                            <button
+                                                                onClick={() => downloadLabel(firstOrder)}
+                                                                className="bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                                                            >
+                                                                <Printer className="w-4 h-4" /> Label
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {order.awb_code && (
-                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
-                                                AWB: {order.awb_code}
-                                            </span>
-                                        )}
-                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(order.status)}`}>
-                                            {order.status}
-                                        </span>
+
+                                    {/* Items Table / List */}
+                                    <div className="bg-gray-50/30">
+                                        {group.map((order, index) => (
+                                            <div key={order.id} className={`p-4 flex flex-col sm:flex-row gap-4 items-center ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                                {/* Image */}
+                                                <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
+                                                    {(order as any).product?.images?.[0] ? (
+                                                        <Image
+                                                            src={(order as any).product.images[0]}
+                                                            alt=""
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    ) : (
+                                                        <Package className="w-5 h-5 text-gray-300 m-auto translate-y-4" />
+                                                    )}
+                                                </div>
+
+                                                {/* Info */}
+                                                <div className="flex-1 text-center sm:text-left min-w-0">
+                                                    <div className="font-medium text-gray-900 truncate">{(order as any).product?.name}</div>
+                                                    <div className="text-xs text-gray-500 mt-1 flex items-center justify-center sm:justify-start gap-2">
+                                                        <span>{order.quantity} units</span>
+                                                        <span>×</span>
+                                                        <span>{formatCurrency(order.unit_price)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Status Badge (Item Level) */}
+                                                <div className="flex-shrink-0">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(order.status).replace('bg-', 'bg-opacity-20 ')}`}>
+                                                        {order.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+
+                                                {/* Item Actions */}
+                                                <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
+                                                    {order.status === 'pending' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'paid')}
+                                                            className="text-xs bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-50 transition-colors font-medium shadow-sm"
+                                                        >
+                                                            Mark Paid
+                                                        </button>
+                                                    )}
+
+                                                    {/* Individual Ship (Secondary Option) */}
+                                                    {order.status === 'paid' && itemsReadyToShip.length > 1 && (
+                                                        <button
+                                                            onClick={() => createShipment(order)}
+                                                            className="text-xs text-gray-400 hover:text-emerald-600 underline px-2 transition-colors"
+                                                            title="Ship just this item"
+                                                            disabled={processingId === order.id}
+                                                        >
+                                                            Ship Only This
+                                                        </button>
+                                                    )}
+
+                                                    {/* Downloads / Tracking */}
+                                                    {!unifiedAwb && order.shipping_label_url && (
+                                                        <button
+                                                            onClick={() => window.open(order.shipping_label_url, '_blank')}
+                                                            className="text-gray-500 hover:text-gray-700 bg-white border border-gray-200 p-1.5 rounded shadow-sm"
+                                                            title="Download Label"
+                                                        >
+                                                            <Printer className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                    {!unifiedAwb && order.awb_code && (
+                                                        <a
+                                                            href={`https://shiprocket.co/tracking/${order.awb_code}`}
+                                                            target="_blank"
+                                                            className="px-3 py-1.5 rounded bg-indigo-50 text-indigo-700 text-xs font-medium flex items-center gap-1 hover:bg-indigo-100 transition-colors"
+                                                        >
+                                                            <Truck className="w-3 h-3" /> Track
+                                                        </a>
+                                                    )}
+
+                                                    {/* Details Link */}
+                                                    <Link
+                                                        href={`/manufacturer/orders/${order.id}`}
+                                                        className="text-gray-400 hover:text-gray-600 p-1.5"
+                                                    >
+                                                        <ArrowLeft className="w-4 h-4 rotate-180" />
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Footer Optional info */}
+                                    <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
+                                        <div>
+                                            {group.length} Product{group.length > 1 ? 's' : ''}
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <span>Pay: {group[0].payment_type === 'advance' ? '20% Adv' : 'Full'}</span>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Order Content */}
-                                <div className="p-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden relative">
-                                            {(order as any).product?.images?.[0] ? (
-                                                <Image
-                                                    src={(order as any).product.images[0]}
-                                                    alt=""
-                                                    fill
-                                                    className="object-cover rounded-lg"
-                                                />
-                                            ) : (
-                                                <Package className="w-6 h-6 text-gray-400" />
-                                            )}
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-gray-900">
-                                                {(order as any).product?.name}
-                                            </h3>
-                                            <div className="text-sm text-gray-500 mt-1">
-                                                {order.quantity} units × {formatCurrency(order.unit_price)}
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <div className="text-sm text-gray-500">You'll receive</div>
-                                            <div className="text-xl font-bold text-emerald-600">
-                                                {formatCurrency(order.manufacturer_payout)}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Retailer Info */}
-                                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                                        <div className="text-sm font-medium text-gray-700 mb-2">Ship To:</div>
-                                        <div className="text-sm text-gray-600">
-                                            <div className="font-medium">{(order as any).retailer?.business_name}</div>
-                                            <div className="mt-1 text-gray-700">
-                                                {order.shipping_address || (order as any).retailer?.address}
-                                            </div>
-                                            <div className="flex items-center gap-1 mt-1 text-gray-500">
-                                                <MapPin className="w-3 h-3" />
-                                                {(order as any).retailer?.city}
-                                                {(order as any).retailer?.state ? `, ${(order as any).retailer.state}` : ''}
-                                                {(order as any).retailer?.pincode ? ` - ${(order as any).retailer.pincode}` : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="mt-4 flex flex-wrap gap-2">
-
-                                        {/* Status: Pending -> Paid (Manual) */}
-                                        {order.status === 'pending' && (
-                                            <button
-                                                onClick={() => updateOrderStatus(order.id, 'paid')}
-                                                className="btn-outline !py-2 !px-4 text-sm flex items-center gap-2"
-                                            >
-                                                <CheckCircle className="w-4 h-4" />
-                                                Mark as Paid (Manual)
-                                            </button>
-                                        )}
-
-                                        {/* Status: Paid -> Confirmed (Create Shipment) */}
-                                        {order.status === 'paid' && (
-                                            <button
-                                                onClick={() => createShipment(order)}
-                                                disabled={processingId === order.id}
-                                                className="btn-primary !py-2 !px-4 text-sm flex items-center gap-2"
-                                            >
-                                                {processingId === order.id ? (
-                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                ) : (
-                                                    <Truck className="w-4 h-4" />
-                                                )}
-                                                Ship & Request Pickup
-                                            </button>
-                                        )}
-
-                                        {/* Status: Confirmed -> Download Label  + Mark Shipped */}
-                                        {['confirmed', 'shipped'].includes(order.status) && (
-                                            <>
-                                                {order.shipment_id && (
-                                                    <button
-                                                        onClick={() => downloadLabel(order)}
-                                                        disabled={processingId === order.id}
-                                                        className="btn-outline !py-2 !px-4 text-sm flex items-center gap-2"
-                                                    >
-                                                        {processingId === order.id ? (
-                                                            <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                                                        ) : (
-                                                            <Printer className="w-4 h-4" />
-                                                        )}
-                                                        Download Label
-                                                    </button>
-                                                )}
-
-                                                {order.status === 'confirmed' && (
-                                                    <button
-                                                        onClick={() => updateOrderStatus(order.id, 'shipped')}
-                                                        className="btn-primary !py-2 !px-4 text-sm flex items-center gap-2"
-                                                    >
-                                                        <Truck className="w-4 h-4" />
-                                                        Mark as Shipped
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-
-                                        {/* Status: Shipped -> Delivered */}
-                                        {['shipped', 'delivered'].includes(order.status) && order.awb_code && (
-                                            <a
-                                                href={`https://shiprocket.co/tracking/${order.awb_code}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="btn-outline !py-2 !px-4 text-sm flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
-                                            >
-                                                <Truck className="w-4 h-4" />
-                                                Track
-                                            </a>
-                                        )}
-
-                                        {/* Link to Details Page */}
-                                        <Link
-                                            href={`/manufacturer/orders/${order.id}`}
-                                            className="ml-auto text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                                        >
-                                            View Details
-                                            <ArrowLeft className="w-4 h-4 rotate-180" />
-                                        </Link>
-                                        {order.status === 'shipped' && (
-                                            <button
-                                                onClick={() => updateOrderStatus(order.id, 'delivered')}
-                                                className="btn-primary !py-2 !px-4 text-sm flex items-center gap-2"
-                                            >
-                                                <CheckCircle className="w-4 h-4" />
-                                                Mark as Delivered
-                                            </button>
-                                        )}
-
-                                        {/* Status: Delivered */}
-                                        {order.status === 'delivered' && (
-                                            <div className="text-sm text-green-600 flex items-center gap-1">
-                                                <CheckCircle className="w-4 h-4" />
-                                                Completed
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
             </div>

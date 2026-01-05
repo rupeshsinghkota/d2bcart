@@ -44,8 +44,19 @@ export default function AdminPayoutsPage() {
             .order('created_at', { ascending: false })
 
         if (ordersData) {
-            // Filter out already paid ones
-            const pending = (ordersData as PayoutOrder[]).filter(o => !paidOrderIds.has(o.id))
+            // Filter out already paid ones AND ensure delivery happened > 24 hours ago
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+            const pending = (ordersData as PayoutOrder[]).filter(o => {
+                if (paidOrderIds.has(o.id)) return false
+
+                // Check if delivered > 24 hours ago
+                if (o.delivered_at) {
+                    const deliveredDate = new Date(o.delivered_at)
+                    return deliveredDate <= oneDayAgo
+                }
+                return false
+            })
             setOrders(pending)
         }
         setLoading(false)
@@ -108,6 +119,7 @@ export default function AdminPayoutsPage() {
                                     <th className="px-6 py-4">Order ID</th>
                                     <th className="px-6 py-4">Manufacturer</th>
                                     <th className="px-6 py-4">Bank Details</th>
+                                    <th className="px-6 py-4">Payment Details</th>
                                     <th className="px-6 py-4 text-right">Payout Amount</th>
                                     <th className="px-6 py-4 text-center">Action</th>
                                 </tr>
@@ -137,10 +149,30 @@ export default function AdminPayoutsPage() {
                                                 </span>
                                             )}
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`w-fit px-2 py-0.5 rounded text-xs font-medium capitalize border ${order.payment_type === 'advance'
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    : 'bg-green-50 text-green-700 border-green-200'
+                                                    }`}>
+                                                    {order.payment_type === 'advance' ? 'Advance + COD' : 'Prepaid'}
+                                                </span>
+                                                {(order.pending_amount || 0) > 0 && order.payment_type === 'advance' && (
+                                                    <div className="text-xs text-amber-600 font-medium">
+                                                        COD: {formatCurrency(order.pending_amount || 0)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="font-bold text-emerald-600 text-lg">
                                                 {formatCurrency(order.manufacturer_payout)}
                                             </div>
+                                            {order.payment_type === 'advance' && (
+                                                <div className="text-[10px] text-gray-500 mt-1">
+                                                    Check COD Remittance
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <button

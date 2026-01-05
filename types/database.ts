@@ -84,6 +84,9 @@ export interface Order {
     courier_name?: string
     courier_company_id?: string
     shipping_label_url?: string
+    payment_type?: 'advance' | 'full'
+    paid_amount?: number
+    pending_amount?: number
     created_at: string
     paid_at?: string
     shipped_at?: string

@@ -243,7 +243,7 @@ export default function BulkUploadPage() {
                     breadth: parseFloat(row.breadth || '0'),
                     height: parseFloat(row.height || '0'),
                     hsn_code: row.hsn_code,
-                    tax_rate: parseFloat(row.tax_rate || '18')
+                    tax_rate: 18 // GST included in price
                 }).select().single()
 
                 if (error) {
@@ -315,7 +315,7 @@ export default function BulkUploadPage() {
                     breadth: parseFloat(row.breadth || '10'),
                     height: parseFloat(row.height || '10'),
                     hsn_code: row.hsn_code,
-                    tax_rate: parseFloat(row.tax_rate || '18')
+                    tax_rate: 18 // GST included in price
                 })
 
                 if (error) {

@@ -253,17 +253,17 @@ export default function ManufacturerDashboard() {
                         </div>
                     </Link>
 
-                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 shadow-sm text-white">
+                    <Link href="/manufacturer/payouts" className="block bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 shadow-sm text-white hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                                 <TrendingUp className="w-6 h-6 text-white" />
                             </div>
                             <div>
                                 <div className="text-2xl font-bold">{formatCurrency(stats.totalEarnings)}</div>
-                                <div className="text-emerald-100 text-sm">Earnings</div>
+                                <div className="text-emerald-100 text-sm">Earnings History</div>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Analytics Section */}

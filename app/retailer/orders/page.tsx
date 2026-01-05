@@ -221,11 +221,22 @@ export default function RetailerOrdersPage() {
                                                     {(order as any).manufacturer?.business_name}
                                                 </div>
                                                 <div className="mt-2 flex items-center justify-between">
-                                                    <div className="text-sm font-bold text-gray-900">
-                                                        {formatCurrency(order.total_amount)}
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-900">
+                                                            {formatCurrency(order.total_amount)}
+                                                        </div>
+                                                        {(order.pending_amount || 0) > 0 && (
+                                                            <div className="text-xs font-medium text-amber-600">
+                                                                Pay on Delivery: {formatCurrency(order.pending_amount || 0)}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {order.quantity} units
+                                                    <div className="text-xs text-right">
+                                                        <div className="text-gray-500">{order.quantity} units</div>
+                                                        <div className={`mt-1 font-medium px-1.5 py-0.5 rounded text-[10px] inline-block ${order.payment_type === 'advance' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                                                            }`}>
+                                                            {order.payment_type === 'advance' ? '20% Adv' : 'Full Pay'}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -267,7 +278,7 @@ export default function RetailerOrdersPage() {
                                             <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
                                             <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Manufacturer</th>
                                             <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Payment</th>
                                             <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -310,7 +321,16 @@ export default function RetailerOrdersPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                    <div className="text-sm font-bold text-gray-900">{formatCurrency(order.total_amount)}</div>
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <div className="text-sm font-bold text-gray-900">{formatCurrency(order.total_amount)}</div>
+                                                        {(order.pending_amount || 0) > 0 ? (
+                                                            <div className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                                                Due: {formatCurrency(order.pending_amount || 0)}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-medium">Fully Paid</div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
