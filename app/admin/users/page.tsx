@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@/types'
-import { CheckCircle, XCircle, Search, Building2, Phone, Mail, FileText, ExternalLink, ShieldCheck, CreditCard } from 'lucide-react'
+import { CheckCircle, XCircle, Search, Building2, Phone, Mail, FileText, ExternalLink, ShieldCheck, CreditCard, Edit, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AdminUsersPage() {
@@ -71,6 +71,60 @@ export default function AdminUsersPage() {
 
         return true
     })
+
+    const [editingUser, setEditingUser] = useState<User | null>(null)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [formData, setFormData] = useState({
+        business_name: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        gst_number: ''
+    })
+
+    const handleEditClick = (user: User) => {
+        setEditingUser(user)
+        setFormData({
+            business_name: user.business_name || '',
+            address: user.address || '',
+            city: user.city || '',
+            state: user.state || '',
+            pincode: user.pincode || '',
+            gst_number: user.gst_number || ''
+        })
+        setIsEditModalOpen(true)
+    }
+
+    const handleUpdateUser = async () => {
+        if (!editingUser) return
+        setProcessingId(editingUser.id)
+
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    business_name: formData.business_name,
+                    address: formData.address,
+                    city: formData.city,
+                    state: formData.state,
+                    pincode: formData.pincode,
+                    gst_number: formData.gst_number
+                })
+                .eq('id', editingUser.id)
+
+            if (error) throw error
+
+            setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...formData } : u))
+            toast.success('Manufacturer details updated')
+            setIsEditModalOpen(false)
+        } catch (error: any) {
+            console.error('Update failed:', error)
+            toast.error('Error updating user: ' + error.message)
+        } finally {
+            setProcessingId(null)
+        }
+    }
 
     if (loading) {
         return (
@@ -157,6 +211,12 @@ export default function AdminUsersPage() {
                                                     <Phone className="w-4 h-4 text-gray-400" />
                                                     {user.phone || 'No phone'}
                                                 </div>
+                                                <div className="flex items-start gap-2">
+                                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                                                    <span className="max-w-xs block">
+                                                        {[user.address, user.city, user.state, user.pincode].filter(Boolean).join(', ') || 'No address provided'}
+                                                    </span>
+                                                </div>
                                                 <div className="flex items-center gap-2">
                                                     <CreditCard className="w-4 h-4 text-gray-400" />
                                                     {user.bank_account ? (
@@ -192,6 +252,14 @@ export default function AdminUsersPage() {
                                         )}
 
                                         <button
+                                            onClick={() => handleEditClick(user)}
+                                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                            Edit Details
+                                        </button>
+
+                                        <button
                                             onClick={() => toggleVerification(user.id, user.is_verified)}
                                             disabled={processingId === user.id}
                                             className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${user.is_verified
@@ -220,6 +288,107 @@ export default function AdminUsersPage() {
                     ))
                 )}
             </div>
+
+            {/* Edit Modal */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-900">Edit Manufacturer Details</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <XCircle className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Business Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.business_name}
+                                    onChange={e => setFormData({ ...formData, business_name: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Address</label>
+                                <textarea
+                                    value={formData.address}
+                                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                    rows={2}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">City</label>
+                                    <input
+                                        type="text"
+                                        value={formData.city}
+                                        onChange={e => setFormData({ ...formData, city: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">State</label>
+                                    <input
+                                        type="text"
+                                        value={formData.state}
+                                        onChange={e => setFormData({ ...formData, state: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Pincode</label>
+                                    <input
+                                        type="text"
+                                        value={formData.pincode}
+                                        onChange={e => setFormData({ ...formData, pincode: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">GST Number</label>
+                                    <input
+                                        type="text"
+                                        value={formData.gst_number}
+                                        onChange={e => setFormData({ ...formData, gst_number: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end border-t border-gray-100">
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateUser}
+                                disabled={!!processingId}
+                                className="px-6 py-2 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {processingId ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    'Save Changes'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
