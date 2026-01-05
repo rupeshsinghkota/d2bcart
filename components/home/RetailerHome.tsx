@@ -26,7 +26,7 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
     const [loading, setLoading] = useState(initialCategories.length === 0 && initialProducts.length === 0)
     const [loadingMore, setLoadingMore] = useState(false)
     const [page, setPage] = useState(1)
-    const PAGE_SIZE = 24
+    const PAGE_SIZE = 20
 
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -70,6 +70,7 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
                 .select('*, manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name), variations:products!products_parent_id_fkey(display_price, moq)')
                 .eq('is_active', true)
                 .is('parent_id', null)
+                .order('created_at', { ascending: false })
                 .range(from, to)
 
             if (error) throw error

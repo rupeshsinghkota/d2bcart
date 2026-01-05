@@ -22,6 +22,7 @@ export const getMarketplaceData = unstable_cache(
                 `)
                 .eq('is_active', true)
                 .is('parent_id', null)
+                .order('created_at', { ascending: false })
                 .limit(20) // Increased to 20 to match page size
 
             // Redundant filter to be 100% sure variations are excluded
