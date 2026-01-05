@@ -46,6 +46,34 @@ export const getMarketplaceData = unstable_cache(
     }
 )
 
+export async function loadMoreProducts(page: number = 1) {
+    const PAGE_SIZE = 20
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    try {
+        const { data: products, error } = await supabaseAdmin
+            .from('products')
+            .select(`
+                *,
+                manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
+                category:categories!products_category_id_fkey(name, slug),
+                variations:products!parent_id(display_price, moq)
+            `)
+            .eq('is_active', true)
+            .is('parent_id', null)
+            .order('created_at', { ascending: false })
+            .range(from, to)
+
+        if (error) throw error
+
+        return { products: products as Product[] }
+    } catch (error) {
+        console.error('Error loading more products:', error)
+        return { products: [] }
+    }
+}
+
 // Helper to put popular categories first (optional)
 function favoritesFirst(categories: Category[]) {
     // We could prioritize specific categories here if needed

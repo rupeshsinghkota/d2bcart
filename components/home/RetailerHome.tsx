@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
 import { ProductCard } from '@/components/product/ProductCard'
+import { loadMoreProducts } from '@/app/actions/getMarketplaceData'
 import Image from 'next/image'
 
 // Helper to shuffle array for "random" feed
@@ -62,31 +63,21 @@ export default function RetailerHome({ initialCategories = [], initialProducts =
 
     const fetchProducts = async (pageNum: number) => {
         try {
-            const from = (pageNum - 1) * PAGE_SIZE
-            const to = from + PAGE_SIZE - 1
+            const { products: newProds } = await loadMoreProducts(pageNum)
 
-            const { data: prods, error } = await supabase
-                .from('products')
-                .select('*, manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name), variations:products!products_parent_id_fkey(display_price, moq)')
-                .eq('is_active', true)
-                .is('parent_id', null)
-                .order('created_at', { ascending: false })
-                .range(from, to)
-
-            if (error) throw error
-
-            if (prods) {
-                // Redundant filter to be 100% sure variations are excluded
-                const parentsOnly = prods.filter((p: any) => !p.parent_id)
-                const verified = parentsOnly.filter((p: any) => p.manufacturer?.is_verified)
-                // Mix verified and unverified for variety, but prioritize verified
-                const newProds = shuffle(verified.length > 0 ? verified : parentsOnly)
-
+            if (newProds && newProds.length > 0) {
                 if (pageNum === 1) {
                     setProducts(newProds)
                 } else {
-                    setProducts(prev => [...prev, ...newProds])
+                    // Filter duplicates based on ID to be absolutely safe
+                    setProducts(prev => {
+                        const existingIds = new Set(prev.map(p => p.id))
+                        const uniqueNew = newProds.filter(p => !existingIds.has(p.id))
+                        return [...prev, ...uniqueNew]
+                    })
                 }
+            } else {
+                if (pageNum > 1) toast.error('No more products to load')
             }
         } catch (error) {
             console.error('Error fetching retailer home products:', error)
