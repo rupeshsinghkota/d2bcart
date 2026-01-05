@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Package, Plus, MapPin, Heart } from 'lucide-react'
+import { Package, MapPin, Heart } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import { useStore } from '@/lib/store'
-import { toast } from 'react-hot-toast'
+
+
 import Image from 'next/image'
 import { Product } from '@/types' // Assuming types exist, or use any
 
@@ -91,17 +91,7 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
                             </span>
                         </div>
 
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                useStore.getState().addToCart(product, product.moq);
-                                toast.success('Added to cart!');
-                            }}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </button>
+
                     </div>
                 </div>
             </div>

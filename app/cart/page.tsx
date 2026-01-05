@@ -633,7 +633,7 @@ export default function CartPage() {
                                                                 <button
                                                                     onClick={() => updateQuantity(
                                                                         item.product.id,
-                                                                        Math.max(item.product.moq, item.quantity - 1)
+                                                                        Math.max(item.product.moq, item.quantity - (item.product.moq || 1))
                                                                     )}
                                                                     className="w-8 sm:w-9 md:w-10 h-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-l-lg sm:rounded-l-xl"
                                                                 >
@@ -643,7 +643,7 @@ export default function CartPage() {
                                                                     {item.quantity}
                                                                 </span>
                                                                 <button
-                                                                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                                                    onClick={() => updateQuantity(item.product.id, item.quantity + (item.product.moq || 1))}
                                                                     className="w-8 sm:w-9 md:w-10 h-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-r-lg sm:rounded-r-xl"
                                                                 >
                                                                     <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-600" />
