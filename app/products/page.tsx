@@ -1,9 +1,8 @@
 import { Metadata } from 'next'
 import ProductsClient from './ProductsClient'
 import { Category } from '@/types'
-import { getShopData } from '../actions/getShopData'
+import { getShopCategories, getShopProducts } from '../actions/getShopData'
 import { createClient } from '@/lib/supabase-server'
-
 import { Suspense } from 'react'
 
 // export const dynamic = 'force-dynamic'
@@ -66,16 +65,22 @@ async function ProductsContent({ searchParams }: Props) {
     const params = await searchParams
     const categorySlug = typeof params.category === 'string' ? params.category : undefined
 
-    // 1. Fetch Categories (Always needed for sidebar)
-    const { categories: allCategories } = await getShopData()
+    // Parallel Fetching: Categories & Products
+    // 1. Start fetching categories
+    const categoriesPromise = getShopCategories()
+
+    // 2. We need categories to resolve the slug to an ID, so we await it.
+    // Ideally we'd have getProductBySlug, but for now this is fast enough given cache.
+    const allCategories = await categoriesPromise
 
     let currentCategory: Category | null = null
     if (categorySlug) {
         currentCategory = allCategories.find(c => c.slug === categorySlug) || null
     }
 
-    // 2. Fetch Initial Products (Scoped to category if selected)
-    const { products, totalProducts } = await getShopData(currentCategory?.id)
+    // 3. Fetch Initial Products (Scoped to category ID if selected)
+    // using the optimized single-purpose action
+    const { products, totalProducts } = await getShopProducts(currentCategory?.id)
 
     // Collection Page JSON-LD
     const jsonLd = {

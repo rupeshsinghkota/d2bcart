@@ -13,6 +13,8 @@ import { useInView } from 'react-intersection-observer'
 import { Breadcrumbs } from '@/components/product/Breadcrumbs'
 import { CategorySidebar } from '@/components/product/CategorySidebar'
 import { useStore } from '@/lib/store'
+import { getCategoryImage } from '@/utils/category'
+import Image from 'next/image'
 
 import { MobileFilterBar } from '@/components/product/MobileFilterBar'
 import { MobileCategorySheet } from '@/components/product/MobileCategorySheet'
@@ -299,6 +301,100 @@ export default function ProductsClient({
                     categories={categories}
                     onCategorySelect={handleCategorySelect}
                 />
+                {/* Dynamic Category Header */}
+                <div className="mb-6 md:mb-8">
+                    {selectedCategory ? (
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 to-emerald-700 p-6 md:p-10 text-white shadow-xl">
+                            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+                            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-3xl" />
+
+                            <h1 className="relative text-2xl md:text-4xl font-bold mb-2 tracking-tight">
+                                {getPageTitle()}
+                            </h1>
+                            <p className="relative text-emerald-100 max-w-xl text-sm md:text-base leading-relaxed">
+                                Explore our premium collection of wholesale {getPageTitle().toLowerCase()}. Directly from verified manufacturers.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="flex items-end justify-between border-b border-gray-100 pb-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                                    All Products
+                                </h1>
+                                <p className="text-gray-500 mt-1">
+                                    Browse our complete catalog of wholesale supplies
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Subcategory Navigation */}
+                {(() => {
+                    const currentCat = categories.find(c => c.slug === selectedCategory)
+                    if (currentCat) {
+                        const subCategories = categories.filter(c => c.parent_id === currentCat.id)
+                        if (subCategories.length > 0) {
+                            return (
+                                <div className="mt-6 mb-8">
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3 px-1">Shop by Category</h3>
+                                    <div className="flex overflow-x-auto pb-6 px-2 gap-4 no-scrollbar">
+                                        {subCategories.map(sub => {
+                                            const isActive = sub.slug === selectedCategory
+                                            return (
+                                                <button
+                                                    key={sub.id}
+                                                    onClick={() => handleCategorySelect(sub.slug)}
+                                                    className={`flex flex-col items-center gap-2 group min-w-[80px] transition-all duration-300 ${isActive ? 'scale-105' : 'hover:-translate-y-1'}`}
+                                                >
+                                                    <div className={`
+                                                        w-16 h-16 relative rounded-full overflow-hidden bg-white border transition-all duration-300
+                                                        ${isActive
+                                                            ? 'border-emerald-500 ring-2 ring-emerald-500 shadow-lg shadow-emerald-100'
+                                                            : 'border-gray-200 group-hover:border-emerald-300 group-hover:shadow-md'
+                                                        }
+                                                    `}>
+                                                        {(() => {
+                                                            const generatedImg = getCategoryImage(sub.name)
+                                                            if (generatedImg) return (
+                                                                <Image
+                                                                    src={generatedImg}
+                                                                    alt={sub.name}
+                                                                    fill
+                                                                    className={`object-cover p-2 transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                                                                />
+                                                            )
+                                                            if (sub.image_url) return (
+                                                                <Image
+                                                                    src={sub.image_url}
+                                                                    alt={sub.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                            )
+                                                            return (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-50 text-emerald-600 font-bold">
+                                                                    {sub.name.charAt(0)}
+                                                                </div>
+                                                            )
+                                                        })()}
+                                                    </div>
+                                                    <span className={`
+                                                        text-xs text-center line-clamp-2 w-full transition-colors duration-200
+                                                        ${isActive ? 'font-bold text-emerald-700' : 'font-medium text-gray-600 group-hover:text-emerald-600'}
+                                                    `}>
+                                                        {sub.name}
+                                                    </span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                        }
+                    }
+                    return null
+                })()}
 
                 <div className="flex gap-8 items-start mt-4">
                     {/* Desktop Sidebar */}
@@ -356,7 +452,7 @@ export default function ProductsClient({
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
                                     {products.map(product => (
                                         <ProductCard
                                             key={product.id}

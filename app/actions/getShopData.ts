@@ -2,48 +2,75 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Product, Category } from '@/types'
 import { unstable_cache } from 'next/cache'
 
-export const getShopData = unstable_cache(
-    async (categoryId?: string, page: number = 1, limit: number = 20) => {
+// Cached Categories Fetcher (Longer Cache: 1 Hour)
+export const getShopCategories = unstable_cache(
+    async () => {
         try {
-            console.log('Fetching shop data from DB...', { categoryId: categoryId || 'all', page, limit })
+            console.log('Fetching shop categories...')
 
-            // Calculate range
-            const from = (page - 1) * limit
-            const to = from + limit - 1
-
-            // 1. Fetch all categories for hierarchy
+            // 1. Fetch all categories
             const { data: allCategories, error: catFetchError } = await supabaseAdmin
                 .from('categories')
                 .select('*')
                 .order('name')
 
-            if (catFetchError) {
-                console.error('Error fetching categories:', catFetchError)
-                return { categories: [], products: [], totalProducts: 0 }
-            }
+            if (catFetchError) throw catFetchError
 
-            // 2. Fetch unique category IDs that have active products
+            // 2. Fetch active product linkages
             const { data: activeLinkages, error: prodErr } = await supabaseAdmin
                 .from('categories')
                 .select('id, products!inner(id)')
                 .eq('products.is_active', true)
 
-            if (prodErr) {
-                console.error('Error fetching active linkages:', prodErr)
-                return { categories: [], products: [], totalProducts: 0 }
-            }
+            if (prodErr) throw prodErr
 
             const activeIds = new Set(activeLinkages?.map(c => c.id))
 
             const hasActiveDescendant = (catId: string): boolean => {
                 if (activeIds.has(catId)) return true
-                const children = allCategories.filter(c => c.parent_id === catId)
+                const children = (allCategories as Category[]).filter(c => c.parent_id === catId)
                 return children.some(child => hasActiveDescendant(child.id))
             }
 
             const validCategories = (allCategories as Category[]).filter(cat => hasActiveDescendant(cat.id))
 
-            // 3. Fetch Products (exclude variations - only show parent products)
+            return validCategories
+        } catch (error) {
+            console.error('Error fetching categories:', error)
+            return []
+        }
+    },
+    ['shop-categories-v1'],
+    { revalidate: 3600, tags: ['categories'] }
+)
+
+// Cached Products Fetcher (Shorter Cache: 5 mins)
+export const getShopProducts = unstable_cache(
+    async (categoryId?: string, page: number = 1, limit: number = 20) => {
+        try {
+            console.log('Fetching shop products...', { categoryId, page })
+            const from = (page - 1) * limit
+            const to = from + limit - 1
+
+            // Need all categories to find descendants if filtering by category
+            // We can fetch this cheaply or pass it in, but ideally we fetch strictly from DB
+            // To be safe and fast, let's fetch just ids for hierarchy if needed
+            let targetIds: string[] = []
+            if (categoryId) {
+                const { data: allCats } = await supabaseAdmin.from('categories').select('id, parent_id')
+                if (allCats) {
+                    const getDescendants = (pid: string): string[] => {
+                        const children = allCats.filter(c => c.parent_id === pid)
+                        let ids = children.map(c => c.id)
+                        children.forEach(child => ids.push(...getDescendants(child.id)))
+                        return ids
+                    }
+                    targetIds = [categoryId, ...getDescendants(categoryId)]
+                } else {
+                    targetIds = [categoryId]
+                }
+            }
+
             let query = supabaseAdmin
                 .from('products')
                 .select(`
@@ -53,45 +80,38 @@ export const getShopData = unstable_cache(
                     variations:products!parent_id(display_price, moq)
                 `, { count: 'exact' })
                 .eq('is_active', true)
-                .is('parent_id', null) // Only fetch main products, not variations
+                .is('parent_id', null)
                 .order('created_at', { ascending: false })
 
-            if (categoryId) {
-                const getDescendants = (parentId: string): string[] => {
-                    const children = allCategories.filter(c => c.parent_id === parentId)
-                    let ids = children.map(c => c.id)
-                    children.forEach(child => {
-                        ids = [...ids, ...getDescendants(child.id)]
-                    })
-                    return ids
-                }
-                const targetIds = [categoryId, ...getDescendants(categoryId)]
+            if (categoryId && targetIds.length > 0) {
                 query = query.in('category_id', targetIds)
             }
 
-            // Apply Pagination
             query = query.range(from, to)
 
-            const { data: products, error: productsError, count } = await query
+            const { data: products, error, count } = await query
 
-            if (productsError) {
-                console.error('Error fetching products:', productsError)
-                return { categories: allCategories as Category[], products: [], totalProducts: 0 }
-            }
+            if (error) throw error
 
             return {
-                categories: validCategories,
                 products: (products as Product[]) || [],
                 totalProducts: count || 0
             }
         } catch (error) {
-            console.error('Server Action Error (Shop):', error)
-            return { categories: [], products: [], totalProducts: 0 }
+            console.error('Error fetching products:', error)
+            return { products: [], totalProducts: 0 }
         }
     },
-    ['shop-data-v5'],
-    {
-        revalidate: 300, // 5 minutes
-        tags: ['shop', 'products', 'categories']
-    }
+    ['shop-products-v1'], // tags are dynamic based on args in next/cache logic usually, but here key is static + args
+    { revalidate: 300, tags: ['products'] }
 )
+
+// Legacy compatibility wrapper (but optimized)
+export const getShopData = async (categoryId?: string, page: number = 1, limit: number = 20) => {
+    const [categories, { products, totalProducts }] = await Promise.all([
+        getShopCategories(),
+        getShopProducts(categoryId, page, limit)
+    ])
+
+    return { categories, products, totalProducts }
+}

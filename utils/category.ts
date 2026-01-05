@@ -25,12 +25,22 @@ export const CATEGORY_IMAGES: Record<string, string> = {
     'sports_shoes': '/category-images/sports-shoes.png',
     'smart_tvs': '/category-images/smart-tvs.png',
     'mens_jeans': '/category-images/mens-jeans.png',
+    'cases_covers': '/category-images/cases-covers.png',
+    'screen_guards': '/category-images/screen-guards.png',
+    'chargers_cables': '/category-images/chargers-cables.png',
+    'mobile_stands': '/category-images/mobile-stands.png',
+    'power_banks': '/category-images/power-banks.png',
 }
 
 export function getCategoryImage(name: string): string | null {
     const lowerName = name?.toLowerCase() || ''
 
     // Specific Subcategory Overrides (High Priority)
+    if (lowerName.includes('case') || lowerName.includes('cover')) return CATEGORY_IMAGES['cases_covers']
+    if (lowerName.includes('screen') || lowerName.includes('guard') || lowerName.includes('glass')) return CATEGORY_IMAGES['screen_guards']
+    if (lowerName.includes('cable') || lowerName.includes('charger') || lowerName.includes('wire') || lowerName.includes('usb')) return CATEGORY_IMAGES['chargers_cables']
+    if (lowerName.includes('stand') || lowerName.includes('holder') || lowerName.includes('mount')) return CATEGORY_IMAGES['mobile_stands']
+    if (lowerName.includes('power') || lowerName.includes('bank') || lowerName.includes('battery')) return CATEGORY_IMAGES['power_banks']
     if (lowerName.includes('smartphone')) return CATEGORY_IMAGES['smartphones']
     if (lowerName.includes('headphone') || lowerName.includes('earbud') || lowerName.includes('audio')) return CATEGORY_IMAGES['headphones']
     if (lowerName.includes('laptop')) return CATEGORY_IMAGES['laptops']

@@ -14,6 +14,7 @@ import {
     Store,
     TrendingUp
 } from 'lucide-react'
+import { getCategoryImage } from '@/utils/category'
 import { ProductCard } from '@/components/product/ProductCard'
 import Image from 'next/image'
 
@@ -155,19 +156,32 @@ export default function GuestHome({ initialCategories = [], initialProducts = []
                                                     >
                                                         {/* Circular Image Container */}
                                                         <div className="w-16 h-16 md:w-20 md:h-20 relative rounded-full overflow-hidden bg-gray-100 shadow-sm ring-2 ring-gray-100 group-hover:ring-emerald-500 transition-all duration-300 group-hover:shadow-md group-hover:scale-105">
-                                                            {child.image_url ? (
-                                                                <Image
-                                                                    src={child.image_url}
-                                                                    alt={child.name}
-                                                                    fill
-                                                                    className="object-cover"
-                                                                    sizes="(max-width: 768px) 64px, 80px"
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gray-50 text-emerald-600 font-bold text-xl">
-                                                                    {child.name.charAt(0)}
-                                                                </div>
-                                                            )}
+                                                            {(() => {
+                                                                const generatedImg = getCategoryImage(child.name)
+                                                                if (generatedImg) return (
+                                                                    <Image
+                                                                        src={generatedImg}
+                                                                        alt={child.name}
+                                                                        fill
+                                                                        className="object-cover"
+                                                                        sizes="(max-width: 768px) 64px, 80px"
+                                                                    />
+                                                                )
+                                                                if (child.image_url) return (
+                                                                    <Image
+                                                                        src={child.image_url}
+                                                                        alt={child.name}
+                                                                        fill
+                                                                        className="object-cover"
+                                                                        sizes="(max-width: 768px) 64px, 80px"
+                                                                    />
+                                                                )
+                                                                return (
+                                                                    <div className="w-full h-full flex items-center justify-center bg-gray-50 text-emerald-600 font-bold text-xl">
+                                                                        {child.name.charAt(0)}
+                                                                    </div>
+                                                                )
+                                                            })()}
                                                         </div>
 
                                                         {/* Text Label */}
