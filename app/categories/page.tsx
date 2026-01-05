@@ -18,18 +18,18 @@ export const metadata: Metadata = {
 
 async function getCategories() {
     // 1. Get unique category IDs that have active products
+    // 1. Get unique category IDs that have active products
     const { data: activeLinkages, error: prodErr } = await supabase
-        .from('products')
-        .select('category_id')
-        .eq('is_active', true)
-        .not('category_id', 'is', null)
+        .from('categories')
+        .select('id, products!inner(id)')
+        .eq('products.is_active', true)
 
     if (prodErr) {
         console.error('Error fetching active product categories:', prodErr)
         return []
     }
 
-    const activeIds = new Set(activeLinkages?.map(p => p.category_id))
+    const activeIds = new Set(activeLinkages?.map(c => c.id))
 
     if (activeIds.size === 0) return []
 

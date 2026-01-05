@@ -8,14 +8,13 @@ export const getMarketplaceData = unstable_cache(
             console.log('Fetching marketplace data from DB...')
             // Fetch Categories that actually have products
             const { data: activeProductCategories, error: prodCatError } = await supabaseAdmin
-                .from('products')
-                .select('category_id')
-                .eq('is_active', true)
-                .not('category_id', 'is', null)
+                .from('categories')
+                .select('id, products!inner(id)')
+                .eq('products.is_active', true)
 
             if (prodCatError) console.error('Error fetching active product categories:', prodCatError)
 
-            const uniqueActiveCategoryIds = Array.from(new Set(activeProductCategories?.map(p => p.category_id) || []))
+            const uniqueActiveCategoryIds = Array.from(new Set(activeProductCategories?.map(c => c.id) || []))
 
             const { data: allCategories, error: catFetchError } = await supabaseAdmin
                 .from('categories')
@@ -61,7 +60,7 @@ export const getMarketplaceData = unstable_cache(
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v4'],
+    ['marketplace-data-v5'],
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']

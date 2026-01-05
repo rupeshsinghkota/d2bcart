@@ -22,19 +22,18 @@ export const getShopData = unstable_cache(
                 return { categories: [], products: [], totalProducts: 0 }
             }
 
-            // 2. Fetch active products to determine valid categories
+            // 2. Fetch unique category IDs that have active products
             const { data: activeLinkages, error: prodErr } = await supabaseAdmin
-                .from('products')
-                .select('category_id')
-                .eq('is_active', true)
-                .not('category_id', 'is', null)
+                .from('categories')
+                .select('id, products!inner(id)')
+                .eq('products.is_active', true)
 
             if (prodErr) {
                 console.error('Error fetching active linkages:', prodErr)
                 return { categories: [], products: [], totalProducts: 0 }
             }
 
-            const activeIds = new Set(activeLinkages?.map(p => p.category_id))
+            const activeIds = new Set(activeLinkages?.map(c => c.id))
 
             const hasActiveDescendant = (catId: string): boolean => {
                 if (activeIds.has(catId)) return true
@@ -90,7 +89,7 @@ export const getShopData = unstable_cache(
             return { categories: [], products: [], totalProducts: 0 }
         }
     },
-    ['shop-data-v4'],
+    ['shop-data-v5'],
     {
         revalidate: 300, // 5 minutes
         tags: ['shop', 'products', 'categories']
