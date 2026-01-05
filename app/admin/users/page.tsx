@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
         setProcessingId(editingUser.id)
 
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from('users')
                 .update({
                     business_name: formData.business_name,
