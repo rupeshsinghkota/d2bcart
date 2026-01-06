@@ -157,8 +157,8 @@ export default function RetailerOrderDetails() {
                                         <div className="flex items-center justify-end gap-2">
                                             <span className="text-gray-500">Payment:</span>
                                             <span className={`px-2 py-0.5 rounded capitalize font-medium ${order.payment_type === 'advance'
-                                                    ? 'bg-amber-100 text-amber-700'
-                                                    : 'bg-green-100 text-green-700'
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : 'bg-green-100 text-green-700'
                                                 }`}>
                                                 {order.payment_type === 'advance' ? '20% Advance' : 'Full Payment'}
                                             </span>
@@ -175,7 +175,7 @@ export default function RetailerOrderDetails() {
                             </div>
                         </div>
 
-                        {/* Manufacturer / Shipping From */}
+                        {/* Wholesaler / Shipping From */}
                         <div className="space-y-6">
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                                 <MapPin className="w-5 h-5 text-gray-400" />

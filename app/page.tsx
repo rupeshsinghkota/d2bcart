@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import GuestHome from '@/components/home/GuestHome'
 import RetailerHome from '@/components/home/RetailerHome'
-import ManufacturerHome from '@/components/home/ManufacturerHome'
+import WholesalerHome from '@/components/home/WholesalerHome'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { Suspense } from 'react'
@@ -54,7 +54,7 @@ async function HomeContent() {
   }
 
   if (profile.user_type === 'manufacturer') {
-    return <ManufacturerHome user={profile} />
+    return <WholesalerHome user={profile} />
   }
 
   return <RetailerHome initialCategories={categories} initialProducts={products} user={profile} />

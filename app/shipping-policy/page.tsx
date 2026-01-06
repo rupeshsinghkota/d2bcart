@@ -26,7 +26,7 @@ export default function ShippingPolicyPage() {
                         <div className="p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">
                             <Clock className="w-6 h-6 text-emerald-600 mb-3" />
                             <h3 className="font-bold text-gray-900 mb-2">Dispatch Timeline</h3>
-                            <p className="text-gray-600 text-sm">Manufacturers are required to dispatch orders within 48-72 hours of receiving a confirmed order, unless otherwise specified for bulk manufacturing.</p>
+                            <p className="text-gray-600 text-sm">Wholesalers are required to dispatch orders within 48-72 hours of receiving a confirmed order, unless otherwise specified for bulk manufacturing.</p>
                         </div>
                         <div className="p-6 bg-white border border-gray-100 rounded-2xl shadow-sm">
                             <MapPin className="w-6 h-6 text-emerald-600 mb-3" />
@@ -55,7 +55,7 @@ export default function ShippingPolicyPage() {
                         </p>
                         <ul className="list-disc pl-6 text-gray-600 space-y-2">
                             <li>Volumetric weight of the package.</li>
-                            <li>Distance between Manufacturer warehouse and Retailer store.</li>
+                            <li>Distance between Wholesaler warehouse and Retailer store.</li>
                             <li>Type of service selected (Urgent or Economy).</li>
                         </ul>
                     </section>
@@ -63,7 +63,7 @@ export default function ShippingPolicyPage() {
                     <section className="space-y-4">
                         <h2 className="text-2xl font-bold text-gray-900">3. Order Tracking</h2>
                         <p className="text-gray-600 leading-relaxed">
-                            Once the Manufacturer generates the shipping label, a unique AWB (Air Waybill) number is assigned. You can track your order in real-time from your "My Orders" dashboard.
+                            Once the Wholesaler generates the shipping label, a unique AWB (Air Waybill) number is assigned. You can track your order in real-time from your "My Orders" dashboard.
                         </p>
                     </section>
 

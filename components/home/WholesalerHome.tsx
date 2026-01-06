@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Package, TrendingUp, AlertCircle, IndianRupee } from 'lucide-react'
 
-export default function ManufacturerHome({ user }: { user: any }) {
+export default function WholesalerHome({ user }: { user: any }) {
     const [stats, setStats] = useState({
         pendingOrders: 0,
         revenue: 0,
@@ -40,7 +40,7 @@ export default function ManufacturerHome({ user }: { user: any }) {
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user.first_name || 'Partner'}!</h1>
-                <Link href="/manufacturer/orders" className="btn-primary text-sm">
+                <Link href="/wholesaler/orders" className="btn-primary text-sm">
                     View Orders
                 </Link>
             </div>
@@ -83,7 +83,7 @@ export default function ManufacturerHome({ user }: { user: any }) {
                 <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white">
                     <h3 className="text-xl font-bold mb-2">Add New Products</h3>
                     <p className="text-gray-400 mb-6 text-sm">Expand your catalog to reach more retailers.</p>
-                    <Link href="/manufacturer/products/new" className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100">
+                    <Link href="/wholesaler/products/new" className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-100">
                         + Add Product
                     </Link>
                 </div>
@@ -91,7 +91,7 @@ export default function ManufacturerHome({ user }: { user: any }) {
                 <div className="bg-white rounded-2xl p-6 border border-gray-200">
                     <h3 className="text-xl font-bold mb-2 text-gray-900">Inventory Status</h3>
                     <p className="text-gray-500 mb-6 text-sm">Keep your stock updated to avoid order cancellations.</p>
-                    <Link href="/manufacturer/inventory" className="text-emerald-600 font-semibold text-sm hover:underline">
+                    <Link href="/wholesaler/inventory" className="text-emerald-600 font-semibold text-sm hover:underline">
                         Manage Inventory →
                     </Link>
                 </div>

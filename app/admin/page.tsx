@@ -20,7 +20,7 @@ import {
 
 interface AdminStats {
     totalProducts: number
-    totalManufacturers: number
+    totalWholesalers: number
     totalRetailers: number
     totalOrders: number
     totalGMV: number
@@ -31,7 +31,7 @@ interface AdminStats {
 export default function AdminDashboard() {
     const [stats, setStats] = useState<AdminStats>({
         totalProducts: 0,
-        totalManufacturers: 0,
+        totalWholesalers: 0,
         totalRetailers: 0,
         totalOrders: 0,
         totalGMV: 0,
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
 
         setStats({
             totalProducts: productsCount || 0,
-            totalManufacturers: manufacturers,
+            totalWholesalers: manufacturers,
             totalRetailers: retailers,
             totalOrders: ordersData?.length || 0,
             totalGMV,
@@ -140,8 +140,8 @@ export default function AdminDashboard() {
                                 <Factory className="w-6 h-6 text-blue-600" />
                             </div>
                             <div>
-                                <div className="text-2xl font-bold">{stats.totalManufacturers}</div>
-                                <div className="text-gray-500 text-sm">Manufacturers</div>
+                                <div className="text-2xl font-bold">{stats.totalWholesalers}</div>
+                                <div className="text-gray-500 text-sm">Wholesalers</div>
                             </div>
                         </div>
                     </div>
@@ -219,7 +219,7 @@ export default function AdminDashboard() {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer → Manufacturer</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer → Wholesaler</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Your Profit</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>

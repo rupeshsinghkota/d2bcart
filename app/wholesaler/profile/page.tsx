@@ -51,7 +51,7 @@ interface Category {
     children?: Category[]
 }
 
-export default function ManufacturerProfile() {
+export default function WholesalerProfile() {
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'profile' | 'categories'>('profile')
@@ -157,7 +157,7 @@ export default function ManufacturerProfile() {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
 
-        const res = await fetch('/api/manufacturer/categories', {
+        const res = await fetch('/api/wholesaler/categories', {
             headers: {
                 Authorization: `Bearer ${session.access_token}`
             }
@@ -205,7 +205,7 @@ export default function ManufacturerProfile() {
                 return
             }
 
-            const res = await fetch('/api/manufacturer/categories', {
+            const res = await fetch('/api/wholesaler/categories', {
                 method: 'POST',
                 body: JSON.stringify({ categories: selectedCategories }),
                 headers: {

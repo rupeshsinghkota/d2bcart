@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Category } from '@/types'
+import { Category, Product } from '@/types'
 import { formatCurrency, calculateDisplayPrice } from '@/lib/utils'
-import { revalidateData } from '@/app/actions/revalidate'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Package, Info } from 'lucide-react'
+import { revalidateData } from '@/app/actions/revalidate'
+import { ArrowLeft, Package, Info, Save, Trash2, Loader2, Sparkles, Image as ImageIcon, Plus } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import VariationManager from '@/components/product/VariationManager'
 
@@ -19,16 +19,21 @@ interface Variation {
     price: string
     stock: string
     moq: string
+    dbId?: string  // Database ID for existing variations
 }
 
-export default function NewProductPage() {
+export default function EditProductPage() {
     const router = useRouter()
+    const params = useParams()
+    const id = params?.id as string
+
     const [categories, setCategories] = useState<Category[]>([])
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
     const [images, setImages] = useState<string[]>([])
     const [productType, setProductType] = useState<'simple' | 'variable'>('simple')
     const [variations, setVariations] = useState<Variation[]>([])
+    const [existingVariations, setExistingVariations] = useState<any[]>([])
 
     const [formData, setFormData] = useState({
         name: '',
@@ -47,62 +52,83 @@ export default function NewProductPage() {
 
     useEffect(() => {
         fetchCategories()
-    }, [])
+        if (id) {
+            fetchProduct()
+        }
+    }, [id])
 
     const fetchCategories = async () => {
-        // 1. Fetch Manufacturer's Subscribed Categories
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
+        const { data } = await supabase.from('categories').select('*').order('name')
+        if (data) setCategories(data)
+    }
 
-        const res = await fetch('/api/manufacturer/categories', {
-            headers: {
-                Authorization: `Bearer ${session.access_token}`
+    const fetchProduct = async () => {
+        try {
+            const { data: product, error } = await supabase
+                .from('products')
+                .select('*')
+                .eq('id', id)
+                .single() as { data: any, error: any }
+
+            if (error) throw error
+            if (!product) throw new Error('Product not found')
+
+            setFormData({
+                name: product.name,
+                description: product.description || '',
+                base_price: product.base_price?.toString() || '0',
+                moq: product.moq?.toString() || '1',
+                stock: product.stock?.toString() || '0',
+                category_id: product.category_id,
+                weight: product.weight?.toString() || '0.5',
+                length: product.length?.toString() || '10',
+                breadth: product.breadth?.toString() || '10',
+                height: product.height?.toString() || '10',
+                hsn_code: product.hsn_code || '',
+                tax_rate: product.tax_rate?.toString() || '18'
+            })
+            setImages(product.images || [])
+            setProductType(product.type || 'simple')
+
+            // If variable product, fetch variations
+            if (product.type === 'variable') {
+                const { data: existingVars } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('parent_id', id)
+                    .order('created_at')
+
+                if (existingVars && existingVars.length > 0) {
+                    setExistingVariations(existingVars)
+                    // Convert to Variation format for editing
+                    const variationsList: Variation[] = existingVars.map((v: any) => ({
+                        id: v.id,
+                        name: v.name.replace(`${product.name} - `, ''),
+                        sku: v.sku || '',
+                        price: v.base_price?.toString() || '',
+                        stock: v.stock?.toString() || '0',
+                        moq: v.moq?.toString() || '1',
+                        dbId: v.id
+                    }))
+                    setVariations(variationsList)
+                }
             }
-        })
-        const { categories: subscribedIds, error } = await res.json()
-
-        if (error || !subscribedIds || subscribedIds.length === 0) {
-            toast.error("You haven't selected any categories yet. Please go to your Profile settings.")
-            setTimeout(() => router.push('/manufacturer/profile'), 2000)
-            return
-        }
-
-        // 2. Fetch ALL Categories to build hierarchy
-        const { data } = await supabase
-            .from('categories')
-            .select('*')
-            .order('name')
-
-        const allCategories = (data || []) as Category[]
-
-        if (allCategories) {
-            // Build Map for Lookup
-            const catMap = new Map(allCategories.map(c => [c.id, c]))
-
-            // Filter and Build Paths
-            const filtered = allCategories
-                .filter(c => subscribedIds.includes(c.id))
-                .map(c => {
-                    let path = c.name
-                    let current = c
-                    let depth = 0
-                    while (current.parent_id && depth < 5) {
-                        const parent = catMap.get(current.parent_id)
-                        if (parent) {
-                            path = `${parent.name} > ${path}`
-                            current = parent
-                        } else {
-                            break
-                        }
-                        depth++
-                    }
-                    return { ...c, name: path } // Overwrite name for display
-                })
-                .sort((a, b) => a.name.localeCompare(b.name))
-
-            setCategories(filtered)
+        } catch (error) {
+            console.error('Error fetching product:', error)
+            toast.error('Failed to load product')
+        } finally {
+            setLoading(false)
         }
     }
+
+    // Effect to set selected category once both product data and categories are available
+    useEffect(() => {
+        if (categories.length > 0 && formData.category_id) {
+            const category = categories.find(c => c.id === formData.category_id)
+            setSelectedCategory(category || null)
+        }
+    }, [categories, formData.category_id])
+
 
     const handleCategoryChange = (categoryId: string) => {
         const category = categories.find(c => c.id === categoryId)
@@ -117,7 +143,6 @@ export default function NewProductPage() {
         try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
-            const userId = (user as any).id
 
             // Calculate display price and margin
             let basePrice = parseFloat(formData.base_price) || 0
@@ -138,12 +163,8 @@ export default function NewProductPage() {
             const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
             const margin = displayPrice - basePrice
 
-            // Generate SKU for parent
-            const parentSku = `${formData.name.substring(0, 30).replace(/\s+/g, '-').toUpperCase()}-${Date.now()}`
-
-            // Create parent product
-            const { data: parentProduct, error: parentError } = await (supabase.from('products') as any).insert({
-                manufacturer_id: userId,
+            // Update parent product
+            const { error } = await (supabase.from('products') as any).update({
                 category_id: formData.category_id,
                 name: formData.name,
                 description: formData.description,
@@ -153,39 +174,49 @@ export default function NewProductPage() {
                 moq: parseInt(formData.moq),
                 stock: stock,
                 images: images,
-                is_active: true,
-                sku: parentSku,
-                type: productType,
                 weight: parseFloat(formData.weight) || 0.5,
                 length: parseFloat(formData.length) || 10,
                 breadth: parseFloat(formData.breadth) || 10,
                 height: parseFloat(formData.height) || 10,
                 hsn_code: formData.hsn_code,
                 tax_rate: parseFloat(formData.tax_rate) || 0
-            }).select().single()
+            }).eq('id', id).eq('manufacturer_id', user.id)
 
-            if (parentError) throw parentError
+            if (error) throw error
 
-            // Create variations if variable product
-            if (productType === 'variable' && variations.length > 0 && parentProduct) {
-                const variationInserts = variations.map(v => {
+            // Handle variations for variable products
+            if (productType === 'variable') {
+                // Get current variation IDs from the form
+                const currentVariationIds = variations.filter(v => v.dbId).map(v => v.dbId)
+                const existingVariationIds = existingVariations.map(v => v.id)
+
+                // Delete removed variations
+                const toDelete = existingVariationIds.filter(id => !currentVariationIds.includes(id))
+                if (toDelete.length > 0) {
+                    await supabase.from('products').delete().in('id', toDelete)
+                }
+
+                // Update existing & add new variations
+                for (const v of variations) {
                     const varPrice = parseFloat(v.price) || basePrice
                     const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
-                    return {
-                        manufacturer_id: userId,
+
+                    const variationData = {
+                        manufacturer_id: user.id,
                         category_id: formData.category_id,
                         name: `${formData.name} - ${v.name}`,
                         description: formData.description,
                         base_price: varPrice,
                         display_price: varDisplayPrice,
                         your_margin: varDisplayPrice - varPrice,
-                        moq: parseInt(formData.moq),
-                        stock: parseInt(v.stock) || 1000,
-                        images: images, // Inherit parent images
+
+                        moq: parseInt(v.moq) || parseInt(formData.moq) || 1,
+                        stock: parseInt(v.stock) || 0,
+                        images: images,
                         is_active: true,
                         sku: v.sku,
                         type: 'variation',
-                        parent_id: parentProduct.id,
+                        parent_id: id,
                         weight: parseFloat(formData.weight) || 0.5,
                         length: parseFloat(formData.length) || 10,
                         breadth: parseFloat(formData.breadth) || 10,
@@ -193,21 +224,22 @@ export default function NewProductPage() {
                         hsn_code: formData.hsn_code,
                         tax_rate: parseFloat(formData.tax_rate) || 0
                     }
-                })
 
-                const { error: varError } = await (supabase.from('products') as any).insert(variationInserts)
-                if (varError) {
-                    console.error('Variation insert error:', varError)
-                    toast.error(`Product created but some variations failed: ${varError.message}`)
+                    if (v.dbId) {
+                        // Update existing
+                        await (supabase.from('products') as any).update(variationData).eq('id', v.dbId)
+                    } else {
+                        // Insert new
+                        await (supabase.from('products') as any).insert(variationData)
+                    }
                 }
             }
 
-            const varCount = productType === 'variable' ? ` with ${variations.length} variations` : ''
-            toast.success(`Product added successfully${varCount}!`)
+            toast.success('Product updated successfully!')
             await revalidateData('/')
-            router.push('/manufacturer/products')
+            router.push('/wholesaler/products')
         } catch (error: any) {
-            toast.error(error.message || 'Failed to add product')
+            toast.error(error.message || 'Failed to update product')
         } finally {
             setLoading(false)
         }
@@ -223,20 +255,28 @@ export default function NewProductPage() {
     const displayPrice = calculateDisplayPrice(basePrice, markupPercentage)
     const margin = displayPrice - basePrice
 
+    if (loading && !formData.name) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-3xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
-                        href="/manufacturer"
+                        href="/wholesaler"
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-5 h-5" />
                         Back to Dashboard
                     </Link>
-                    <h1 className="text-2xl font-bold text-gray-900">Add New Product</h1>
-                    <p className="text-gray-600">List your product for retailers to discover</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
+                    <p className="text-gray-600">Update your product details and pricing</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -245,48 +285,6 @@ export default function NewProductPage() {
                         <h2 className="font-semibold text-lg mb-4">Product Information</h2>
 
                         <div className="space-y-4">
-                            {/* Product Type Selector */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    Product Type *
-                                </label>
-                                <div className="flex gap-4">
-                                    <label className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${productType === 'simple' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <input
-                                            type="radio"
-                                            name="productType"
-                                            value="simple"
-                                            checked={productType === 'simple'}
-                                            onChange={() => setProductType('simple')}
-                                            className="hidden"
-                                        />
-                                        <div className="text-center">
-                                            <Package className="w-6 h-6 mx-auto mb-2 text-emerald-600" />
-                                            <div className="font-medium">Simple Product</div>
-                                            <div className="text-xs text-gray-500">Single item, no variations</div>
-                                        </div>
-                                    </label>
-                                    <label className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all ${productType === 'variable' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <input
-                                            type="radio"
-                                            name="productType"
-                                            value="variable"
-                                            checked={productType === 'variable'}
-                                            onChange={() => setProductType('variable')}
-                                            className="hidden"
-                                        />
-                                        <div className="text-center">
-                                            <div className="w-6 h-6 mx-auto mb-2 flex">
-                                                <Package className="w-4 h-4 text-purple-600" />
-                                                <Package className="w-4 h-4 text-purple-400 -ml-1" />
-                                            </div>
-                                            <div className="font-medium">Variable Product</div>
-                                            <div className="text-xs text-gray-500">Multiple models/sizes/colors</div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Product Name *
@@ -324,21 +322,11 @@ export default function NewProductPage() {
                                     required
                                 >
                                     <option value="">Select a category</option>
-                                    {categories.map(cat => {
-                                        // Find parent names for display
-                                        // Note: We need the full list to do this efficiently. 
-                                        // Since 'categories' state currently ONLY holds filtered items, we might miss parents if they aren't selected.
-                                        // However, showing just the name is often ambiguous.
-                                        // Let's rely on the name for now, or if we kept 'allCategories' we could build paths.
-                                        // Given the constraints, I'll stick to name, but add a TODO or try to show parent if available in the object (if I fetched it properly).
-                                        // Actually, I can join `parent_id` but that requires looking up.
-                                        // Let's just output the name for now, but assume the user selects LEAF nodes usually.
-                                        return (
-                                            <option key={cat.id} value={cat.id}>
-                                                {cat.name} (+{cat.markup_percentage}% platform fee)
-                                            </option>
-                                        )
-                                    })}
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name} (+{cat.markup_percentage}% platform fee)
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -393,7 +381,7 @@ export default function NewProductPage() {
                                                 <Info className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                                                 <div className="space-y-2 flex-1">
                                                     <p className="text-sm text-emerald-800">
-                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category (Default 15% if invalid)
+                                                        Platform adds <strong>{markupPercentage}%</strong> for {selectedCategory.name} category
                                                     </p>
                                                     <div className="grid grid-cols-3 gap-4 pt-2 border-t border-emerald-200">
                                                         <div>
@@ -423,7 +411,7 @@ export default function NewProductPage() {
                                                 Variable Product Pricing
                                             </p>
                                             <p className="text-sm text-purple-600 mt-1">
-                                                Set prices individually for each variation below. The lowest variation price will be shown as the starting price.
+                                                Price and stock are managed per variation below. Parent product values are auto-calculated.
                                             </p>
                                         </div>
                                     </div>
@@ -532,19 +520,31 @@ export default function NewProductPage() {
 
                     {/* Variations Section - Only for Variable Products */}
                     {productType === 'variable' && (
-                        <VariationManager
-                            variations={variations}
-                            onVariationsChange={setVariations}
-                            parentName={formData.name}
-                            parentPrice={formData.base_price}
-                            parentStock={formData.stock}
-                            parentMoq={formData.moq}
-                        />
+                        <div className="space-y-4">
+                            <VariationManager
+                                variations={variations}
+                                onVariationsChange={setVariations}
+                                parentName={formData.name}
+                                parentPrice={formData.base_price}
+                                parentStock={formData.stock}
+                                parentMoq={formData.moq}
+                            />
+
+                            {/* Info about existing variations */}
+                            {existingVariations.length > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+                                    <p className="text-blue-800">
+                                        <strong>{existingVariations.length}</strong> variations loaded from database.
+                                        Changes will be saved when you click Update Product.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {/* Submit */}
                     <div className="flex gap-4">
-                        <Link href="/manufacturer" className="flex-1 btn-secondary text-center">
+                        <Link href="/wholesaler" className="flex-1 btn-secondary text-center">
                             Cancel
                         </Link>
                         <button
@@ -556,8 +556,8 @@ export default function NewProductPage() {
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <Package className="w-5 h-5" />
-                                    Add Product
+                                    <Save className="w-5 h-5" />
+                                    Update Product
                                 </>
                             )}
                         </button>

@@ -73,7 +73,7 @@ export default function ManufacturerPayoutsPage() {
                 {/* Header */}
                 <div className="mb-8">
                     <Link
-                        href="/manufacturer"
+                        href="/wholesaler"
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-5 h-5" />

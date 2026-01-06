@@ -130,7 +130,7 @@ export default function AdminOrdersPage() {
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Order</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Date</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Retailer</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Manufacturer</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Wholesaler</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Amount</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Action</th>

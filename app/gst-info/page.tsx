@@ -28,7 +28,7 @@ export default function GSTInfoPage() {
                         </div>
                         <div className="grid md:grid-cols-2 gap-6">
                             <div className="p-5 bg-white/10 rounded-2xl border border-white/10">
-                                <h4 className="font-bold mb-2">For Manufacturers</h4>
+                                <h4 className="font-bold mb-2">For Wholesalers</h4>
                                 <p className="text-sm text-emerald-50 opacity-80 leading-relaxed">Ensure all products have correct HSN codes and GST percentages (5%, 12%, 18%, or 28%).</p>
                             </div>
                             <div className="p-5 bg-white/10 rounded-2xl border border-white/10">

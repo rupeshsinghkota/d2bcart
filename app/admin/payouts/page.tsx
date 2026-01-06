@@ -117,7 +117,7 @@ export default function AdminPayoutsPage() {
                             <thead className="bg-gray-50 text-gray-700 font-medium border-b">
                                 <tr>
                                     <th className="px-6 py-4">Order ID</th>
-                                    <th className="px-6 py-4">Manufacturer</th>
+                                    <th className="px-6 py-4">Wholesaler</th>
                                     <th className="px-6 py-4">Bank Details</th>
                                     <th className="px-6 py-4">Payment Details</th>
                                     <th className="px-6 py-4 text-right">Payout Amount</th>

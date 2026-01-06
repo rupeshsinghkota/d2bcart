@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 export default function SellerPage() {
     const whatsappNumber = '919117474683'; // Verified support number
-    const whatsappMessage = encodeURIComponent('Hi, I am a supplier/manufacturer and I want to sell my products on d2bcart.');
+    const whatsappMessage = encodeURIComponent('Hi, I am a supplier/wholesaler and I want to sell my products on d2bcart.');
     const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
     return (
@@ -31,7 +31,7 @@ export default function SellerPage() {
                             Scale Your <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">Distribution</span> Across India
                         </h1>
                         <p className="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed font-light">
-                            Join 500+ premium Manufacturers & Importers.
+                            Join 500+ premium Wholesalers & Importers.
                             Connect with <span className="text-white font-semibold">1,000+ verified retailers</span> in every major city.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-6 items-start">

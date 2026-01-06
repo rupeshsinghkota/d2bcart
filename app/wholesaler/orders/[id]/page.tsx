@@ -157,7 +157,7 @@ export default function ManufacturerOrderDetails() {
         return (
             <div className="min-h-screen bg-gray-50 p-8">
                 <div className="max-w-4xl mx-auto">
-                    <Link href="/manufacturer/orders" className="flex items-center text-gray-500 hover:text-gray-900 mb-6">
+                    <Link href="/wholesaler/orders" className="flex items-center text-gray-500 hover:text-gray-900 mb-6">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Orders
                     </Link>
@@ -271,8 +271,8 @@ export default function ManufacturerOrderDetails() {
                                             <div className="flex items-center justify-end gap-2">
                                                 <span className="text-gray-500">Type:</span>
                                                 <span className={`px-2 py-0.5 rounded capitalize font-medium ${order.payment_type === 'advance'
-                                                        ? 'bg-amber-100 text-amber-700'
-                                                        : 'bg-green-100 text-green-700'
+                                                    ? 'bg-amber-100 text-amber-700'
+                                                    : 'bg-green-100 text-green-700'
                                                     }`}>
                                                     {order.payment_type === 'advance' ? '20% Advance' : 'Full Payment'}
                                                 </span>

@@ -337,7 +337,7 @@ export default function BulkUploadPage() {
         } else {
             const skipMsg = skipped > 0 ? ` (${skipped} already existed)` : ''
             toast.success(`Uploaded ${success} products${skipMsg}!`)
-            setTimeout(() => router.push('/manufacturer/products'), 2000)
+            setTimeout(() => router.push('/wholesaler/products'), 2000)
         }
     }
 
@@ -347,7 +347,7 @@ export default function BulkUploadPage() {
                 {/* Header */}
                 <div className="mb-8">
                     <Link
-                        href="/manufacturer/products"
+                        href="/wholesaler/products"
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-5 h-5" />

@@ -77,7 +77,7 @@ export async function POST(req: Request) {
             // Ideally we copy the logic block. I will inject the registration logic briefly.
             const pickupPayload = {
                 pickup_location: pickupNickname,
-                name: primaryOrder.manufacturer.business_name || 'Manufacturer',
+                name: primaryOrder.manufacturer.business_name || 'Wholesaler',
                 email: primaryOrder.manufacturer.email,
                 phone: primaryOrder.manufacturer.phone,
                 address: (primaryOrder.manufacturer.address?.length > 10) ? primaryOrder.manufacturer.address : `Shop No 1, ${primaryOrder.manufacturer.address || "Main Market"}`,

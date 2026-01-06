@@ -92,13 +92,13 @@ const OrdersContent = () => {
         const manuf = (primaryOrder as any).manufacturer
         if (!manuf?.address || !manuf?.phone || !manuf?.pincode || !manuf?.city) {
             toast.error('Please complete your Business Profile (Address/Phone) before shipping.')
-            router.push('/manufacturer/profile')
+            router.push('/wholesaler/profile')
             return
         }
 
         if (manuf.address.length < 10) {
             toast.error('Address is too short. Shiprocket requires at least 10 characters.')
-            router.push('/manufacturer/profile')
+            router.push('/wholesaler/profile')
             return
         }
 
@@ -232,7 +232,7 @@ const OrdersContent = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <Link
-                        href="/manufacturer"
+                        href="/wholesaler"
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -492,7 +492,7 @@ const OrdersContent = () => {
 
                                                     {/* Details Link */}
                                                     <Link
-                                                        href={`/manufacturer/orders/${order.id}`}
+                                                        href={`/wholesaler/orders/${order.id}`}
                                                         className="text-gray-400 hover:text-gray-600 p-1.5"
                                                     >
                                                         <ArrowLeft className="w-4 h-4 rotate-180" />

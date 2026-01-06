@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
             if (!result.success) throw new Error(result.error)
 
             setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...formData } : u))
-            toast.success('Manufacturer details updated')
+            toast.success('Wholesaler details updated')
             setIsEditModalOpen(false)
         } catch (error: any) {
             console.error('Update failed:', error)
@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
     return (
         <div>
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-900">Manufacturer Verification</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Wholesaler Verification</h1>
                 <p className="text-gray-600">Review and approve manufacturer accounts</p>
             </div>
 
@@ -293,7 +293,7 @@ export default function AdminUsersPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                            <h3 className="font-bold text-lg text-gray-900">Edit Manufacturer Details</h3>
+                            <h3 className="font-bold text-lg text-gray-900">Edit Wholesaler Details</h3>
                             <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <XCircle className="w-6 h-6" />
                             </button>

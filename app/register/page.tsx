@@ -77,7 +77,7 @@ const RegisterContent = () => {
                 toast.success('Registration successful!')
                 // Redirect based on user type
                 if (userType === 'manufacturer') {
-                    router.push('/manufacturer')
+                    router.push('/wholesaler')
                 } else {
                     router.push('/products')
                 }
@@ -174,7 +174,7 @@ const RegisterContent = () => {
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${userType === 'manufacturer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-500'}`}>
                                                 <Factory className="w-5 h-5" />
                                             </div>
-                                            <div className={`font-bold ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Manufacturer</div>
+                                            <div className={`font-bold ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Wholesaler</div>
                                             <div className="text-xs text-gray-500 mt-1">Sell to retailers</div>
                                             {userType === 'manufacturer' && <div className="absolute top-4 right-4 text-emerald-600"><Check className="w-5 h-5" /></div>}
                                         </button>

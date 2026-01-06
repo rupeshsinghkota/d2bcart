@@ -21,7 +21,7 @@ import Image from 'next/image'
 import { SalesChart } from '@/components/analytics/SalesChart'
 import { TopProducts } from '@/components/analytics/TopProducts'
 
-export default function ManufacturerDashboard() {
+export default function WholesalerDashboard() {
     const [products, setProducts] = useState<Product[]>([])
     const [orders, setOrders] = useState<Order[]>([])
     const [stats, setStats] = useState({
@@ -167,26 +167,26 @@ export default function ManufacturerDashboard() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Manufacturer Dashboard</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Wholesaler Dashboard</h1>
                         <p className="text-gray-600">Manage your products and orders</p>
                     </div>
                     <div className="flex flex-wrap gap-3 w-full md:w-auto">
                         <Link
-                            href="/manufacturer/profile"
+                            href="/wholesaler/profile"
                             className="btn-secondary flex-1 md:flex-none justify-center flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                         >
                             <Building2 className="w-5 h-5" />
                             Profile
                         </Link>
                         <Link
-                            href="/manufacturer/products/bulk"
+                            href="/wholesaler/products/bulk"
                             className="btn-secondary flex-1 md:flex-none justify-center flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                         >
                             <Upload className="w-5 h-5" />
                             Bulk
                         </Link>
                         <Link
-                            href="/manufacturer/products/new"
+                            href="/wholesaler/products/new"
                             className="btn-primary flex-1 md:flex-none justify-center flex items-center gap-2"
                         >
                             <Plus className="w-5 h-5" />
@@ -207,7 +207,7 @@ export default function ManufacturerDashboard() {
                             </p>
                         </div>
                         <Link
-                            href="/manufacturer/profile"
+                            href="/wholesaler/profile"
                             className="btn-primary bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white whitespace-nowrap"
                         >
                             Complete Profile
@@ -217,7 +217,7 @@ export default function ManufacturerDashboard() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <Link href="/manufacturer/products" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <Link href="/wholesaler/products" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
                                 <Package className="w-6 h-6 text-emerald-600" />
@@ -229,7 +229,7 @@ export default function ManufacturerDashboard() {
                         </div>
                     </Link>
 
-                    <Link href="/manufacturer/orders" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <Link href="/wholesaler/orders" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <ShoppingBag className="w-6 h-6 text-blue-600" />
@@ -241,7 +241,7 @@ export default function ManufacturerDashboard() {
                         </div>
                     </Link>
 
-                    <Link href="/manufacturer/orders?status=pending" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <Link href="/wholesaler/orders?status=pending" className="block bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                                 <Clock className="w-6 h-6 text-yellow-600" />
@@ -253,7 +253,7 @@ export default function ManufacturerDashboard() {
                         </div>
                     </Link>
 
-                    <Link href="/manufacturer/payouts" className="block bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 shadow-sm text-white hover:shadow-md transition-shadow">
+                    <Link href="/wholesaler/payouts" className="block bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 shadow-sm text-white hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                                 <TrendingUp className="w-6 h-6 text-white" />
@@ -288,7 +288,7 @@ export default function ManufacturerDashboard() {
                                     >
                                         Low Stock
                                     </button>
-                                    <Link href="/manufacturer/products" className="text-emerald-600 text-sm hover:underline flex items-center">
+                                    <Link href="/wholesaler/products" className="text-emerald-600 text-sm hover:underline flex items-center">
                                         View All
                                     </Link>
                                 </div>
@@ -298,7 +298,7 @@ export default function ManufacturerDashboard() {
                                 <div className="p-12 text-center">
                                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                                     <p className="text-gray-500 mb-4">No products yet</p>
-                                    <Link href="/manufacturer/products/new" className="text-emerald-600 hover:underline">
+                                    <Link href="/wholesaler/products/new" className="text-emerald-600 hover:underline">
                                         Add your first product
                                     </Link>
                                 </div>
@@ -335,7 +335,7 @@ export default function ManufacturerDashboard() {
                                                     {product.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                                 <Link
-                                                    href={`/manufacturer/products/${product.id}/edit`}
+                                                    href={`/wholesaler/products/${product.id}/edit`}
                                                     className="p-2 hover:bg-gray-100 rounded-lg"
                                                 >
                                                     <Edit className="w-4 h-4 text-gray-400" />
@@ -353,7 +353,7 @@ export default function ManufacturerDashboard() {
                         <div className="bg-white rounded-xl shadow-sm">
                             <div className="p-6 border-b flex justify-between items-center">
                                 <h2 className="font-semibold text-lg">Recent Orders</h2>
-                                <Link href="/manufacturer/orders" className="text-emerald-600 text-sm hover:underline">
+                                <Link href="/wholesaler/orders" className="text-emerald-600 text-sm hover:underline">
                                     View All
                                 </Link>
                             </div>
@@ -368,7 +368,7 @@ export default function ManufacturerDashboard() {
                                     {orders.slice(0, 5).map(order => (
                                         <Link
                                             key={order.id}
-                                            href={`/manufacturer/orders/${order.id}`}
+                                            href={`/wholesaler/orders/${order.id}`}
                                             className="block p-4 hover:bg-gray-50"
                                         >
                                             <div className="flex justify-between items-start mb-2">

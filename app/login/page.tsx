@@ -55,7 +55,7 @@ export default function LoginPage() {
 
                 // Redirect based on user type
                 if (profile?.user_type === 'manufacturer') {
-                    router.push('/manufacturer')
+                    router.push('/wholesaler')
                 } else if (profile?.user_type === 'admin') {
                     router.push('/admin')
                 } else {

@@ -207,7 +207,7 @@ export default function ManufacturerProductsPage() {
                 {/* Header */}
                 <div className="mb-8">
                     <Link
-                        href="/manufacturer"
+                        href="/wholesaler"
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -220,14 +220,14 @@ export default function ManufacturerProductsPage() {
                         </div>
                         <div className="flex gap-3">
                             <Link
-                                href="/manufacturer/products/bulk"
+                                href="/wholesaler/products/bulk"
                                 className="btn-secondary flex items-center gap-2 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
                             >
                                 <Upload className="w-5 h-5" />
                                 Bulk Upload
                             </Link>
                             <Link
-                                href="/manufacturer/products/new"
+                                href="/wholesaler/products/new"
                                 className="btn-primary flex items-center gap-2"
                             >
                                 <Plus className="w-5 h-5" />
@@ -290,7 +290,7 @@ export default function ManufacturerProductsPage() {
                         </p>
                         {!searchQuery && (
                             <Link
-                                href="/manufacturer/products/new"
+                                href="/wholesaler/products/new"
                                 className="btn-primary inline-flex items-center gap-2"
                             >
                                 <Plus className="w-5 h-5" />
@@ -372,7 +372,7 @@ export default function ManufacturerProductsPage() {
                                         {!isSelected && (
                                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Link
-                                                    href={`/manufacturer/products/${product.id}/edit`}
+                                                    href={`/wholesaler/products/${product.id}/edit`}
                                                     className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
                                                 >
                                                     Edit Product
