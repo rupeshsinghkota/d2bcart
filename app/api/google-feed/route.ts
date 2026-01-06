@@ -79,9 +79,10 @@ export async function GET() {
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
             <g:price>${packPrice.toFixed(2)} INR</g:price>
             
-            <!-- B2B Unit Pricing Attributes -->
+            <!-- B2B Unit Pricing & Shipping -->
             <g:unit_pricing_measure>1 ct</g:unit_pricing_measure>
             <g:unit_pricing_base_measure>${moq} ct</g:unit_pricing_base_measure>
+            ${product.weight ? `<g:shipping_weight>${(product.weight * moq).toFixed(2)} kg</g:shipping_weight>` : ''}
             
             <!-- Identifiers -->
             <g:mpn><![CDATA[${product.sku || product.id}]]></g:mpn>
