@@ -48,7 +48,7 @@ export default function RefundPolicyPage() {
                             2. Returns & Replacements
                         </h2>
                         <p className="text-gray-600 leading-relaxed text-lg font-medium">
-                            Being a B2B marketplace, we only accept returns for the following reasons:
+                            Being a B2B marketplace, we only accept returns for the following reasons provided they are reported within **48 hours of delivery**:
                         </p>
                         <div className="grid md:grid-cols-2 gap-4">
                             {[
@@ -57,14 +57,18 @@ export default function RefundPolicyPage() {
                                 "Quantity mismatch",
                                 "Product significantly different from listing"
                             ].map((reason, i) => (
-                                <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl shadow-sm italic text-gray-600">
+                                <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl shadow-sm text-gray-700 font-medium">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                     {reason}
                                 </div>
                             ))}
                         </div>
+                        <div className="mt-6 p-4 bg-red-50 rounded-xl border border-red-100 flex gap-3 text-red-800 text-sm font-semibold">
+                            <XCircle className="w-5 h-5 shrink-0" />
+                            Note: Returns are NOT accepted for "Change of Mind" or unsold inventory.
+                        </div>
                         <p className="text-gray-500 text-sm mt-4 italic">
-                            * Claim for transit damage must be filed within 24 hours of delivery with unboxing video evidence.
+                            * All claims must be accompanied by an unboxing video to be valid.
                         </p>
                     </section>
 
@@ -94,7 +98,7 @@ export default function RefundPolicyPage() {
                         </div>
                     </section>
                 </div>
-            </section>
-        </div>
+            </section >
+        </div >
     )
 }
