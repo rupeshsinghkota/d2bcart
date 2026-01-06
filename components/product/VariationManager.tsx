@@ -42,6 +42,9 @@ export default function VariationManager({
     const [newAttrValues, setNewAttrValues] = useState('')
     const [activeTab, setActiveTab] = useState<'attributes' | 'manual'>('attributes')
     const [defaultPrice, setDefaultPrice] = useState(parentPrice || '')
+    const [bulkPriceInput, setBulkPriceInput] = useState('')
+    const [bulkStockInput, setBulkStockInput] = useState('')
+    const [bulkMoqInput, setBulkMoqInput] = useState('')
 
     // Get the effective price for new variations
     const effectivePrice = parentPrice || defaultPrice || ''
@@ -405,36 +408,86 @@ export default function VariationManager({
                     {/* Variations List (Always Visible) */}
                     {variations.length > 0 && (
                         <>
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-medium text-gray-700">Generated Variations ({variations.length})</h3>
-                                <div className="flex gap-3 text-sm">
-                                    <button
-                                        type="button"
-                                        onClick={() => setAllPrices(parentPrice)}
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        Set all prices to ₹{parentPrice || '0'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAllStock('1000')}
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        Set all stock to 1000
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setAllMoq(parentMoq || '1')}
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        Set all MOQ to {parentMoq || '1'}
-                                    </button>
+                            <div className="space-y-3 mb-4">
+                                <h3 className="font-medium text-gray-700">Bulk Update Variations ({variations.length})</h3>
+                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Bulk Price */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Set Price</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                value={bulkPriceInput}
+                                                onChange={(e) => setBulkPriceInput(e.target.value)}
+                                                placeholder={parentPrice || "0"}
+                                                className="input py-1.5 text-sm flex-1"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (bulkPriceInput) setAllPrices(bulkPriceInput)
+                                                }}
+                                                className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Bulk Stock */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Set Stock</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                value={bulkStockInput}
+                                                onChange={(e) => setBulkStockInput(e.target.value)}
+                                                placeholder={parentStock || "100"}
+                                                className="input py-1.5 text-sm flex-1"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (bulkStockInput) setAllStock(bulkStockInput)
+                                                }}
+                                                className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Bulk MOQ */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Set MOQ</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                value={bulkMoqInput}
+                                                onChange={(e) => setBulkMoqInput(e.target.value)}
+                                                placeholder={parentMoq || "1"}
+                                                className="input py-1.5 text-sm flex-1"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (bulkMoqInput) setAllMoq(bulkMoqInput)
+                                                }}
+                                                className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end">
                                     <button
                                         type="button"
                                         onClick={clearAllVariations}
-                                        className="text-red-500 hover:underline"
+                                        className="text-red-500 hover:text-red-600 text-sm hover:underline flex items-center gap-1"
                                     >
-                                        Clear all
+                                        <Trash2 className="w-3 h-3" />
+                                        Remove All Variations
                                     </button>
                                 </div>
                             </div>
