@@ -115,10 +115,8 @@ export default function Footer() {
                             India's leading B2B marketplace connecting retailers directly with verified manufacturers.
                         </p>
                         <div className="flex items-center gap-4 pt-2">
-                            <SocialLink href="#" icon={Facebook} />
-                            <SocialLink href="#" icon={Twitter} />
-                            <SocialLink href="#" icon={Instagram} />
-                            <SocialLink href="#" icon={Linkedin} />
+                            <SocialLink href="https://www.facebook.com/profile.php?id=61569202844764" icon={Facebook} />
+                            <SocialLink href="https://www.instagram.com/d2b_cart/" icon={Instagram} />
                         </div>
                     </div>
 

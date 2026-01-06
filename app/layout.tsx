@@ -60,7 +60,9 @@ export default function RootLayout({
       addressCountry: 'IN'
     },
     sameAs: [
-      'https://wa.me/919117474683'
+      'https://wa.me/919117474683',
+      'https://www.facebook.com/profile.php?id=61569202844764',
+      'https://www.instagram.com/d2b_cart/'
     ]
   }
 
