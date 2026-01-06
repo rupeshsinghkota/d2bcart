@@ -63,13 +63,17 @@ export async function GET() {
                 link += `?${deepLinkParams.toString()}`
             }
 
+            // XML Safety: Escape ampersands
+            const safeLink = link.replace(/&/g, '&amp;')
+            const safeImageLink = imageLink.replace(/&/g, '&amp;')
+
             return `
         <item>
             <g:id>${product.id}</g:id>
             <g:title><![CDATA[${title}]]></g:title>
             <g:description><![CDATA[${description}]]></g:description>
-            <g:link>${link}</g:link>
-            <g:image_link>${imageLink}</g:image_link>
+            <g:link>${safeLink}</g:link>
+            <g:image_link>${safeImageLink}</g:image_link>
             <g:brand><![CDATA[${brand}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
