@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -49,12 +49,30 @@ export default function ProductsClient({
     const [loading, setLoading] = useState(false) // For initial/filter loads
 
     const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
+    const searchDebounceRef = useRef<NodeJS.Timeout | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string>(initialSelectedCategory)
     const [wishlist, setWishlist] = useState<string[]>([])
 
     // New State for Mobile & Sorting
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const [sortBy, setSortBy] = useState('newest')
+
+    // Debounce search input
+    useEffect(() => {
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current)
+        }
+        searchDebounceRef.current = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery)
+        }, 300) // 300ms debounce
+
+        return () => {
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current)
+            }
+        }
+    }, [searchQuery])
 
     useEffect(() => {
         const query = searchParams.get('search')
@@ -68,16 +86,16 @@ export default function ProductsClient({
         }
     }, [searchParams])
 
-    // Reset and Fetch when Filters Change
+    // Reset and Fetch when Filters Change (uses debounced search)
     useEffect(() => {
-        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest' && page === 1;
+        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest' && page === 1 && !debouncedSearchQuery;
 
         if (!isInitialMount) {
             setPage(1)
             setHasMore(true)
             fetchProducts(1, true)
         }
-    }, [selectedCategory, sortBy, searchQuery])
+    }, [selectedCategory, sortBy, debouncedSearchQuery])
 
     // Fetch Wishlist
     useEffect(() => {
@@ -181,7 +199,7 @@ export default function ProductsClient({
             pageNumber,
             PRODUCTS_PER_PAGE,
             sortBy,
-            searchQuery
+            debouncedSearchQuery
         )
 
         if (isReset) {

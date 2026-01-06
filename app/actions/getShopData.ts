@@ -158,9 +158,30 @@ export async function paginateShopProducts(
             .eq('is_active', true)
             .is('parent_id', null)
 
-        // Search filter
+        // Search filter - enhanced with more fields and word tokenization
         if (searchQuery) {
-            query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+            // Sanitize and prepare search query
+            const sanitizedQuery = searchQuery.trim().replace(/[%_]/g, '')
+
+            if (sanitizedQuery.length > 0) {
+                // For multi-word searches, each word must match somewhere
+                const words = sanitizedQuery.split(/\s+/).filter(w => w.length >= 2)
+
+                if (words.length > 1) {
+                    // Multi-word: search for entire phrase first, then individual words
+                    const phraseFilter = `name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%,sku.ilike.%${sanitizedQuery}%`
+                    query = query.or(phraseFilter)
+                } else {
+                    // Single word or short query: search across multiple fields
+                    const searchFilter = [
+                        `name.ilike.%${sanitizedQuery}%`,
+                        `description.ilike.%${sanitizedQuery}%`,
+                        `sku.ilike.%${sanitizedQuery}%`,
+                        `hsn_code.ilike.%${sanitizedQuery}%`
+                    ].join(',')
+                    query = query.or(searchFilter)
+                }
+            }
         }
 
         // Category filter
