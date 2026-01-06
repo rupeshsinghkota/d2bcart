@@ -112,6 +112,9 @@ export default async function ProductPage({ params }: Props) {
         name: product.name,
         image: product.images,
         description: product.description,
+        sku: product.sku || product.id,
+        mpn: product.sku || undefined,
+        url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.id}`,
         brand: {
             '@type': 'Brand',
             name: product.manufacturer?.business_name || 'Generic'
@@ -120,7 +123,12 @@ export default async function ProductPage({ params }: Props) {
             '@type': 'Offer',
             price: product.display_price,
             priceCurrency: 'INR',
-            availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+            availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.id}`,
+            seller: {
+                '@type': 'Organization',
+                name: product.manufacturer?.business_name || 'D2BCart Seller'
+            }
         }
     }
 
