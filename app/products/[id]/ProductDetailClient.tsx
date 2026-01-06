@@ -324,12 +324,20 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 </h1>
 
                                 {/* PRICE DISPLAY */}
+                                {/* PRICE DISPLAY */}
                                 {variations.length === 0 ? (
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-2xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
-                                            {formatCurrency(currentProduct.display_price)}
-                                        </span>
-                                        <span className="text-gray-500 font-medium text-sm">/unit</span>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-2xl md:text-3xl font-extrabold text-emerald-600 tracking-tight">
+                                                {formatCurrency(currentProduct.display_price * (currentProduct.moq || 1))}
+                                            </span>
+                                            <span className="text-sm font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                                                Pack of {currentProduct.moq || 1}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-gray-500 font-medium">
+                                            {formatCurrency(currentProduct.display_price)} / unit
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col gap-1">
@@ -346,17 +354,22 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                                 </p>
                                             </>
                                         ) : (
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-2xl md:text-4xl font-bold text-gray-900 tracking-tight">
-                                                    {formatCurrency(
-                                                        variations && variations.length > 0
-                                                            ? Math.min(...variations.map(v => v.display_price))
-                                                            : currentProduct.display_price || currentProduct.base_price
-                                                    )}
-                                                </span>
-                                                <span className="text-xs md:text-sm font-medium text-gray-500">
-                                                    / unit (min)
-                                                </span>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                                                        {formatCurrency(
+                                                            (variations && variations.length > 0
+                                                                ? Math.min(...variations.map(v => v.display_price * (v.moq || 1)))
+                                                                : (currentProduct.display_price || currentProduct.base_price) * (currentProduct.moq || 1))
+                                                        )}
+                                                    </span>
+                                                    <span className="text-xs md:text-sm font-medium text-gray-500">
+                                                        / starting pack price
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    Min. pack size varies by model
+                                                </div>
                                             </div>
                                         )}
                                     </div>

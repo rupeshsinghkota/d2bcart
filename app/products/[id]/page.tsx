@@ -106,6 +106,12 @@ export default async function ProductPage({ params }: Props) {
         manufacturerProducts = await getManufacturerProducts(product.manufacturer.id, product.id)
     }
 
+    // B2B Schema Logic: Offer Price = Pack Price (MOQ * Unit Price)
+    // We also define UnitPriceSpecification to tell Google about the per-unit cost
+    const moq = product.moq || 1
+    const unitPrice = product.display_price
+    const packPrice = unitPrice * moq
+
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
@@ -121,13 +127,29 @@ export default async function ProductPage({ params }: Props) {
         },
         offers: {
             '@type': 'Offer',
-            price: product.display_price,
+            price: packPrice, // IMPORTANT: Providing Pack Price to match Feed
             priceCurrency: 'INR',
             availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.id}`,
             seller: {
                 '@type': 'Organization',
                 name: product.manufacturer?.business_name || 'D2BCart Seller'
+            },
+            // B2B Specific: Explain this price is for {MOQ} units
+            priceSpecification: {
+                '@type': 'UnitPriceSpecification',
+                price: unitPrice,
+                priceCurrency: 'INR',
+                referenceQuantity: {
+                    '@type': 'QuantitativeValue',
+                    value: '1',
+                    unitCode: 'C62' // UN/CEFACT code for 'Piece' or 'Unit' (or 'CT' for carton if preferred, C62 is standard unit)
+                }
+            },
+            eligibleQuantity: {
+                '@type': 'QuantitativeValue',
+                minValue: moq,
+                unitCode: 'C62'
             }
         }
     }
