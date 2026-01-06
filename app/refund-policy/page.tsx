@@ -1,7 +1,11 @@
-'use client'
-
 import React from 'react'
 import { RotateCcw, XCircle, AlertCircle, CheckCircle2, History } from 'lucide-react'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+    title: 'Refund & Cancellation Policy',
+    description: 'D2BCart refund and cancellation policy for B2B orders. Learn about our order cancellation, returns, and refund process.',
+}
 
 export default function RefundPolicyPage() {
     return (

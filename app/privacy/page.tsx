@@ -1,7 +1,11 @@
-'use client'
-
 import React from 'react'
 import { Shield, FileText, Lock, Eye, Bell } from 'lucide-react'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+    title: 'Privacy Policy',
+    description: 'D2BCart privacy policy. Learn how we collect, use, and protect your business information and data.',
+}
 
 export default function PrivacyPage() {
     return (

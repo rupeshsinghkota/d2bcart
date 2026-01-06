@@ -1,7 +1,11 @@
-'use client'
-
 import React from 'react'
 import { FileCheck, Activity, CreditCard, AlertTriangle } from 'lucide-react'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+    title: 'Terms of Service',
+    description: 'D2BCart terms of service. User registration, platform usage, payments, and legal conditions for B2B marketplace.',
+}
 
 export default function TermsPage() {
     return (

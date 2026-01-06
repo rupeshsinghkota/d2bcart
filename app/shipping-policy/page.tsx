@@ -1,7 +1,11 @@
-'use client'
-
 import React from 'react'
 import { Truck, MapPin, Package, Clock, Shield } from 'lucide-react'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+    title: 'Shipping Policy',
+    description: 'D2BCart shipping policy. Learn about dispatch timelines, logistics partners, shipping costs, and pan-India delivery coverage.',
+}
 
 export default function ShippingPolicyPage() {
     return (

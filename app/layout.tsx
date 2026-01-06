@@ -36,8 +36,50 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
+
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'D2BCart',
+    url: siteUrl,
+    logo: `${siteUrl}/logo.png`,
+    description: 'B2B Marketplace connecting retailers with manufacturers for wholesale trade.',
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '+91-9117474683',
+      contactType: 'customer service',
+      availableLanguage: ['English', 'Hindi']
+    },
+    sameAs: [
+      'https://wa.me/919117474683'
+    ]
+  }
+
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'D2BCart',
+    url: siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/products?search={search_term_string}`,
+      'query-input': 'required name=search_term_string'
+    }
+  }
+
   return (
     <html lang="en" suppressHydrationWarning={true}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+      </head>
       <body className={inter.className} suppressHydrationWarning={true}>
         <Suspense fallback={null}>
           <FacebookPixel />
