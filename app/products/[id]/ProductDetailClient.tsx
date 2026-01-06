@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
@@ -34,6 +34,8 @@ interface ProductDetailClientProps {
 
 export default function ProductDetailClient({ product, manufacturerProducts, variations = [] }: ProductDetailClientProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+
     const [currentProduct, setCurrentProduct] = useState<Product>(product)
     const [quantity, setQuantity] = useState(1)
     const [quantities, setQuantities] = useState<Record<string, number>>({})
@@ -44,6 +46,23 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
     const { user, addToCart } = useStore()
+
+    // Handle Deep Linking from Google Shopping
+    useEffect(() => {
+        const variantId = searchParams.get('variant')
+        if (variantId && variations.length > 0) {
+            const targetVariant = variations.find(v => v.id === variantId)
+            if (targetVariant) {
+                // Pre-select the variant by setting its quantity to MOQ
+                setQuantities(prev => ({
+                    ...prev,
+                    [targetVariant.id]: targetVariant.moq || 1
+                }))
+                // Optional: Scroll to variant section logic could go here
+                toast.success('Variant pre-selected from link')
+            }
+        }
+    }, [searchParams, variations])
 
     useEffect(() => {
         if (currentProduct?.id) {

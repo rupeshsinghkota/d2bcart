@@ -112,15 +112,18 @@ export default async function ProductPage({ params }: Props) {
     const unitPrice = product.display_price
     const packPrice = unitPrice * moq
 
-    const jsonLd = {
+    const isVariable = variations.length > 0
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+    const jsonLd: any = {
         '@context': 'https://schema.org',
-        '@type': 'Product',
+        '@type': isVariable ? 'ProductGroup' : 'Product',
         name: product.name,
         image: product.images,
         description: product.description,
         sku: product.sku || product.id,
         mpn: product.sku || undefined,
-        url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.id}`,
+        url: `${baseUrl}/products/${product.id}`,
         brand: {
             '@type': 'Brand',
             name: product.manufacturer?.business_name || 'Generic'
@@ -130,7 +133,7 @@ export default async function ProductPage({ params }: Props) {
             price: packPrice, // IMPORTANT: Providing Pack Price to match Feed
             priceCurrency: 'INR',
             availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.id}`,
+            url: `${baseUrl}/products/${product.id}`,
             seller: {
                 '@type': 'Organization',
                 name: product.manufacturer?.business_name || 'D2BCart Seller'
@@ -143,7 +146,7 @@ export default async function ProductPage({ params }: Props) {
                 referenceQuantity: {
                     '@type': 'QuantitativeValue',
                     value: '1',
-                    unitCode: 'C62' // UN/CEFACT code for 'Piece' or 'Unit' (or 'CT' for carton if preferred, C62 is standard unit)
+                    unitCode: 'C62'
                 }
             },
             eligibleQuantity: {
@@ -153,6 +156,42 @@ export default async function ProductPage({ params }: Props) {
             }
         }
     }
+
+    if (isVariable) {
+        jsonLd.variesBy = ['https://schema.org/color', 'https://schema.org/material']
+        jsonLd.hasVariant = variations.map(v => {
+            const vMoq = v.moq || 1
+            const vPackPrice = v.display_price * vMoq
+            let deepLink = `${baseUrl}/products/${product.id}?variant=${v.id}`
+            // Fallback: If name contains differentiator like 'Red'
+            if (v.name) deepLink += `&color=${encodeURIComponent(v.name)}`
+
+            return {
+                '@type': 'Product',
+                image: v.images?.[0] || product.images?.[0],
+                sku: v.sku || v.id,
+                name: `${product.name} - ${v.name}`,
+                offers: {
+                    '@type': 'Offer',
+                    url: deepLink,
+                    price: vPackPrice,
+                    priceCurrency: 'INR',
+                    availability: v.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                    priceSpecification: {
+                        '@type': 'UnitPriceSpecification',
+                        price: v.display_price,
+                        priceCurrency: 'INR',
+                        referenceQuantity: {
+                            '@type': 'QuantitativeValue',
+                            value: '1',
+                            unitCode: 'C62'
+                        }
+                    }
+                }
+            }
+        })
+    }
+
 
     return (
         <>

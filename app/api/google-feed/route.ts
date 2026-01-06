@@ -32,12 +32,22 @@ export async function GET() {
             const moq = product.moq || 1
             const packPrice = unitPrice * moq
 
-            // Variants handling
-            // If it's a variation, use parent_id as item_group_id
-            // If it's a parent, use its own id as item_group_id (or leave empty if simple product)
+            // Variants handling: Group by Item Group ID
             const itemGroupId = product.parent_id || (product.type === 'variable' ? product.id : '')
 
+            // Attribute Parsing (Color/Material) from Name
+            let deepLinkParams = new URLSearchParams()
+
+            if (itemGroupId && product.parent_id) {
+                // Deep Linking: Add 'variant' param so frontend can pre-select it
+                deepLinkParams.append('variant', product.id)
+
+                // Fallback: If name contains differentiator, it helps user context
+                if (product.name) deepLinkParams.append('color', product.name)
+            }
+
             // Title optimization: Brand + Name + Bulk Pack info
+            // Ensure unique titles for variants
             const brand = product.manufacturer?.business_name || 'Generic'
             const title = `${brand} ${product.name} - Wholesale Bulk Pack (${moq} Units)`
 
@@ -47,9 +57,11 @@ export async function GET() {
             // Image
             const imageLink = product.images && product.images.length > 0 ? product.images[0] : ''
 
-            // Link
-            let link = `${baseUrl}/products/${product.id}`
-            // Add any other params if needed for variants, though ID usually suffices
+            // Link with Deep Linking params
+            let link = `${baseUrl}/products/${itemGroupId || product.id}`
+            if (deepLinkParams.toString()) {
+                link += `?${deepLinkParams.toString()}`
+            }
 
             return `
         <item>
