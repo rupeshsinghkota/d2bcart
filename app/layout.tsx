@@ -51,6 +51,14 @@ export default function RootLayout({
       contactType: 'customer service',
       availableLanguage: ['English', 'Hindi']
     },
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Vaibhav Heritage Height, Sector 16',
+      addressLocality: 'Greater Noida',
+      addressRegion: 'Uttar Pradesh',
+      postalCode: '201009',
+      addressCountry: 'IN'
+    },
     sameAs: [
       'https://wa.me/919117474683'
     ]

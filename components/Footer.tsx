@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, ShieldCheck } from 'lucide-react'
+import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, ShieldCheck, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function Footer() {
@@ -140,6 +140,10 @@ export default function Footer() {
                             <li className="flex items-start gap-2">
                                 <Mail className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
                                 <a href="mailto:support@d2bcart.com" className="hover:text-emerald-600 transition-colors">support@d2bcart.com</a>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <MapPin className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
+                                <span className="text-gray-600">Vaibhav Heritage Height, Sector 16, Greater Noida, Uttar Pradesh, 201009</span>
                             </li>
                         </ul>
                     </div>

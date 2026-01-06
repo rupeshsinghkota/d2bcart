@@ -63,7 +63,7 @@ export default function ContactPage() {
                                 </div>
                                 <div>
                                     <div className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Corporate HQ</div>
-                                    <p className="text-gray-600">Level 8, Skyview Tower, Hitech City, Hyderabad, TG 500081</p>
+                                    <p className="text-gray-600">Vaibhav Heritage Height, Sector 16, Greater Noida, Uttar Pradesh, 201009</p>
                                 </div>
                             </div>
                         </div>

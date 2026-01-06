@@ -63,9 +63,9 @@ export async function GET() {
                 link += `?${deepLinkParams.toString()}`
             }
 
-            // XML Safety: Escape ampersands
-            const safeLink = link.replace(/&/g, '&amp;')
-            const safeImageLink = imageLink.replace(/&/g, '&amp;')
+            // XML Safety: CDATA handles ampersands, so we use raw links
+            const safeLink = link
+            const safeImageLink = imageLink
 
             return `
         <item>
@@ -84,10 +84,10 @@ export async function GET() {
             <g:unit_pricing_base_measure>${moq} ct</g:unit_pricing_base_measure>
             
             <!-- Identifiers -->
-            <g:mpn>${product.sku || product.id}</g:mpn>
+            <g:mpn><![CDATA[${product.sku || product.id}]]></g:mpn>
             <g:identifier_exists>${product.sku ? 'yes' : 'no'}</g:identifier_exists>
             
-            ${itemGroupId ? `<g:item_group_id>${itemGroupId}</g:item_group_id>` : ''}
+            ${itemGroupId ? `<g:item_group_id><![CDATA[${itemGroupId}]]></g:item_group_id>` : ''}
             ${product.category?.name ? `<g:product_type><![CDATA[${product.category.name}]]></g:product_type>` : ''}
         </item>`
         })
