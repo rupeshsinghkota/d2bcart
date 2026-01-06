@@ -72,8 +72,8 @@ export async function GET() {
             <g:id>${product.id}</g:id>
             <g:title><![CDATA[${title}]]></g:title>
             <g:description><![CDATA[${description}]]></g:description>
-            <g:link>${safeLink}</g:link>
-            <g:image_link>${safeImageLink}</g:image_link>
+            <g:link><![CDATA[${safeLink}]]></g:link>
+            <g:image_link><![CDATA[${safeImageLink}]]></g:image_link>
             <g:brand><![CDATA[${brand}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
