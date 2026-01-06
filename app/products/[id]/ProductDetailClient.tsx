@@ -312,21 +312,24 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                             {/* Desktop Thumbnails */}
                             {currentProduct.images && currentProduct.images.length > 1 && (
                                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-center">
-                                    {currentProduct.images.map((img, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setActiveImageIndex(idx)}
-                                            className={`w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
-                                        >
-                                            <Image
-                                                src={img}
-                                                alt=""
-                                                width={80}
-                                                height={80}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </button>
-                                    ))}
+                                    {currentProduct.images.map((img, idx) => {
+                                        if (!img) return null
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setActiveImageIndex(idx)}
+                                                className={`relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
+                                            >
+                                                <Image
+                                                    src={img}
+                                                    alt={`Thumbnail ${idx + 1}`}
+                                                    fill
+                                                    sizes="64px"
+                                                    className="object-cover"
+                                                />
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
