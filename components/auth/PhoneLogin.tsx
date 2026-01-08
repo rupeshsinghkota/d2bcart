@@ -96,8 +96,19 @@ export default function PhoneLogin() {
 
                         if (linkData.success && linkData.status === 'migrated') {
                             toast.success('Account successfully linked! Logging you in...')
-                            router.refresh() // Refresh to pick up the new profile
-                            return // The refresh should handle the rest or we can force redirect
+
+                            // Explicitly redirect based on returned user_type
+                            const type = linkData.user_type
+                            if (type === 'manufacturer') {
+                                router.push('/wholesaler')
+                            } else if (type === 'admin') {
+                                router.push('/admin')
+                            } else {
+                                router.push('/products')
+                            }
+
+                            router.refresh()
+                            return
                         }
                     } catch (e) {
                         console.error('Link check failed', e)
