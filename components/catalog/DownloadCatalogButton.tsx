@@ -133,7 +133,7 @@ export default function DownloadCatalogButton({
                 user ? <FileText className="w-4 h-4" /> : <Lock className="w-4 h-4" />
             )}
             <span>
-                {downloading ? 'Generating...' : (user ? 'Download Catalog' : 'Login to Download')}
+                {downloading ? 'Generating...' : (user ? 'Download Catalog' : 'Login to Download Catalog')}
             </span>
         </button>
     )
