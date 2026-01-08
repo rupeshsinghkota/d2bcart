@@ -16,8 +16,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
         }
 
-        // Supabase sometimes sends 'otp', sometimes 'token' depending on the flow/version
-        const otp = body.otp || body.token || body.code
+        // Supabase sometimes sends 'otp' at root, sometimes nested in 'sms' object
+        const otp = body.otp || body.token || body.code || body.sms?.otp || body.sms?.token || body.sms?.code
         const { user } = body
 
         if (!user || !user.phone || !otp) {
