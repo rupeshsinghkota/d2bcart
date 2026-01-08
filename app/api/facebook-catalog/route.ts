@@ -65,10 +65,10 @@ export async function GET() {
                 if (product.name) deepLinkParams.append('color', product.name)
             }
 
-            // Title optimization: Brand + Name + Bulk Pack info
+            // Title optimization: Name + Bulk Pack info
             // Ensure unique titles for variants
             const brand = product.manufacturer?.business_name || 'Generic'
-            const title = `${brand} ${product.name} - Wholesale Bulk Pack (${moq} Units)`
+            const title = `${product.name} - Wholesale Bulk Pack (${moq} Units)`
 
             // Description
             const description = product.description || `Wholesale ${product.name} available in bulk from ${brand}.`
