@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import DownloadCatalogButton from '@/components/catalog/DownloadCatalogButton'
 import { supabase } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
 import { Product } from '@/types'
@@ -583,6 +584,13 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
                                 </button>
+                                <DownloadCatalogButton
+                                    categoryId={product.category_id}
+                                    categoryName={product.category?.name || 'Category'}
+                                    source="product"
+                                    variant="outline"
+                                    className="px-4"
+                                />
                             </div>
                         </div>
 

@@ -23,7 +23,8 @@ export async function GET(
         {
             cookies: {
                 getAll() {
-                    return parseCookieHeader(request.headers.get('Cookie') ?? '')
+                    const parsed = parseCookieHeader(request.headers.get('Cookie') ?? '')
+                    return parsed.map(c => ({ name: c.name, value: c.value ?? '' }))
                 },
                 setAll(cookiesToSet) {
                     // We don't need to set cookies in this GET request usually
