@@ -199,14 +199,21 @@ export async function GET(
                 imgData = await getImageBase64(p.images[0])
             }
 
+            // WhatsApp Message
+            const waNumber = '919117474683'
+            const productLink = `${baseUrl}/products/${p.id}`
+            const message = `Hi, I am interested in this product: ${p.name} (SKU: ${p.sku || 'N/A'}). Link: ${productLink}`
+            const chatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`
+
             rows.push({
                 image: imgData,
                 name: p.name,
                 sku: p.sku || '-',
                 moq: moq,
                 price: price,
-                url: `${baseUrl}/products/${p.id}`,
-                isLink: true
+                url: productLink,
+                isLink: true,
+                chatUrl: chatUrl
             })
 
             // Variations
@@ -215,20 +222,23 @@ export async function GET(
                     const vName = v.name === p.name ? `${v.name} (Variant)` : v.name
 
                     // Variation Image (fallback to parent if none)
-                    // Usually we don't show image for every variant to save space unless it's different?
-                    // Let's show it if it exists distinct from parent, otherwise null (cleaner table)
                     let vImgData = null
                     if (v.images && v.images.length > 0) {
                         vImgData = await getImageBase64(v.images[0])
                     }
 
+                    // Variant Chat Link
+                    const vMessage = `Hi, I am interested in this product variant: ${vName} (SKU: ${v.sku || 'N/A'}). Parent Link: ${productLink}`
+                    const vChatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(vMessage)}`
+
                     rows.push({
-                        image: vImgData, // Optional: if we want to show variant images
+                        image: vImgData,
                         name: `  - ${vName}`,
                         sku: v.sku || '-',
                         moq: `${v.moq || 1} units`,
-                        price: `Rs. ${v.display_price}`
-                    }) // Variations link to same product (parent) usually, or we can skip link for variants to avoid clutter
+                        price: `Rs. ${v.display_price}`,
+                        chatUrl: vChatUrl
+                    })
                 }
             }
             return rows
@@ -239,8 +249,8 @@ export async function GET(
 
         autoTable(doc, {
             startY: 60,
-            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Price', 'Link']],
-            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price, r.isLink ? 'View' : '']),
+            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Price', 'Link', 'Chat']],
+            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price, r.isLink ? 'View' : '', r.chatUrl ? 'Chat' : '']),
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], textColor: 255 },
             styles: {
@@ -249,12 +259,13 @@ export async function GET(
                 minCellHeight: 30
             },
             columnStyles: {
-                0: { cellWidth: 35 },     // Increased Image column width
+                0: { cellWidth: 35 },     // Image
                 1: { cellWidth: 'auto' }, // Name
-                2: { cellWidth: 25 },     // SKU
-                3: { cellWidth: 25 },     // MOQ
+                2: { cellWidth: 20 },     // SKU
+                3: { cellWidth: 20 },     // MOQ
                 4: { cellWidth: 25, halign: 'right' }, // Price
-                5: { cellWidth: 20, halign: 'center', textColor: [16, 185, 129] } // Green text for 'View'
+                5: { cellWidth: 15, halign: 'center', textColor: [16, 185, 129] }, // View
+                6: { cellWidth: 15, halign: 'center', textColor: [37, 211, 102] }  // Chat (WhatsApp Green)
             },
             didDrawCell: (data) => {
                 // Image Drawing
@@ -274,12 +285,22 @@ export async function GET(
                     }
                 }
 
-                // Link Drawing
+                // Link Drawing (View)
                 if (data.section === 'body' && data.column.index === 5) {
                     const rowData = tableRows[data.row.index]
                     if (rowData && rowData.url) {
                         doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, {
                             url: rowData.url
+                        })
+                    }
+                }
+
+                // Chat Link Drawing
+                if (data.section === 'body' && data.column.index === 6) {
+                    const rowData = tableRows[data.row.index]
+                    if (rowData && rowData.chatUrl) {
+                        doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, {
+                            url: rowData.chatUrl
                         })
                     }
                 }
