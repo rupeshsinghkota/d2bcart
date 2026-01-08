@@ -82,12 +82,30 @@ export default function PhoneLogin() {
                         router.push('/products')
                     }
                 } else {
-                    // New user via phone -> Redirect to registration step 2 or profile setup
-                    // For now, assume retailer or redirect to a profile completion page
-                    // In this simplified flow, we might need to create a basic user record if it doesn't exist
-                    // check if the user is new
+                    // Profile not found by ID. Check for "Orphaned" profile via API
+                    try {
+                        const res = await fetch('/api/auth/link-account', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: data.user.id,
+                                phone: formattedPhone
+                            })
+                        })
+                        const linkData = await res.json()
+
+                        if (linkData.success && linkData.status === 'migrated') {
+                            toast.success('Account successfully linked! Logging you in...')
+                            router.refresh() // Refresh to pick up the new profile
+                            return // The refresh should handle the rest or we can force redirect
+                        }
+                    } catch (e) {
+                        console.error('Link check failed', e)
+                    }
+
+                    // If still new, redirect to register
                     toast.success('Welcome! Please complete your profile.')
-                    router.push('/register?step=2') // Hypothetical redirect for new users
+                    router.push('/register?step=2')
                 }
                 router.refresh()
             }
