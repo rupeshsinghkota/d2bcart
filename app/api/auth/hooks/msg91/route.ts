@@ -2,27 +2,39 @@ import { NextResponse } from 'next/server'
 
 // This route allows Supabase to send OTPs via MSG91 (WhatsApp Direct API)
 // Configure this URL in Supabase -> Authentication -> Providers -> Phone -> SMS Provider: Custom
+// This route allows Supabase to send OTPs via MSG91 (WhatsApp Direct API)
+// Configure this URL in Supabase -> Authentication -> Providers -> Phone -> SMS Provider: Custom
 export async function POST(request: Request) {
+    console.log('--- MSG91 Hook Triggered ---')
     try {
-        const body = await request.json()
+        let body
+        try {
+            body = await request.json()
+            console.log('Hook Payload:', JSON.stringify(body, null, 2))
+        } catch (e) {
+            console.error('Failed to parse JSON body')
+            return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        }
+
         const { user, otp } = body
 
         if (!user || !user.phone || !otp) {
-            return new NextResponse('Missing required fields', { status: 400 })
+            console.error('Missing required fields:', { user: !!user, phone: !!user?.phone, otp: !!otp })
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
         const phone = user.phone.replace('+', '') // MSG91 expects number without +
 
-        // Environment Variables (Updated for WhatsApp Direct API)
+        // Environment Variables
         const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
-        // These can be hardcoded if stable, or keep in env for safety
+        // Defaults
         const MSG91_INTEGRATED_NUMBER = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
         const MSG91_NAMESPACE = process.env.MSG91_NAMESPACE || "de03d239_9cbd_4348_ad12_4d8a4ea70188"
         const MSG91_TEMPLATE_NAME = process.env.MSG91_TEMPLATE_NAME || "d2b_login_otp"
 
         if (!MSG91_AUTH_KEY) {
-            console.error('MSG91_AUTH_KEY missing in env')
-            return new NextResponse('MSG91 Config Missing', { status: 500 })
+            console.error('CRITICAL: MSG91_AUTH_KEY missing in server environment')
+            return NextResponse.json({ error: 'Server Config Missing' }, { status: 500 })
         }
 
         // WhatsApp Direct API Payload
@@ -45,7 +57,7 @@ export async function POST(request: Request) {
                             "components": {
                                 "body_1": {
                                     "type": "text",
-                                    "value": otp // The variable {{1}} in the template
+                                    "value": otp
                                 }
                             }
                         }
@@ -53,6 +65,8 @@ export async function POST(request: Request) {
                 }
             }
         }
+
+        console.log('Sending to MSG91:', JSON.stringify(payload, null, 2))
 
         const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
             method: 'POST',
@@ -64,20 +78,19 @@ export async function POST(request: Request) {
         })
 
         const data = await response.json()
-
-        // MSG91 WhatsApp API usually returns { status: "success", ... } or similar
-        // We log it to be sure
         console.log("MSG91 Response:", JSON.stringify(data))
 
-        if (data.status === 'error' || data.type === 'error') {
-            console.error('MSG91 Error:', data)
-            return new NextResponse(JSON.stringify(data), { status: 500 })
+        if (response.ok && !data.error) {
+            return NextResponse.json({ success: true, provider_response: data })
+        } else {
+            console.error('MSG91 API Error:', data)
+            // We return 200 even on API error to avoid blocking Supabase flow if possible, 
+            // but user won't get OTP. Better to return 500 so Supabase knows it failed.
+            return NextResponse.json({ error: 'MSG91 Service Error', details: data }, { status: 500 })
         }
 
-        return new NextResponse(JSON.stringify({ success: true }), { status: 200 })
-
-    } catch (error) {
-        console.error('Webhook Error:', error)
-        return new NextResponse('Internal Server Error', { status: 500 })
+    } catch (error: any) {
+        console.error('Webhook Internal Error:', error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
