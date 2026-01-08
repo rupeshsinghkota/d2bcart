@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import FacebookPixel from "@/components/analytics/FacebookPixel";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -104,6 +105,7 @@ export default function RootLayout({
         </main>
         <Footer />
         <BottomNav />
+        <WhatsAppButton />
       </body>
     </html>
   );
