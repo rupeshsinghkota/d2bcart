@@ -5,6 +5,7 @@ import { Download, FileText, Lock } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { useStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
 interface DownloadCatalogButtonProps {
     categoryId: string
@@ -123,7 +124,7 @@ export default function DownloadCatalogButton({
         <button
             onClick={handleDownload}
             disabled={downloading}
-            className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+            className={cn(baseStyles, variants[variant], sizes[size], className)}
             title={user ? "Download Wholesale Price List" : "Login to Download Price List"}
         >
             {downloading ? (
