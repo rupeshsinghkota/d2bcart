@@ -16,10 +16,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
         }
 
-        const { user, otp } = body
+        // Supabase sometimes sends 'otp', sometimes 'token' depending on the flow/version
+        const otp = body.otp || body.token || body.code
+        const { user } = body
 
         if (!user || !user.phone || !otp) {
-            console.error('Missing required fields:', { user: !!user, phone: !!user?.phone, otp: !!otp })
+            console.error('Missing required fields:', {
+                user: !!user,
+                phone: !!user?.phone,
+                otp_found: !!otp,
+                available_keys: Object.keys(body)
+            })
             // Return 200 to prevent Supabase "Invalid Payload" error, so we can debug logs
             return NextResponse.json({ error: 'Missing required fields (Logged)' }, { status: 200 })
         }
