@@ -183,29 +183,35 @@ export async function GET(
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], textColor: 255 },
             styles: {
-                fontSize: 9,
+                fontSize: 10,
                 valign: 'middle',
-                minCellHeight: 15 // Ensure row is tall enough for image
+                minCellHeight: 30
             },
             columnStyles: {
-                0: { cellWidth: 20 },     // Image
+                0: { cellWidth: 35 },     // Increased Image column width
                 1: { cellWidth: 'auto' }, // Name
                 2: { cellWidth: 25 },     // SKU
                 3: { cellWidth: 25 },     // MOQ
-                4: { cellWidth: 25, halign: 'right' } // Price
+                4: { cellWidth: 30, halign: 'right' } // Price
             },
             didDrawCell: (data) => {
                 if (data.section === 'body' && data.column.index === 0) {
                     const rowData = tableRows[data.row.index]
                     if (rowData && rowData.image) {
                         try {
-                            // padding 1mm
-                            const dim = data.cell.height - 2
-                            const x = data.cell.x + 1
-                            const y = data.cell.y + 1
-                            doc.addImage(rowData.image, 'JPEG', x, y, dim, dim)
+                            // padding 2mm
+                            const cellHeight = data.cell.height
+                            const cellWidth = data.cell.width
+
+                            // Make image square, centered in cell
+                            const imageSize = Math.min(cellHeight, cellWidth) - 4
+
+                            const x = data.cell.x + (cellWidth - imageSize) / 2
+                            const y = data.cell.y + (cellHeight - imageSize) / 2
+
+                            doc.addImage(rowData.image, 'JPEG', x, y, imageSize, imageSize)
                         } catch (err) {
-                            // Fail silently for bad images
+                            // Fail silently
                         }
                     }
                 }
