@@ -40,7 +40,35 @@ export async function GET(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Fetch Data
+    // 2. Auth & Validations... (already done above)
+    // ...
+
+    // 2.5 Check for Fresh Cache
+    // We do this BEFORE fetching products to save DB reads if cache is hit
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+
+    // We need to typecase supabase as any or ignore TS for custom table if types aren't fully propagated yet
+    const { data: cachedCatalog } = await (supabase
+        .from('category_catalogs') as any)
+        .select('*')
+        .eq('category_id', categoryId)
+        .gt('updated_at', twelveHoursAgo)
+        .single()
+
+    if (cachedCatalog && cachedCatalog.pdf_url) {
+        // Cache Hit! Redirect to the stored PDF
+
+        // Track Download for stats even on cache hit
+        await supabase.from('catalog_downloads').insert({
+            user_id: user.id,
+            category_id: categoryId,
+            source_page: 'api_cache_redirect'
+        })
+
+        return NextResponse.redirect(cachedCatalog.pdf_url)
+    }
+
+    // 2. Fetch Data (Existing logic...)
     const { data: category, error: catError } = await supabase
         .from('categories')
         .select('name')
@@ -102,23 +130,53 @@ export async function GET(
             }
         }
 
-        // --- Header ---
-        doc.setFontSize(22)
-        doc.setTextColor(16, 185, 129) // Emerald-500
-        doc.text("D2BCart", 14, 20)
+        // --- Header with Logo ---
+        // Draw Logo Box (Emerald)
+        doc.setFillColor(16, 185, 129) // Emerald-500
+        doc.roundedRect(14, 15, 12, 12, 2, 2, 'F')
 
+        // Draw 'D' inside
+        doc.setTextColor(255, 255, 255)
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text("D", 20, 23, { align: 'center' })
+
+        // "D2BCart" Text
+        doc.setFontSize(22)
+        doc.setTextColor(16, 185, 129)
+        doc.text("D2B", 29, 24)
+        doc.setTextColor(16, 185, 129) // Keep same color or split? Navbar has "Cart" in emerald too.
+        // Actually navbar text is "D2B" dark, "Cart" emerald.
+        // Let's make "D2B" dark gray (33, 33, 33) and "Cart" emerald.
+        doc.setTextColor(33, 33, 33)
+        doc.text("D2B", 29, 24)
+        const d2bWidth = doc.getTextWidth("D2B")
+        doc.setTextColor(16, 185, 129)
+        doc.text("Cart", 29 + d2bWidth, 24)
+
+        // Subtitle "B2B Marketplace"
+        doc.setFontSize(8)
+        doc.setTextColor(150)
+        doc.setFont('helvetica', 'normal')
+        doc.text("B2B MARKETPLACE", 29, 29)
+
+
+        // "Wholesale Price List" (moved down slightly)
         doc.setFontSize(10)
         doc.setTextColor(100)
-        doc.text("Wholesale Price List", 14, 26)
+        doc.text("Wholesale Price List", 14, 38)
 
         // Category Title
         doc.setFontSize(16)
         doc.setTextColor(0)
-        doc.text(category.name, 14, 40)
+        doc.setFont('helvetica', 'bold')
+        doc.text(category.name, 14, 46)
 
+        const dateStr = new Date().toLocaleDateString()
         doc.setFontSize(10)
         doc.setTextColor(120)
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 46)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Generated on: ${dateStr}`, 14, 52)
 
         // --- Table Data ---
         const tableRows: any[] = []
@@ -177,7 +235,7 @@ export async function GET(
         nestedRows.forEach(rows => tableRows.push(...rows))
 
         autoTable(doc, {
-            startY: 55,
+            startY: 60,
             head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Wholesale Price']],
             body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price]), // Empty string for image cell, we draw it manually
             theme: 'grid',
@@ -249,23 +307,48 @@ export async function GET(
 
         doc.text("Contact Support: +91-9117474683", 14, finalY + 55)
 
-        // 4. Track Download
-        // Fire and forget tracking to database
-        const { error: trackError } = await supabase
-            .from('catalog_downloads')
-            .insert({
-                user_id: user.id,
-                category_id: categoryId,
-                source_page: 'api_direct'
+        // 4. Track Download (DB)
+        await supabase.from('catalog_downloads').insert({
+            user_id: user.id,
+            category_id: categoryId,
+            source_page: 'api_generated'
+        })
+
+        // 5. CACHE: Upload to Storage
+        const pdfArrayBuffer = doc.output('arraybuffer')
+        const pdfBuffer = Buffer.from(pdfArrayBuffer) // Need Buffer for Supabase Storage
+
+        const fileName = `catalog_${categoryId}.pdf` // Consistent filename per category
+
+        const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('catalogs') // Bucket name
+            .upload(fileName, pdfBuffer, {
+                contentType: 'application/pdf',
+                upsert: true
             })
 
-        if (trackError) console.error('Tracking Error:', trackError)
+        if (!uploadError) {
+            // Get Public URL
+            const { data: { publicUrl } } = supabase
+                .storage
+                .from('catalogs')
+                .getPublicUrl(fileName)
 
-        // 5. Return PDF
-        // output('arraybuffer') returns an ArrayBuffer
-        const pdfBuffer = doc.output('arraybuffer')
+            // Upsert Cache Record
+            await (supabase
+                .from('category_catalogs') as any)
+                .upsert({
+                    category_id: categoryId,
+                    pdf_url: publicUrl,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'category_id' })
+        } else {
+            console.error('Storage Upload Error:', uploadError)
+        }
 
-        return new NextResponse(pdfBuffer, {
+        // Return PDF directly
+        return new NextResponse(pdfArrayBuffer, {
             headers: {
                 'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${category.name.replace(/\s+/g, '_')}_Catalog.pdf"`
