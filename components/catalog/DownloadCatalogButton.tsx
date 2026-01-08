@@ -124,7 +124,7 @@ export default function DownloadCatalogButton({
         <button
             onClick={handleDownload}
             disabled={downloading}
-            className={cn(baseStyles, variants[variant], sizes[size], className)}
+            className={cn(baseStyles, variants[variant], sizes[size], "px-3 py-2 md:px-4 md:py-2", className)} // Mobile-specific padding override
             title={user ? "Download Wholesale Price List" : "Login to Download Price List"}
         >
             {downloading ? (
@@ -132,7 +132,8 @@ export default function DownloadCatalogButton({
             ) : (
                 user ? <FileText className="w-4 h-4" /> : <Lock className="w-4 h-4" />
             )}
-            <span>
+            <span className="md:hidden">Catalog</span>
+            <span className="hidden md:inline">
                 {downloading ? 'Generating...' : (user ? 'Download Catalog' : 'Login to Download Catalog')}
             </span>
         </button>

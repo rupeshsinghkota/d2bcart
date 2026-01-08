@@ -281,15 +281,15 @@ export default function ProductsClient({
                 {/* Dynamic Category Header */}
                 <div className="mb-6 md:mb-8">
                     {selectedCategory ? (
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 to-emerald-700 p-5 md:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 to-emerald-700 p-3 md:p-8 text-white shadow-xl flex flex-row items-center justify-between gap-3 md:gap-6">
                             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
                             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-3xl" />
 
-                            <div className="relative z-10 max-w-2xl">
-                                <h1 className="text-2xl md:text-3xl font-bold mb-2 tracking-tight">
+                            <div className="relative z-10 flex-1 min-w-0">
+                                <h1 className="text-lg md:text-3xl font-bold tracking-tight leading-tight line-clamp-2 md:line-clamp-none">
                                     {getPageTitle()}
                                 </h1>
-                                <p className="text-emerald-100 text-sm md:text-base leading-relaxed">
+                                <p className="text-emerald-100 text-sm md:text-base leading-relaxed hidden md:block mt-2">
                                     Explore our premium collection of wholesale {getPageTitle().toLowerCase()}. Directly from verified manufacturers.
                                 </p>
                             </div>
@@ -310,7 +310,7 @@ export default function ProductsClient({
                                                 categoryName={getPageTitle()}
                                                 source="category"
                                                 variant="primary"
-                                                className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50 w-full md:w-auto"
+                                                className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50 md:w-auto text-xs md:text-sm"
                                             />
                                         </div>
                                     )
