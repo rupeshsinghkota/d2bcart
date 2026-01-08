@@ -66,6 +66,11 @@ export async function POST(request: Request) {
                                 "body_1": {
                                     "type": "text",
                                     "value": otp
+                                },
+                                "button_1": {
+                                    "subtype": "url",
+                                    "type": "text",
+                                    "value": otp
                                 }
                             }
                         }
