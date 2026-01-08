@@ -66,7 +66,7 @@ export default function PhoneLogin() {
                     .from('users')
                     .select('user_type')
                     .eq('id', data.user.id)
-                    .single()
+                    .single() as { data: any } // Fix TS inference issue
 
                 if (profile) {
                     // Update global store logic here if needed
