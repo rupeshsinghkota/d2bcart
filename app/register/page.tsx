@@ -206,6 +206,8 @@ const RegisterContent = () => {
                         {/* Step 2: Business & Profile Details */}
                         {step === 2 && (
                             <div className="animate-fade-in space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900 border-b pb-2">Complete Profile</h3>
+
                                 <div className="space-y-3">
                                     <label className="text-sm font-semibold text-gray-900">I am a</label>
                                     <div className="grid grid-cols-2 gap-4">
@@ -243,46 +245,82 @@ const RegisterContent = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">Business Name</label>
-                                    <div className="relative group">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-gray-900">Business Name</label>
+                                        <div className="relative group">
+                                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
                                             <input
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={(e) => updateForm('email', e.target.value)}
+                                                type="text"
+                                                value={formData.business_name}
+                                                onChange={(e) => updateForm('business_name', e.target.value)}
                                                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="name@company.com"
+                                                placeholder="Enter business name"
                                                 required
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Password</label>
-                                        <div className="relative group">
-                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                        <label className="text-sm font-semibold text-gray-900">GST Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                        <input
+                                            type="text"
+                                            value={formData.gst_number}
+                                            onChange={(e) => updateForm('gst_number', e.target.value)}
+                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                            placeholder="22AAAAA0000A1Z5"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-gray-900">City</label>
                                             <input
-                                                type="password"
-                                                value={formData.password}
-                                                onChange={(e) => updateForm('password', e.target.value)}
-                                                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="Create a password"
-                                                minLength={6}
+                                                type="text"
+                                                value={formData.city}
+                                                onChange={(e) => updateForm('city', e.target.value)}
+                                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                                placeholder="City"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-gray-900">State</label>
+                                            <input
+                                                type="text"
+                                                value={formData.state}
+                                                onChange={(e) => updateForm('state', e.target.value)}
+                                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                                placeholder="State"
                                                 required
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Phone Number</label>
+                                        <label className="text-sm font-semibold text-gray-900">Pincode</label>
+                                        <input
+                                            type="text"
+                                            value={formData.pincode}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                                                updateForm('pincode', val)
+                                            }}
+                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
+                                            placeholder="110001"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-gray-900">Business Address</label>
                                         <div className="relative group">
-                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
-                                            <input
-                                                type="tel"
-                                                value={formData.phone}
-                                                onChange={(e) => updateForm('phone', e.target.value)}
-                                                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="+91 99999 99999"
+                                            <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                            <textarea
+                                                value={formData.address}
+                                                onChange={(e) => updateForm('address', e.target.value)}
+                                                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium min-h-[120px] resize-none"
+                                                placeholder="Full street address, building, etc."
                                                 required
                                             />
                                         </div>
@@ -290,123 +328,32 @@ const RegisterContent = () => {
                                 </div>
 
                                 <button
-                                    type="button"
-                                    onClick={() => setStep(2)}
+                                    type="submit"
+                                    disabled={loading}
                                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                 >
-                                    Continue
-                                    <ArrowRight className="w-5 h-5" />
+                                    {loading ? (
+                                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            Complete Profile & Start
+                                            <Check className="w-5 h-5" />
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         )}
+                    </form>
 
-                {/* Step 2: Business Details */}
-                {step === 2 && (
-                    <div className="animate-fade-in space-y-6">
-                        <button
-                            type="button"
-                            onClick={() => setStep(1)}
-                            className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 mb-2"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            Back to Account Info
-                        </button>
-
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-900">GST Number <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                <input
-                                    type="text"
-                                    value={formData.gst_number}
-                                    onChange={(e) => updateForm('gst_number', e.target.value)}
-                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                    placeholder="22AAAAA0000A1Z5"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">City</label>
-                                    <input
-                                        type="text"
-                                        value={formData.city}
-                                        onChange={(e) => updateForm('city', e.target.value)}
-                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                        placeholder="City"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">State</label>
-                                    <input
-                                        type="text"
-                                        value={formData.state}
-                                        onChange={(e) => updateForm('state', e.target.value)}
-                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                        placeholder="State"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-900">Pincode</label>
-                                <input
-                                    type="text"
-                                    value={formData.pincode}
-                                    onChange={(e) => {
-                                        // Only allow numbers and max 6 chars
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                                        updateForm('pincode', val)
-                                    }}
-                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
-                                    placeholder="110001"
-                                    required
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-gray-900">Business Address</label>
-                                <div className="relative group">
-                                    <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
-                                    <textarea
-                                        value={formData.address}
-                                        onChange={(e) => updateForm('address', e.target.value)}
-                                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium min-h-[120px] resize-none"
-                                        placeholder="Full street address, building, etc."
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    Create Account
-                                    <Check className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
+                    <div className="mt-10 text-center">
+                        <p className="text-gray-500 text-sm">
+                            Already have an account?{' '}
+                            <Link href="/login" className="text-emerald-600 font-bold hover:underline">
+                                Sign In
+                            </Link>
+                        </p>
                     </div>
-                )}
-            </form>
-
-            <div className="mt-10 text-center">
-                <p className="text-gray-500 text-sm">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-emerald-600 font-bold hover:underline">
-                        Sign In
-                    </Link>
-                </p>
-            </div>
-        </div>
+                </div>
             </div >
         </div >
     )
