@@ -245,22 +245,37 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
             {/* Breadcrumbs (Desktop Only) */}
             <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
-                <nav className="flex items-center gap-2 text-sm text-gray-500">
-                    <Link href="/products" className="hover:text-emerald-600 transition-colors whitespace-nowrap">Products</Link>
+                <div className="flex items-center justify-between">
+                    <nav className="flex items-center gap-2 text-sm text-gray-500">
+                        <Link href="/products" className="hover:text-emerald-600 transition-colors whitespace-nowrap">Products</Link>
+                        {currentProduct.category && (
+                            <>
+                                <span className="text-gray-300">/</span>
+                                <Link
+                                    href={`/products?category=${currentProduct.category.slug}`}
+                                    className="hover:text-emerald-600 transition-colors whitespace-nowrap"
+                                >
+                                    {currentProduct.category.name}
+                                </Link>
+                            </>
+                        )}
+                        <span className="text-gray-300">/</span>
+                        <span className="text-gray-700 font-medium truncate max-w-[300px]">{currentProduct.name}</span>
+                    </nav>
+
                     {currentProduct.category && (
-                        <>
-                            <span className="text-gray-300">/</span>
-                            <Link
-                                href={`/products?category=${currentProduct.category.slug}`}
-                                className="hover:text-emerald-600 transition-colors whitespace-nowrap"
-                            >
-                                {currentProduct.category.name}
-                            </Link>
-                        </>
+                        <div className="shrink-0">
+                            <DownloadCatalogButton
+                                categoryId={currentProduct.category_id}
+                                categoryName={currentProduct.category.name}
+                                source="product"
+                                variant="ghost"
+                                size="sm"
+                                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium"
+                            />
+                        </div>
                     )}
-                    <span className="text-gray-300">/</span>
-                    <span className="text-gray-700 font-medium truncate">{currentProduct.name}</span>
-                </nav>
+                </div>
             </div>
 
             <div className="max-w-6xl mx-auto md:px-4 pb-4 md:py-8">
