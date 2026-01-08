@@ -32,11 +32,6 @@ export const metadata: Metadata = {
     other: {
       'facebook-domain-verification': 'ikopkbe8caqv5rjre41h5j5exil6el',
     }
-  },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
   }
 };
 
