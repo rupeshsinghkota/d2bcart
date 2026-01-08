@@ -74,6 +74,7 @@ export async function GET() {
             <g:description><![CDATA[${description}]]></g:description>
             <g:link><![CDATA[${link}]]></g:link>
             <g:image_link><![CDATA[${imageLink}]]></g:image_link>
+            ${product.images?.slice(1, 11).map((img: string) => `<g:additional_image_link><![CDATA[${img}]]></g:additional_image_link>`).join('')}
             <g:brand><![CDATA[${brand}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
