@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
     ],
     unoptimized: true,
   },
+  async redirects() {
+    return [
+      {
+        source: '/manufacturer/:path*',
+        destination: '/wholesaler/:path*',
+        permanent: true,
+      },
+    ]
+  },
 };
 
 export default nextConfig;
