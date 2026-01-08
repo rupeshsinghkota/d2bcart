@@ -294,17 +294,29 @@ export default function ProductsClient({
                                 </p>
                             </div>
 
-                            {categories.find(c => c.slug === selectedCategory) && (
-                                <div className="relative z-10 shrink-0">
-                                    <DownloadCatalogButton
-                                        categoryId={categories.find(c => c.slug === selectedCategory)!.id}
-                                        categoryName={getPageTitle()}
-                                        source="category"
-                                        variant="primary" // Using primary for high visibility
-                                        className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50 w-full md:w-auto"
-                                    />
-                                </div>
-                            )}
+                            {(() => {
+                                const currentCat = categories.find(c => c.slug === selectedCategory)
+                                // Only show download button if:
+                                // 1. Category exists
+                                // 2. It has NO subcategories (it is a leaf node)
+                                // This prevents downloading generic catalogs for parent categories like "Mobile Accessories"
+                                const hasSubcategories = currentCat && categories.some(c => c.parent_id === currentCat.id)
+
+                                if (currentCat && !hasSubcategories) {
+                                    return (
+                                        <div className="relative z-10 shrink-0">
+                                            <DownloadCatalogButton
+                                                categoryId={currentCat.id}
+                                                categoryName={getPageTitle()}
+                                                source="category"
+                                                variant="primary"
+                                                className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50 w-full md:w-auto"
+                                            />
+                                        </div>
+                                    )
+                                }
+                                return null
+                            })()}
                         </div>
                     ) : (
                         <div className="flex items-end justify-between border-b border-gray-100 pb-4">
