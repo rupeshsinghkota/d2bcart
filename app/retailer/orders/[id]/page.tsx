@@ -78,7 +78,7 @@ export default function RetailerOrderDetails() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-8 pb-20 md:pb-8">
             <div className="max-w-4xl mx-auto">
                 <Link href="/retailer/orders" className="flex items-center text-gray-500 hover:text-gray-900 mb-6">
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -87,10 +87,10 @@ export default function RetailerOrderDetails() {
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     {/* Header */}
-                    <div className="p-6 border-b bg-gray-50 flex justify-between items-start">
+                    <div className="p-4 md:p-6 border-b bg-gray-50 flex flex-col md:flex-row justify-between items-start gap-4">
                         <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-2xl font-bold text-gray-900">Order #{order.order_number}</h1>
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Order #{order.order_number}</h1>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                                     {order.status.toUpperCase()}
                                 </span>
@@ -103,42 +103,52 @@ export default function RetailerOrderDetails() {
                             </div>
                         </div>
 
-                        {order.awb_code && (
-                            <a
-                                href={`https://shiprocket.co/tracking/${order.awb_code}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                            >
-                                <Truck className="w-4 h-4" />
-                                Track Shipment
-                                <ExternalLink className="w-3 h-3" />
-                            </a>
-                        )}
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                            {order.awb_code && (
+                                <a
+                                    href={`https://shiprocket.co/tracking/${order.awb_code}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2 flex-1 md:flex-none text-sm"
+                                >
+                                    <Truck className="w-4 h-4" />
+                                    Track
+                                </a>
+                            )}
 
-                        <button
-                            onClick={() => generateInvoice(order)}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2"
-                        >
-                            <Package className="w-4 h-4" />
-                            Download Invoice
-                        </button>
+                            <button
+                                onClick={() => generateInvoice(order)}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-2 flex-1 md:flex-none text-sm"
+                            >
+                                <Package className="w-4 h-4" />
+                                Invoice
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-8 p-8">
+                    <div className="grid md:grid-cols-3 gap-6 md:gap-8 p-4 md:p-8">
                         {/* Product Details */}
                         <div className="md:col-span-2 space-y-6">
                             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                                 <Package className="w-5 h-5 text-gray-400" />
                                 Product Details
                             </h2>
-                            <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border relative">
-                                    {order.product?.images?.[0] && (
-                                        <Image src={order.product.images[0]} alt="" fill className="object-cover" />
-                                    )}
+                            <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div className="flex gap-4">
+                                    <div className="w-20 h-20 bg-white rounded-md flex-shrink-0 overflow-hidden border relative">
+                                        {order.product?.images?.[0] && (
+                                            <Image src={order.product.images[0]} alt="" fill className="object-cover" />
+                                        )}
+                                    </div>
+                                    <div className="sm:hidden flex-1">
+                                        <h3 className="font-medium text-gray-900 line-clamp-2">{order.product?.name}</h3>
+                                        <div className="text-sm text-gray-500 mt-1">
+                                            Qty: <span className="font-semibold text-gray-900">{order.quantity}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
+
+                                <div className="hidden sm:block flex-1">
                                     <h3 className="font-medium text-gray-900">{order.product?.name}</h3>
                                     <div className="text-sm text-gray-500 mt-1">
                                         Quantity: <span className="font-semibold text-gray-900">{order.quantity} units</span>
@@ -147,29 +157,33 @@ export default function RetailerOrderDetails() {
                                         Unit Price: {formatCurrency(order.unit_price)}
                                     </div>
                                 </div>
-                                <div className="ml-auto text-right flex flex-col items-end gap-1">
-                                    <div className="text-sm text-gray-500">Total Amount</div>
-                                    <div className="text-xl font-bold text-gray-900">
-                                        {formatCurrency(order.total_amount)}
-                                    </div>
 
-                                    <div className="mt-2 text-xs text-right space-y-1">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <span className="text-gray-500">Payment:</span>
-                                            <span className={`px-2 py-0.5 rounded capitalize font-medium ${order.payment_type === 'advance'
-                                                ? 'bg-amber-100 text-amber-700'
-                                                : 'bg-green-100 text-green-700'
-                                                }`}>
-                                                {order.payment_type === 'advance' ? '20% Advance' : 'Full Payment'}
-                                            </span>
+                                <div className="pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200 mt-2 sm:mt-0 sm:ml-auto text-left sm:text-right flex flex-row sm:flex-col justify-between sm:items-end gap-1">
+                                    <div className="block sm:hidden text-sm text-gray-500">Total</div>
+                                    <div className="flex flex-col items-end">
+                                        <div className="text-sm text-gray-500 hidden sm:block">Total Amount</div>
+                                        <div className="text-xl font-bold text-gray-900">
+                                            {formatCurrency(order.total_amount)}
                                         </div>
-                                        {(order.pending_amount || 0) > 0 ? (
-                                            <div className="bg-amber-50 px-2 py-1 rounded text-amber-600 font-medium border border-amber-100">
-                                                To Pay on Delivery: {formatCurrency(order.pending_amount || 0)}
+
+                                        <div className="mt-2 text-xs text-right space-y-1">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <span className="text-gray-500">Payment:</span>
+                                                <span className={`px-2 py-0.5 rounded capitalize font-medium ${order.payment_type === 'advance'
+                                                    ? 'bg-amber-100 text-amber-700'
+                                                    : 'bg-green-100 text-green-700'
+                                                    }`}>
+                                                    {order.payment_type === 'advance' ? '20% Adv' : 'Full'}
+                                                </span>
                                             </div>
-                                        ) : (
-                                            <div className="text-green-600 font-medium">Fully Paid</div>
-                                        )}
+                                            {(order.pending_amount || 0) > 0 ? (
+                                                <div className="bg-amber-50 px-2 py-1 rounded text-amber-600 font-medium border border-amber-100 whitespace-nowrap">
+                                                    Due: {formatCurrency(order.pending_amount || 0)}
+                                                </div>
+                                            ) : (
+                                                <div className="text-green-600 font-medium">Paid</div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -187,9 +201,9 @@ export default function RetailerOrderDetails() {
                                     {order.manufacturer?.city}, {order.manufacturer?.state}
                                 </div>
                                 <div className="pt-2 border-t border-gray-200 mt-2">
-                                    <div className="flex items-center gap-2 text-gray-600">
-                                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">EMAIL</span>
-                                        {order.manufacturer?.email}
+                                    <div className="flex items-center gap-2 text-gray-600 truncate">
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 shrink-0">EMAIL</span>
+                                        <span className="truncate">{order.manufacturer?.email}</span>
                                     </div>
                                 </div>
                             </div>
