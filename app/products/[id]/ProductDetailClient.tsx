@@ -220,6 +220,18 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                 </div>
 
                 <div className="flex items-center gap-1">
+                    {currentProduct.category && (
+                        <div className="mr-1">
+                            <DownloadCatalogButton
+                                categoryId={currentProduct.category_id}
+                                categoryName={currentProduct.category.name}
+                                source="product"
+                                variant="ghost"
+                                size="sm"
+                                className="text-emerald-600 hover:bg-emerald-50 px-2 py-1 h-auto"
+                            />
+                        </div>
+                    )}
                     <button
                         onClick={() => router.push('/cart')}
                         className="p-2 -mr-2 rounded-full hover:bg-black/5 active:bg-black/10 transition-colors relative"
