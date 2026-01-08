@@ -189,23 +189,22 @@ const RegisterContent = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Step 1: Phone Authentication */}
-                            {step === 1 && !isProfileCompletion && (
-                                <div className="animate-fade-in space-y-6">
-                                    <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                        <h3 className="font-semibold text-emerald-900 mb-2">Mobile Verification</h3>
-                                        <p className="text-sm text-emerald-600 mb-6">We use WhatsApp OTP for secure and instant verification.</p>
-                                        {/* Phone Login Component handles the auth flow */}
-                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100/50">
-                                            <PhoneLogin />
-                                        </div>
+                        {/* Step 1: Phone Authentication */}
+                        {step === 1 && !isProfileCompletion && (
+                            <div className="animate-fade-in space-y-6">
+                                <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                    <h3 className="font-semibold text-emerald-900 mb-2">Mobile Verification</h3>
+                                    <p className="text-sm text-emerald-600 mb-6">We use WhatsApp OTP for secure and instant verification.</p>
+                                    {/* Phone Login Component handles the auth flow */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100/50">
+                                        <PhoneLogin />
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {/* Step 2: Business & Profile Details */}
-                            {step === 2 && (
+                        {/* Step 2: Business & Profile Details */}
+                        {step === 2 && (
                             <div className="animate-fade-in space-y-6">
                                 <div className="space-y-3">
                                     <label className="text-sm font-semibold text-gray-900">I am a</label>
@@ -301,115 +300,115 @@ const RegisterContent = () => {
                             </div>
                         )}
 
-                        {/* Step 2: Business Details */}
-                        {step === 2 && (
-                            <div className="animate-fade-in space-y-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setStep(1)}
-                                    className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 mb-2"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                    Back to Account Info
-                                </button>
+                {/* Step 2: Business Details */}
+                {step === 2 && (
+                    <div className="animate-fade-in space-y-6">
+                        <button
+                            type="button"
+                            onClick={() => setStep(1)}
+                            className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1 mb-2"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            Back to Account Info
+                        </button>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">GST Number <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                        <input
-                                            type="text"
-                                            value={formData.gst_number}
-                                            onChange={(e) => updateForm('gst_number', e.target.value)}
-                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                            placeholder="22AAAAA0000A1Z5"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-gray-900">City</label>
-                                            <input
-                                                type="text"
-                                                value={formData.city}
-                                                onChange={(e) => updateForm('city', e.target.value)}
-                                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="City"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-gray-900">State</label>
-                                            <input
-                                                type="text"
-                                                value={formData.state}
-                                                onChange={(e) => updateForm('state', e.target.value)}
-                                                className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="State"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Pincode</label>
-                                        <input
-                                            type="text"
-                                            value={formData.pincode}
-                                            onChange={(e) => {
-                                                // Only allow numbers and max 6 chars
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 6)
-                                                updateForm('pincode', val)
-                                            }}
-                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
-                                            placeholder="110001"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Business Address</label>
-                                        <div className="relative group">
-                                            <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
-                                            <textarea
-                                                value={formData.address}
-                                                onChange={(e) => updateForm('address', e.target.value)}
-                                                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium min-h-[120px] resize-none"
-                                                placeholder="Full street address, building, etc."
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                                >
-                                    {loading ? (
-                                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                                    ) : (
-                                        <>
-                                            Create Account
-                                            <Check className="w-5 h-5" />
-                                        </>
-                                    )}
-                                </button>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-900">GST Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input
+                                    type="text"
+                                    value={formData.gst_number}
+                                    onChange={(e) => updateForm('gst_number', e.target.value)}
+                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                    placeholder="22AAAAA0000A1Z5"
+                                />
                             </div>
-                        )}
-                    </form>
 
-                    <div className="mt-10 text-center">
-                        <p className="text-gray-500 text-sm">
-                            Already have an account?{' '}
-                            <Link href="/login" className="text-emerald-600 font-bold hover:underline">
-                                Sign In
-                            </Link>
-                        </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-900">City</label>
+                                    <input
+                                        type="text"
+                                        value={formData.city}
+                                        onChange={(e) => updateForm('city', e.target.value)}
+                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                        placeholder="City"
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-900">State</label>
+                                    <input
+                                        type="text"
+                                        value={formData.state}
+                                        onChange={(e) => updateForm('state', e.target.value)}
+                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                        placeholder="State"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-900">Pincode</label>
+                                <input
+                                    type="text"
+                                    value={formData.pincode}
+                                    onChange={(e) => {
+                                        // Only allow numbers and max 6 chars
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                                        updateForm('pincode', val)
+                                    }}
+                                    className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
+                                    placeholder="110001"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-900">Business Address</label>
+                                <div className="relative group">
+                                    <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                    <textarea
+                                        value={formData.address}
+                                        onChange={(e) => updateForm('address', e.target.value)}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium min-h-[120px] resize-none"
+                                        placeholder="Full street address, building, etc."
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    Create Account
+                                    <Check className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
                     </div>
-                </div>
+                )}
+            </form>
+
+            <div className="mt-10 text-center">
+                <p className="text-gray-500 text-sm">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-emerald-600 font-bold hover:underline">
+                        Sign In
+                    </Link>
+                </p>
             </div>
         </div>
+            </div >
+        </div >
     )
 }
 
