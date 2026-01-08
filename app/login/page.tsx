@@ -9,7 +9,7 @@ import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react'
 import PhoneLogin from '@/components/auth/PhoneLogin'
 
 export default function LoginPage() {
-    const [loginMethod, setLoginMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL')
+    const [loginMethod, setLoginMethod] = useState<'EMAIL' | 'PHONE'>('PHONE')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
