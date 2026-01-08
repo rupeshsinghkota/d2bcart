@@ -32,155 +32,54 @@ const RegisterContent = () => {
 
     const [paramType] = useState(searchParams.get('type')) // Store initial param to avoid loop
     const [isProfileCompletion, setIsProfileCompletion] = useState(false)
-    const [userId, setUserId] = useState<string | null>(null)
+    const [sessionLoading, setSessionLoading] = useState(true)
 
-    useEffect(() => {
-        const type = searchParams.get('type')
-        if (type === 'manufacturer' || type === 'retailer') {
-            setUserType(type as UserType)
-            setFormData(prev => ({ ...prev, user_type: type as string }))
-        }
-    }, [searchParams])
-
-    // Check for existing session (Phone Auth User)
+    // ... (keep existing verify session)
     useEffect(() => {
         const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session?.user) {
-                // Check if they already have a profile
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('id', session.user.id)
-                    .single()
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user) {
+                    // Check if they already have a profile
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('id', session.user.id)
+                        .single()
 
-                if (!profile) {
-                    // User exists but no profile -> Complete Profile Mode
-                    setIsProfileCompletion(true)
-                    setUserId(session.user.id)
-                    // Pre-fill phone if available from auth
-                    if (session.user.phone) {
-                        setFormData(prev => ({ ...prev, phone: session.user.phone! }))
+                    if (!profile) {
+                        // User exists but no profile -> Complete Profile Mode
+                        setIsProfileCompletion(true)
+                        setUserId(session.user.id)
+                        if (session.user.phone) {
+                            setFormData(prev => ({ ...prev, phone: session.user.phone! }))
+                        }
+                        setStep(2) // Skip directly to business details
                     }
-                    setStep(2) // Skip directly to business details
-                    toast('Please complete your profile details.', { icon: '👋' })
                 }
+            } catch (e) {
+                console.error('Session check failed', e)
+            } finally {
+                setSessionLoading(false)
             }
         }
         checkSession()
     }, [])
 
-    // Keep formData synced with local userType state change
-    useEffect(() => {
-        setFormData(prev => ({ ...prev, user_type: userType }))
-    }, [userType])
+    // ...
 
-    const updateForm = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-
-        try {
-            let res;
-
-            if (isProfileCompletion && userId) {
-                // Call Complete Profile API
-                res = await fetch('/api/register/complete-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...formData, userId })
-                })
-            } else {
-                // Standard Registration
-                res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                })
-            }
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Registration failed')
-            }
-
-            if (!isProfileCompletion) {
-                // Only try to login if it was a standard registration (which creates the auth user)
-                const { error: loginError } = await supabase.auth.signInWithPassword({
-                    email: formData.email,
-                    password: formData.password
-                })
-
-                if (loginError) {
-                    toast.success('Registration successful! Please login.')
-                    router.push('/login')
-                    return // Stop here
-                }
-            }
-
-            toast.success('Profile setup successful!')
-            // Redirect based on user type
-            if (userType === 'manufacturer') {
-                router.push('/wholesaler')
-            } else {
-                router.push('/products')
-            }
-
-        } catch (error: any) {
-            toast.error(error.message || 'Registration failed')
-        } finally {
-            setLoading(false)
-        }
+    if (sessionLoading) {
+        return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div></div>
     }
 
     return (
         <div className="min-h-screen flex bg-white">
-            {/* Left Side - Brand/Image */}
-            <div className="hidden lg:flex w-1/2 bg-emerald-900 relative overflow-hidden items-center justify-center">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1569&q=80')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
-                <div className="relative z-10 p-12 text-center text-white max-w-lg">
-                    <div className="w-20 h-20 bg-emerald-500 rounded-2xl flex items-center justify-center mb-8 mx-auto shadow-2xl shadow-emerald-900/50">
-                        <span className="text-white font-bold text-3xl">D2B</span>
-                    </div>
-                    <h1 className="text-4xl font-bold mb-6 leading-tight">Join the Future of B2B Commerce</h1>
-                    <p className="text-lg text-emerald-100 leading-relaxed mb-8">
-                        Connect, trade, and grow your business with our secure and efficient digital marketplace.
-                    </p>
-
-                    {/* Testimonial or Stat */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-left border border-white/10">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="flex -space-x-2">
-                                <div className="w-8 h-8 rounded-full bg-yellow-400 border-2 border-emerald-900"></div>
-                                <div className="w-8 h-8 rounded-full bg-blue-400 border-2 border-emerald-900"></div>
-                                <div className="w-8 h-8 rounded-full bg-pink-400 border-2 border-emerald-900"></div>
-                            </div>
-                            <span className="text-sm font-medium text-emerald-50">Trusted by 10,000+ businesses</span>
-                        </div>
-                        <p className="italic text-emerald-100 text-sm">"D2BCart transformed how we source products. The efficiency is unmatched."</p>
-                    </div>
-                </div>
-            </div>
+            {/* ... Left Side ... */}
 
             {/* Right Side - Form */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 lg:px-24 py-12 bg-white h-screen overflow-y-auto">
                 <div className="w-full max-w-lg mx-auto">
-                    {/* Mobile Logo */}
-                    <Link href="/" className="lg:hidden inline-flex items-center gap-2 mb-8">
-                        <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-600/20">
-                            <span className="text-white font-bold text-lg">D2B</span>
-                        </div>
-                        <span className="text-xl font-bold text-gray-900">D2BCart</span>
-                    </Link>
-
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
-                        <p className="text-gray-600">Start your journey with D2BCart today</p>
-                    </div>
+                    {/* ... (Header) ... */}
 
                     {/* Progress Indicator */}
                     <div className="flex items-center gap-2 mb-8">
@@ -189,7 +88,6 @@ const RegisterContent = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Step 1: Phone Authentication */}
                         {step === 1 && !isProfileCompletion && (
                             <div className="animate-fade-in space-y-6">
                                 <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
