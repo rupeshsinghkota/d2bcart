@@ -6,6 +6,7 @@ import { Category } from '@/types'
 import { Package, ChevronRight } from 'lucide-react'
 import { getCategoryImage } from '@/utils/category'
 import Image from 'next/image'
+import DownloadCatalogButton from '@/components/catalog/DownloadCatalogButton'
 
 interface CategoriesClientProps {
     initialCategories: Category[]
@@ -116,12 +117,20 @@ export default function CategoriesClient({ initialCategories }: CategoriesClient
                                     </h1>
 
                                 </div>
-                                <Link
-                                    href={`/products?category=${selectedCategory.slug}`}
-                                    className="hidden md:inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
-                                >
-                                    Browse All Items
-                                </Link>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <DownloadCatalogButton
+                                        categoryId={selectedCategory.id}
+                                        categoryName={selectedCategory.name}
+                                        source="category"
+                                        variant="outline"
+                                    />
+                                    <Link
+                                        href={`/products?category=${selectedCategory.slug}`}
+                                        className="hidden md:inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                                    >
+                                        Browse All Items
+                                    </Link>
+                                </div>
                             </div>
 
                             {/* Level 2 & 3 Sections */}
