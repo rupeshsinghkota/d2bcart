@@ -26,7 +26,7 @@ export default function Icon() {
                     fontWeight: 900,
                 }}
             >
-                D
+                D2B
             </div>
         ),
         // ImageResponse options
