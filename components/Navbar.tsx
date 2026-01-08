@@ -158,7 +158,7 @@ export default function Navbar() {
 
 
                             {/* Profile Dropdown */}
-                            <div className="relative hidden md:block">
+                            <div className="relative block">
                                 <button
                                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                                     className="flex items-center gap-2 ml-2 focus:outline-none"
