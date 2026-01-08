@@ -61,17 +61,19 @@ export async function GET(
             base_price,
             display_price,
             moq,
+            images,
             variations:products!parent_id(
                 id,
                 name,
                 sku,
                 display_price,
-                moq
+                moq,
+                images
             )
         `)
         .eq('category_id', categoryId)
         .eq('is_active', true)
-        .is('parent_id', null) // Only fetch parents, variations are joined
+        .is('parent_id', null)
         .order('name')
 
     if (prodError) {
@@ -79,10 +81,26 @@ export async function GET(
     }
 
     try {
-        // 3. Generate PDF
-        // Note: jsPDF in Node might require 'new jsPDF.default()' depending on import.
-        // Assuming standard import works as per typical ESM in Next.js.
         const doc = new jsPDF()
+
+        // Helper to fetch image as base64
+        const getImageBase64 = async (url: string): Promise<string | null> => {
+            if (!url) return null
+            try {
+                const res = await fetch(url)
+                if (!res.ok) return null
+                const buffer = await res.arrayBuffer()
+                const base64 = Buffer.from(buffer).toString('base64')
+                const contentType = res.headers.get('content-type') || 'image/jpeg'
+                let format = 'JPEG'
+                if (contentType.includes('png')) format = 'PNG'
+                if (contentType.includes('webp')) format = 'WEBP' // jsPDF might struggle with webp usually, but let's try or it will fail gracefully
+                return `data:${contentType};base64,${base64}`
+            } catch (e) {
+                console.error('Image fetch error', e)
+                return null
+            }
+        }
 
         // --- Header ---
         doc.setFontSize(22)
@@ -105,47 +123,92 @@ export async function GET(
         // --- Table Data ---
         const tableRows: any[] = []
 
-        products.forEach((p: any) => {
+        // Pre-process rows to fetch images
+        // We'll process them sequentially to avoid overwhelming network but using Promise.all for batches would be better.
+        // For simplicity and reliability in this env, we map then await all.
+
+        const rowPromises = products.map(async (p: any) => {
+            const rows: any[] = []
+
             // Parent Row
             let price = `Rs. ${p.display_price}`
             let moq = `${p.moq || 1} units`
 
-            // If has variations, maybe summarize or list them? 
-            // For catalog, listing variations is better if it's a "Line Sheet".
-            // Let's list the parent first
-            tableRows.push([
-                p.name,
-                p.sku || '-',
-                moq,
-                price
-            ])
+            // Fetch Parent Image
+            let imgData = null
+            if (p.images && p.images.length > 0) {
+                imgData = await getImageBase64(p.images[0])
+            }
+
+            rows.push({
+                image: imgData,
+                name: p.name,
+                sku: p.sku || '-',
+                moq: moq,
+                price: price
+            })
 
             // Variations
             if (p.variations && p.variations.length > 0) {
-                p.variations.forEach((v: any) => {
+                for (const v of p.variations) {
                     const vName = v.name === p.name ? `${v.name} (Variant)` : v.name
-                    tableRows.push([
-                        `  - ${vName}`, // Indent
-                        v.sku || '-',
-                        `${v.moq || 1} units`,
-                        `Rs. ${v.display_price}`
-                    ])
-                })
+
+                    // Variation Image (fallback to parent if none)
+                    // Usually we don't show image for every variant to save space unless it's different?
+                    // Let's show it if it exists distinct from parent, otherwise null (cleaner table)
+                    let vImgData = null
+                    if (v.images && v.images.length > 0) {
+                        vImgData = await getImageBase64(v.images[0])
+                    }
+
+                    rows.push({
+                        image: vImgData, // Optional: if we want to show variant images
+                        name: `  - ${vName}`,
+                        sku: v.sku || '-',
+                        moq: `${v.moq || 1} units`,
+                        price: `Rs. ${v.display_price}`
+                    })
+                }
             }
+            return rows
         })
+
+        const nestedRows = await Promise.all(rowPromises)
+        nestedRows.forEach(rows => tableRows.push(...rows))
 
         autoTable(doc, {
             startY: 55,
-            head: [['Product Name', 'SKU', 'MOQ', 'Wholesale Price']],
-            body: tableRows,
+            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Wholesale Price']],
+            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price]), // Empty string for image cell, we draw it manually
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], textColor: 255 },
-            styles: { fontSize: 9 },
+            styles: {
+                fontSize: 9,
+                valign: 'middle',
+                minCellHeight: 15 // Ensure row is tall enough for image
+            },
             columnStyles: {
-                0: { cellWidth: 'auto' }, // Name
-                1: { cellWidth: 30 },     // SKU
-                2: { cellWidth: 30 },     // MOQ
-                3: { cellWidth: 30, halign: 'right' } // Price
+                0: { cellWidth: 20 },     // Image
+                1: { cellWidth: 'auto' }, // Name
+                2: { cellWidth: 25 },     // SKU
+                3: { cellWidth: 25 },     // MOQ
+                4: { cellWidth: 25, halign: 'right' } // Price
+            },
+            didDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 0) {
+                    const rowData = tableRows[data.row.index]
+                    if (rowData && rowData.image) {
+                        try {
+                            // padding 1mm
+                            const dim = data.cell.height - 2
+                            const x = data.cell.x + 1
+                            const y = data.cell.y + 1
+                            doc.addImage(rowData.image, 'JPEG', x, y, dim, dim)
+                        } catch (err) {
+                            // Fail silently for bad images
+                        }
+                    }
+                }
             }
         })
 
