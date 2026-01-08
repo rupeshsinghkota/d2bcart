@@ -123,6 +123,14 @@ export interface StockRequest {
     created_at: string
 }
 
+export interface CatalogDownload {
+    id: string
+    user_id: string
+    category_id: string
+    source_page: string
+    created_at: string
+}
+
 export interface Database {
     public: {
         Tables: {
@@ -168,7 +176,14 @@ export interface Database {
                 Update: Partial<Omit<StockRequest, 'id' | 'created_at'>>
                 Relationships: []
             }
+            catalog_downloads: {
+                Row: CatalogDownload
+                Insert: Omit<CatalogDownload, 'id' | 'created_at'>
+                Update: Partial<Omit<CatalogDownload, 'id' | 'created_at'>>
+                Relationships: []
+            }
         }
+
         Views: {
             [_ in never]: never
         }
