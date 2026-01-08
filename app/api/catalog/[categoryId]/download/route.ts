@@ -179,6 +179,7 @@ export async function GET(
         doc.text(`Generated on: ${dateStr}`, 14, 52)
 
         // --- Table Data ---
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
         const tableRows: any[] = []
 
         // Pre-process rows to fetch images
@@ -203,7 +204,9 @@ export async function GET(
                 name: p.name,
                 sku: p.sku || '-',
                 moq: moq,
-                price: price
+                price: price,
+                url: `${baseUrl}/products/${p.id}`,
+                isLink: true
             })
 
             // Variations
@@ -225,7 +228,7 @@ export async function GET(
                         sku: v.sku || '-',
                         moq: `${v.moq || 1} units`,
                         price: `Rs. ${v.display_price}`
-                    })
+                    }) // Variations link to same product (parent) usually, or we can skip link for variants to avoid clutter
                 }
             }
             return rows
@@ -236,8 +239,8 @@ export async function GET(
 
         autoTable(doc, {
             startY: 60,
-            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Wholesale Price']],
-            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price]), // Empty string for image cell, we draw it manually
+            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Price', 'Link']],
+            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price, r.isLink ? 'View' : '']),
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], textColor: 255 },
             styles: {
@@ -250,27 +253,34 @@ export async function GET(
                 1: { cellWidth: 'auto' }, // Name
                 2: { cellWidth: 25 },     // SKU
                 3: { cellWidth: 25 },     // MOQ
-                4: { cellWidth: 30, halign: 'right' } // Price
+                4: { cellWidth: 25, halign: 'right' }, // Price
+                5: { cellWidth: 20, halign: 'center', textColor: [16, 185, 129] } // Green text for 'View'
             },
             didDrawCell: (data) => {
+                // Image Drawing
                 if (data.section === 'body' && data.column.index === 0) {
                     const rowData = tableRows[data.row.index]
                     if (rowData && rowData.image) {
                         try {
-                            // padding 2mm
                             const cellHeight = data.cell.height
                             const cellWidth = data.cell.width
-
-                            // Make image square, centered in cell
                             const imageSize = Math.min(cellHeight, cellWidth) - 4
-
                             const x = data.cell.x + (cellWidth - imageSize) / 2
                             const y = data.cell.y + (cellHeight - imageSize) / 2
-
                             doc.addImage(rowData.image, 'JPEG', x, y, imageSize, imageSize)
                         } catch (err) {
                             // Fail silently
                         }
+                    }
+                }
+
+                // Link Drawing
+                if (data.section === 'body' && data.column.index === 5) {
+                    const rowData = tableRows[data.row.index]
+                    if (rowData && rowData.url) {
+                        doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, {
+                            url: rowData.url
+                        })
                     }
                 }
             }
