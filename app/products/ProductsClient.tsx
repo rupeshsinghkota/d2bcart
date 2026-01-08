@@ -281,25 +281,27 @@ export default function ProductsClient({
                 {/* Dynamic Category Header */}
                 <div className="mb-6 md:mb-8">
                     {selectedCategory ? (
-                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 to-emerald-700 p-6 md:p-10 text-white shadow-xl">
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 to-emerald-700 p-5 md:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
                             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-black/10 rounded-full blur-3xl" />
 
-                            <h1 className="relative text-2xl md:text-4xl font-bold mb-2 tracking-tight">
-                                {getPageTitle()}
-                            </h1>
-                            <p className="relative text-emerald-100 max-w-xl text-sm md:text-base leading-relaxed mb-6">
-                                Explore our premium collection of wholesale {getPageTitle().toLowerCase()}. Directly from verified manufacturers.
-                            </p>
+                            <div className="relative z-10 max-w-2xl">
+                                <h1 className="text-2xl md:text-3xl font-bold mb-2 tracking-tight">
+                                    {getPageTitle()}
+                                </h1>
+                                <p className="text-emerald-100 text-sm md:text-base leading-relaxed">
+                                    Explore our premium collection of wholesale {getPageTitle().toLowerCase()}. Directly from verified manufacturers.
+                                </p>
+                            </div>
 
                             {categories.find(c => c.slug === selectedCategory) && (
-                                <div className="relative">
+                                <div className="relative z-10 shrink-0">
                                     <DownloadCatalogButton
                                         categoryId={categories.find(c => c.slug === selectedCategory)!.id}
                                         categoryName={getPageTitle()}
                                         source="category"
                                         variant="primary" // Using primary for high visibility
-                                        className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50"
+                                        className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50 w-full md:w-auto"
                                     />
                                 </div>
                             )}
