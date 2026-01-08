@@ -1,47 +1,45 @@
 'use client';
 
-import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
+import { useEffect, useState } from 'react';
+import * as fpixel from '@/lib/fpixel';
 
 export default function FacebookPixel() {
+    const [loaded, setLoaded] = useState(false);
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && (window as any).fbq) {
-            (window as any).fbq('track', 'PageView');
-        }
-    }, [pathname, searchParams]);
+        if (!loaded) return;
+        fpixel.pageview();
+    }, [pathname, searchParams, loaded]);
 
     return (
         <>
             <Script
                 id="fb-pixel"
+                src="https://connect.facebook.net/en_US/fbevents.js"
                 strategy="afterInteractive"
-                dangerouslySetInnerHTML={{
-                    __html: `
-                        !function(f,b,e,v,n,t,s)
-                        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                        n.queue=[];t=b.createElement(e);t.async=!0;
-                        t.src=v;s=b.getElementsByTagName(e)[0];
-                        s.parentNode.insertBefore(t,s)}(window, document,'script',
-                        'https://connect.facebook.net/en_US/fbevents.js');
-                        fbq('init', '881326567810044');
-                        fbq('track', 'PageView');
-                    `,
+                onLoad={() => {
+                    setLoaded(true);
+                    if (!window.fbq) {
+                        window.fbq = function () {
+                            // eslint-disable-next-line prefer-rest-params
+                            window.fbq.callMethod ? window.fbq.callMethod.apply(window.fbq, arguments) : window.fbq.queue.push(arguments);
+                        } as any;
+                        if (!window._fbq) window._fbq = window.fbq;
+                        window.fbq.push = window.fbq;
+                        window.fbq.loaded = true;
+                        window.fbq.version = '2.0';
+                        window.fbq.queue = [];
+                    }
+                    if (fpixel.FB_PIXEL_ID) {
+                        window.fbq('init', fpixel.FB_PIXEL_ID);
+                        window.fbq('track', 'PageView');
+                    }
                 }}
             />
-            <noscript>
-                <img
-                    height="1"
-                    width="1"
-                    style={{ display: 'none' }}
-                    src="https://www.facebook.com/tr?id=881326567810044&ev=PageView&noscript=1"
-                />
-            </noscript>
         </>
     );
 }

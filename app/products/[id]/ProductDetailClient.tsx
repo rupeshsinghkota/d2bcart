@@ -131,8 +131,34 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
         }
     }
 
+    // Facebook Pixel: ViewContent
+    useEffect(() => {
+        import('@/lib/fpixel').then((fpixel) => {
+            fpixel.event('ViewContent', {
+                content_name: currentProduct.name,
+                content_ids: [currentProduct.id],
+                content_type: 'product',
+                value: currentProduct.display_price,
+                currency: 'INR',
+            })
+        })
+    }, [currentProduct])
+
     const handleAddToCart = async () => {
         setAddingToCart(true)
+
+        // Facebook Pixel: AddToCart
+        import('@/lib/fpixel').then((fpixel) => {
+            fpixel.event('AddToCart', {
+                content_name: currentProduct.name,
+                content_ids: variations.length > 0
+                    ? variations.filter(v => (quantities[v.id] || 0) > 0).map(v => v.id)
+                    : [currentProduct.id],
+                content_type: 'product',
+                value: getTotalPrice(),
+                currency: 'INR',
+            })
+        })
 
         if (variations.length > 0) {
             // Bulk Add

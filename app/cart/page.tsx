@@ -412,6 +412,18 @@ export default function CartPage() {
 
                         const verifyData = await verifyRes.json()
                         if (verifyData.success) {
+                            // Facebook Pixel: Purchase
+                            import('@/lib/fpixel').then((fpixel) => {
+                                fpixel.event('Purchase', {
+                                    content_type: 'product',
+                                    content_ids: cart.map(item => item.product.id),
+                                    value: payableAmount,
+                                    currency: 'INR',
+                                    num_items: cart.length,
+                                    transaction_id: response.razorpay_payment_id,
+                                })
+                            })
+
                             toast.success('Payment Successful!')
                             clearCart()
                             router.push('/retailer/orders')
