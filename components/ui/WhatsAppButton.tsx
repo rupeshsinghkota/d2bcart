@@ -55,7 +55,7 @@ export function WhatsAppButton({
             className={cn(baseStyles, variants[variant], sizes[size], className)}
         >
             {showIcon && <MessageCircle className={cn("w-4 h-4", label ? "mr-2" : "")} />}
-            {variant !== 'icon' && label}
+            {variant !== 'link' && size !== 'icon' && label}
         </Link>
     )
 }
