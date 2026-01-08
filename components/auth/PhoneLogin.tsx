@@ -115,7 +115,7 @@ export default function PhoneLogin() {
                                 required
                             />
                         </div>
-                        <p className="text-xs text-gray-500">We'll send you a one-time verification code.</p>
+                        <p className="text-xs text-gray-500">We'll send you a verification code on WhatsApp.</p>
                     </div>
 
                     <button
@@ -125,7 +125,7 @@ export default function PhoneLogin() {
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                             <>
-                                Send OTP
+                                Send WhatsApp OTP
                                 <ArrowRight className="w-5 h-5" />
                             </>
                         )}
