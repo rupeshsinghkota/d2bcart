@@ -584,49 +584,55 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
                                 </button>
-                                <DownloadCatalogButton
-                                    categoryId={product.category_id}
-                                    categoryName={product.category?.name || 'Category'}
-                                    source="product"
-                                    variant="outline"
-                                    className="px-4"
-                                />
+
                             </div>
                         </div>
 
                         {/* Manufacturer Info Card */}
                         {product.manufacturer && (
-                            <Link
-                                href={`/seller/${product.manufacturer_id || product.manufacturer.id}`}
-                                className="block bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all group/seller mx-3 md:mx-0"
-                            >
-                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Building className="w-5 h-5 text-gray-400 group-hover/seller:text-emerald-600 transition-colors" />
-                                    Seller Information
-                                </h3>
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-gray-900 group-hover/seller:text-emerald-700 transition-colors">
-                                                {product.manufacturer.business_name}
-                                            </span>
-                                            {product.manufacturer.is_verified && (
-                                                <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
-                                                    <Shield className="w-3 h-3" />
-                                                    Verified
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-emerald-200 transition-all mx-3 md:mx-0">
+                                <Link
+                                    href={`/seller/${product.manufacturer_id || product.manufacturer.id}`}
+                                    className="block group/seller mb-4"
+                                >
+                                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <Building className="w-5 h-5 text-gray-400 group-hover/seller:text-emerald-600 transition-colors" />
+                                        Seller Information
+                                    </h3>
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="font-semibold text-gray-900 group-hover/seller:text-emerald-700 transition-colors">
+                                                    {product.manufacturer.business_name}
                                                 </span>
-                                            )}
+                                                {product.manufacturer.is_verified && (
+                                                    <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                                                        <Shield className="w-3 h-3" />
+                                                        Verified
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                                                <MapPin className="w-4 h-4" />
+                                                {product.manufacturer.city}, {product.manufacturer.state}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                                            <MapPin className="w-4 h-4" />
-                                            {product.manufacturer.city}, {product.manufacturer.state}
+                                        <div className="text-emerald-600 opacity-0 group-hover/seller:opacity-100 transition-opacity text-sm font-medium">
+                                            View Profile
                                         </div>
                                     </div>
-                                    <div className="text-emerald-600 opacity-0 group-hover/seller:opacity-100 transition-opacity text-sm font-medium">
-                                        View Profile
-                                    </div>
+                                </Link>
+
+                                <div className="pt-4 border-t border-gray-100">
+                                    <DownloadCatalogButton
+                                        categoryId={product.category_id}
+                                        categoryName={product.category?.name || 'Category'}
+                                        source="product"
+                                        variant="ghost"
+                                        className="w-full justify-start text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 h-auto py-2 -ml-2"
+                                    />
                                 </div>
-                            </Link>
+                            </div>
                         )}
 
                         {/* More Products */}
