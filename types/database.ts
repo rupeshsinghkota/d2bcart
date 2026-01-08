@@ -131,6 +131,14 @@ export interface CatalogDownload {
     created_at: string
 }
 
+export interface CategoryCatalog {
+    id: string
+    category_id: string
+    pdf_url: string
+    created_at: string
+    updated_at: string
+}
+
 export interface Database {
     public: {
         Tables: {
@@ -180,6 +188,12 @@ export interface Database {
                 Row: CatalogDownload
                 Insert: Omit<CatalogDownload, 'id' | 'created_at'>
                 Update: Partial<Omit<CatalogDownload, 'id' | 'created_at'>>
+                Relationships: []
+            }
+            category_catalogs: {
+                Row: CategoryCatalog
+                Insert: Omit<CategoryCatalog, 'id' | 'created_at' | 'updated_at'>
+                Update: Partial<Omit<CategoryCatalog, 'id' | 'created_at' | 'updated_at'>>
                 Relationships: []
             }
         }
