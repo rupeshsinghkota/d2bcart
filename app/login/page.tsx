@@ -200,30 +200,29 @@ export default function LoginPage() {
                                         </>
                                     )}
                                 </button>
-                            </button>
-                        </form>
-                </>
+                            </form>
+                        </>
                     )}
 
-                <div className="mt-10 text-center">
-                    <p className="text-gray-500 text-sm">
-                        Don't have an account?{' '}
-                        <Link href="/register" className="text-emerald-600 font-bold hover:underline">
-                            Create an account
-                        </Link>
-                    </p>
-                </div>
+                    <div className="mt-10 text-center">
+                        <p className="text-gray-500 text-sm">
+                            Don't have an account?{' '}
+                            <Link href="/register" className="text-emerald-600 font-bold hover:underline">
+                                Create an account
+                            </Link>
+                        </p>
+                    </div>
 
-                <div className="mt-12 pt-8 border-t border-gray-100">
-                    <p className="text-xs text-center text-gray-400">
-                        By signing in, you agree to our{' '}
-                        <Link href="/terms" className="underline hover:text-gray-500">Terms of Service</Link>
-                        {' '}and{' '}
-                        <Link href="/privacy" className="underline hover:text-gray-500">Privacy Policy</Link>
-                    </p>
+                    <div className="mt-12 pt-8 border-t border-gray-100">
+                        <p className="text-xs text-center text-gray-400">
+                            By signing in, you agree to our{' '}
+                            <Link href="/terms" className="underline hover:text-gray-500">Terms of Service</Link>
+                            {' '}and{' '}
+                            <Link href="/privacy" className="underline hover:text-gray-500">Privacy Policy</Link>
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
-            </div >
-            )
+        </div >
+    )
 }
