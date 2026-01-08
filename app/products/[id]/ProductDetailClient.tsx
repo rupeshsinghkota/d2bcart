@@ -405,10 +405,10 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-baseline gap-2">
                                             <span className="text-2xl md:text-3xl font-extrabold text-emerald-600 tracking-tight">
-                                                {formatCurrency(currentProduct.display_price * (currentProduct.moq || 1))}
+                                                {formatCurrency(totalDisplayPrice)}
                                             </span>
                                             <span className="text-sm font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-                                                Pack of {currentProduct.moq || 1}
+                                                {quantity} {quantity === 1 ? 'Unit' : 'Units'}
                                             </span>
                                         </div>
                                         <div className="text-sm text-gray-500 font-medium">
