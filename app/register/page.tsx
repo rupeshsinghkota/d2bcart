@@ -29,13 +29,45 @@ const RegisterContent = () => {
         address: '',
     })
 
+    const [paramType] = useState(searchParams.get('type')) // Store initial param to avoid loop
+    const [isProfileCompletion, setIsProfileCompletion] = useState(false)
+    const [userId, setUserId] = useState<string | null>(null)
+
     useEffect(() => {
         const type = searchParams.get('type')
         if (type === 'manufacturer' || type === 'retailer') {
-            setUserType(type)
-            setFormData(prev => ({ ...prev, user_type: type }))
+            setUserType(type as UserType)
+            setFormData(prev => ({ ...prev, user_type: type as string }))
         }
     }, [searchParams])
+
+    // Check for existing session (Phone Auth User)
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user) {
+                // Check if they already have a profile
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('id', session.user.id)
+                    .single()
+
+                if (!profile) {
+                    // User exists but no profile -> Complete Profile Mode
+                    setIsProfileCompletion(true)
+                    setUserId(session.user.id)
+                    // Pre-fill phone if available from auth
+                    if (session.user.phone) {
+                        setFormData(prev => ({ ...prev, phone: session.user.phone! }))
+                    }
+                    setStep(2) // Skip directly to business details
+                    toast('Please complete your profile details.', { icon: '👋' })
+                }
+            }
+        }
+        checkSession()
+    }, [])
 
     // Keep formData synced with local userType state change
     useEffect(() => {
@@ -51,12 +83,23 @@ const RegisterContent = () => {
         setLoading(true)
 
         try {
-            // Call API to create user (Bypasses RLS)
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
+            let res;
+
+            if (isProfileCompletion && userId) {
+                // Call Complete Profile API
+                res = await fetch('/api/register/complete-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...formData, userId })
+                })
+            } else {
+                // Standard Registration
+                res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+            }
 
             const data = await res.json()
 
@@ -64,24 +107,28 @@ const RegisterContent = () => {
                 throw new Error(data.error || 'Registration failed')
             }
 
-            // Auto-login after successful registration
-            const { error: loginError } = await supabase.auth.signInWithPassword({
-                email: formData.email,
-                password: formData.password
-            })
+            if (!isProfileCompletion) {
+                // Only try to login if it was a standard registration (which creates the auth user)
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: formData.email,
+                    password: formData.password
+                })
 
-            if (loginError) {
-                toast.success('Registration successful! Please login.')
-                router.push('/login')
-            } else {
-                toast.success('Registration successful!')
-                // Redirect based on user type
-                if (userType === 'manufacturer') {
-                    router.push('/wholesaler')
-                } else {
-                    router.push('/products')
+                if (loginError) {
+                    toast.success('Registration successful! Please login.')
+                    router.push('/login')
+                    return // Stop here
                 }
             }
+
+            toast.success('Profile setup successful!')
+            // Redirect based on user type
+            if (userType === 'manufacturer') {
+                router.push('/wholesaler')
+            } else {
+                router.push('/products')
+            }
+
         } catch (error: any) {
             toast.error(error.message || 'Registration failed')
         } finally {
