@@ -230,26 +230,27 @@ export default function RetailerDashboard() {
                     </div>
 
                     {/* Quick Reorder / Buy Again */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                    {/* Quick Reorder / Buy Again */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 flex flex-col overflow-hidden w-full max-w-full">
                         <h2 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
                             <RefreshCcw className="w-5 h-5 text-emerald-600" />
                             Buy Again
                         </h2>
                         {buyAgainProducts.length > 0 ? (
-                            <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
+                            <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 space-y-3">
                                 {buyAgainProducts.map((product) => (
                                     <Link
                                         key={product.id}
                                         href={`/products/${product.id}`}
-                                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
+                                        className="flex items-center gap-3 p-2 md:p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group w-full max-w-full"
                                     >
-                                        <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
+                                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
                                             {product.images?.[0] && (
                                                 <Image src={product.images[0]} alt="" fill className="object-cover" />
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                                            <p className="text-sm font-medium text-gray-900 truncate pr-2">{product.name}</p>
                                             <p className="text-xs text-emerald-600 font-medium">Reorder</p>
                                         </div>
                                         <button
@@ -259,10 +260,10 @@ export default function RetailerDashboard() {
                                                 useStore.getState().addToCart(product, product.moq || 1);
                                                 toast.success('Added to cart!');
                                             }}
-                                            className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50 shadow-sm"
+                                            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100/50 shadow-sm flex-shrink-0"
                                             title="Reorder Item"
                                         >
-                                            <Plus className="w-5 h-5" />
+                                            <Plus className="w-4 h-4 md:w-5 md:h-5" />
                                         </button>
                                     </Link>
                                 ))}
