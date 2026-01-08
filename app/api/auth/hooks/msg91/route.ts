@@ -20,7 +20,8 @@ export async function POST(request: Request) {
 
         if (!user || !user.phone || !otp) {
             console.error('Missing required fields:', { user: !!user, phone: !!user?.phone, otp: !!otp })
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+            // Return 200 to prevent Supabase "Invalid Payload" error, so we can debug logs
+            return NextResponse.json({ error: 'Missing required fields (Logged)' }, { status: 200 })
         }
 
         const phone = user.phone.replace('+', '') // MSG91 expects number without +
