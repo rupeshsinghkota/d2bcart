@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-// This route allows Supabase to send OTPs via MSG91 (WhatsApp)
+// This route allows Supabase to send OTPs via MSG91 (WhatsApp Direct API)
 // Configure this URL in Supabase -> Authentication -> Providers -> Phone -> SMS Provider: Custom
 export async function POST(request: Request) {
     try {
@@ -11,41 +11,65 @@ export async function POST(request: Request) {
             return new NextResponse('Missing required fields', { status: 400 })
         }
 
-        const phone = user.phone.replace('+', '') // MSG91 usually expects number without +
-        const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
-        const MSG91_TEMPLATE_ID = process.env.MSG91_TEMPLATE_ID // WhatsApp Template ID/Slug
-        const MSG91_INTEGRATED_NUMBER = process.env.MSG91_INTEGRATED_NUMBER // Your WhatsApp Number integrated in MSG91
+        const phone = user.phone.replace('+', '') // MSG91 expects number without +
 
-        if (!MSG91_AUTH_KEY || !MSG91_TEMPLATE_ID) {
-            console.error('MSG91 Credentials missing in env')
-            // Return 200 to Supabase so it doesn't retry infinitely or block the UI, 
-            // but log the error on server.
+        // Environment Variables (Updated for WhatsApp Direct API)
+        const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
+        // These can be hardcoded if stable, or keep in env for safety
+        const MSG91_INTEGRATED_NUMBER = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
+        const MSG91_NAMESPACE = process.env.MSG91_NAMESPACE || "de03d239_9cbd_4348_ad12_4d8a4ea70188"
+        const MSG91_TEMPLATE_NAME = process.env.MSG91_TEMPLATE_NAME || "d2b_login_otp"
+
+        if (!MSG91_AUTH_KEY) {
+            console.error('MSG91_AUTH_KEY missing in env')
             return new NextResponse('MSG91 Config Missing', { status: 500 })
         }
 
-        // MSG91 API Call (Example for Integrated Flow or WhatsApp API)
-        // Adjust headers and body based on exact MSG91 documentation for your specific flow
-        const response = await fetch('https://control.msg91.com/api/v5/flow/', {
+        // WhatsApp Direct API Payload
+        const payload = {
+            "integrated_number": MSG91_INTEGRATED_NUMBER,
+            "content_type": "template",
+            "payload": {
+                "messaging_product": "whatsapp",
+                "type": "template",
+                "template": {
+                    "name": MSG91_TEMPLATE_NAME,
+                    "language": {
+                        "code": "en",
+                        "policy": "deterministic"
+                    },
+                    "namespace": MSG91_NAMESPACE,
+                    "to_and_components": [
+                        {
+                            "to": [phone],
+                            "components": {
+                                "body_1": {
+                                    "type": "text",
+                                    "value": otp // The variable {{1}} in the template
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+        const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
             method: 'POST',
             headers: {
                 'authkey': MSG91_AUTH_KEY,
-                'content-type': 'application/json'
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                template_id: MSG91_TEMPLATE_ID,
-                short_url: "0",
-                recipients: [
-                    {
-                        mobiles: phone,
-                        otp: otp
-                    }
-                ]
-            })
+            body: JSON.stringify(payload)
         })
 
         const data = await response.json()
 
-        if (data.type === 'error') {
+        // MSG91 WhatsApp API usually returns { status: "success", ... } or similar
+        // We log it to be sure
+        console.log("MSG91 Response:", JSON.stringify(data))
+
+        if (data.status === 'error' || data.type === 'error') {
             console.error('MSG91 Error:', data)
             return new NextResponse(JSON.stringify(data), { status: 500 })
         }
