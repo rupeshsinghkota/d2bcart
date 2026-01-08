@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { Factory, Store, Mail, Lock, Building, Phone, MapPin, ArrowRight, Check, ChevronLeft, Briefcase } from 'lucide-react'
+import PhoneLogin from '@/components/auth/PhoneLogin'
 
 type UserType = 'manufacturer' | 'retailer'
 
@@ -188,8 +189,23 @@ const RegisterContent = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Step 1: User Type & Account Info */}
-                        {step === 1 && (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Step 1: Phone Authentication */}
+                            {step === 1 && !isProfileCompletion && (
+                                <div className="animate-fade-in space-y-6">
+                                    <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                        <h3 className="font-semibold text-emerald-900 mb-2">Mobile Verification</h3>
+                                        <p className="text-sm text-emerald-600 mb-6">We use WhatsApp OTP for secure and instant verification.</p>
+                                        {/* Phone Login Component handles the auth flow */}
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100/50">
+                                            <PhoneLogin />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Step 2: Business & Profile Details */}
+                            {step === 2 && (
                             <div className="animate-fade-in space-y-6">
                                 <div className="space-y-3">
                                     <label className="text-sm font-semibold text-gray-900">I am a</label>
@@ -228,26 +244,9 @@ const RegisterContent = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Business Name</label>
-                                        <div className="relative group">
-                                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
-                                            <input
-                                                type="text"
-                                                value={formData.business_name}
-                                                onChange={(e) => updateForm('business_name', e.target.value)}
-                                                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                                placeholder="Enter business name"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">Email Address</label>
-                                        <div className="relative group">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-900">Business Name</label>
+                                    <div className="relative group">
                                             <input
                                                 type="email"
                                                 value={formData.email}
