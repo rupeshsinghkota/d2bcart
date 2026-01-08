@@ -33,8 +33,9 @@ const RegisterContent = () => {
     const [paramType] = useState(searchParams.get('type')) // Store initial param to avoid loop
     const [isProfileCompletion, setIsProfileCompletion] = useState(false)
     const [sessionLoading, setSessionLoading] = useState(true)
+    const [userId, setUserId] = useState<string | null>(null)
 
-    // ... (keep existing verify session)
+    // Check for existing session (Phone Auth User)
     useEffect(() => {
         const checkSession = async () => {
             try {
@@ -66,7 +67,72 @@ const RegisterContent = () => {
         checkSession()
     }, [])
 
-    // ...
+    // Keep formData synced with local userType state change
+    useEffect(() => {
+        setFormData(prev => ({ ...prev, user_type: userType }))
+    }, [userType])
+
+    const updateForm = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }))
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+
+        try {
+            let res;
+
+            if (isProfileCompletion && userId) {
+                // Call Complete Profile API
+                res = await fetch('/api/register/complete-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...formData, userId })
+                })
+            } else {
+                // Standard Registration
+                res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+            }
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Registration failed')
+            }
+
+            if (!isProfileCompletion) {
+                // Only try to login if it was a standard registration (which creates the auth user)
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email: formData.email,
+                    password: formData.password
+                })
+
+                if (loginError) {
+                    toast.success('Registration successful! Please login.')
+                    router.push('/login')
+                    return // Stop here
+                }
+            }
+
+            toast.success('Profile setup successful!')
+            // Redirect based on user type
+            if (userType === 'manufacturer') {
+                router.push('/wholesaler')
+            } else {
+                router.push('/products')
+            }
+
+        } catch (error: any) {
+            toast.error(error.message || 'Registration failed')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     if (sessionLoading) {
         return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div></div>
