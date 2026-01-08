@@ -19,6 +19,7 @@ import Image from 'next/image'
 import { MobileFilterBar } from '@/components/product/MobileFilterBar'
 import { MobileCategorySheet } from '@/components/product/MobileCategorySheet'
 import { ProductCard } from '@/components/product/ProductCard'
+import DownloadCatalogButton from '@/components/catalog/DownloadCatalogButton'
 
 interface ProductsClientProps {
     initialProducts: Product[]
@@ -287,9 +288,21 @@ export default function ProductsClient({
                             <h1 className="relative text-2xl md:text-4xl font-bold mb-2 tracking-tight">
                                 {getPageTitle()}
                             </h1>
-                            <p className="relative text-emerald-100 max-w-xl text-sm md:text-base leading-relaxed">
+                            <p className="relative text-emerald-100 max-w-xl text-sm md:text-base leading-relaxed mb-6">
                                 Explore our premium collection of wholesale {getPageTitle().toLowerCase()}. Directly from verified manufacturers.
                             </p>
+
+                            {categories.find(c => c.slug === selectedCategory) && (
+                                <div className="relative">
+                                    <DownloadCatalogButton
+                                        categoryId={categories.find(c => c.slug === selectedCategory)!.id}
+                                        categoryName={getPageTitle()}
+                                        source="category"
+                                        variant="primary" // Using primary for high visibility
+                                        className="shadow-lg shadow-black/10 bg-white text-emerald-800 hover:bg-emerald-50"
+                                    />
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex items-end justify-between border-b border-gray-100 pb-4">
