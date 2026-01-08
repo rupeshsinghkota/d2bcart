@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import FacebookPixel from "@/components/analytics/FacebookPixel";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Suspense } from "react";
 
@@ -97,6 +98,7 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning={true}>
         <Suspense fallback={null}>
           <FacebookPixel />
+          <GoogleAnalytics />
         </Suspense>
         <Toaster position="top-right" />
         <Navbar />
