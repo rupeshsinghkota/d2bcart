@@ -189,10 +189,6 @@ export async function GET(
         const rowPromises = products.map(async (p: any) => {
             const rows: any[] = []
 
-            // Parent Row
-            let price = `Rs. ${p.display_price}`
-            let moq = `${p.moq || 1} units`
-
             // Fetch Parent Image
             let imgData = null
             if (p.images && p.images.length > 0) {
@@ -205,42 +201,40 @@ export async function GET(
             const message = `Hi, I am interested in this product: ${p.name} (SKU: ${p.sku || 'N/A'}). Link: ${productLink}`
             const chatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`
 
+            // Accumulate Data (Parent + Variations)
+            let nameStr = p.name
+            let skuStr = p.sku || '-'
+            let moqStr = `${p.moq || 1}`
+            let priceStr = `Rs. ${p.display_price}`
+
+            // If variations exist, append them to the strings
+            if (p.variations && p.variations.length > 0) {
+                for (const v of p.variations) {
+                    // Try to make variant name concise by removing parent name prefix
+                    let vName = v.name
+                    if (vName.toLowerCase().startsWith(p.name.toLowerCase())) {
+                        vName = vName.slice(p.name.length).replace(/^[\s-–—]+/, '').trim()
+                    }
+                    if (!vName) vName = "Variant"
+
+                    nameStr += `\n• ${vName}`
+                    skuStr += `\n${v.sku || '-'}`
+                    moqStr += `\n${v.moq || 1}`
+                    priceStr += `\nRs. ${v.display_price}`
+                }
+            }
+
             rows.push({
                 image: imgData,
-                name: p.name,
-                sku: p.sku || '-',
-                moq: moq,
-                price: price,
+                name: nameStr,
+                sku: skuStr,
+                moq: moqStr, // Removed "units" suffix to save space in condensed view
+                price: priceStr,
                 url: productLink,
                 isLink: true,
                 chatUrl: chatUrl
             })
 
-            // Variations
-            if (p.variations && p.variations.length > 0) {
-                for (const v of p.variations) {
-                    const vName = v.name === p.name ? `${v.name} (Variant)` : v.name
-
-                    // Variation Image (fallback to parent if none)
-                    let vImgData = null
-                    if (v.images && v.images.length > 0) {
-                        vImgData = await getImageBase64(v.images[0])
-                    }
-
-                    // Variant Chat Link
-                    const vMessage = `Hi, I am interested in this product variant: ${vName} (SKU: ${v.sku || 'N/A'}). Parent Link: ${productLink}`
-                    const vChatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(vMessage)}`
-
-                    rows.push({
-                        image: vImgData,
-                        name: `  - ${vName}`,
-                        sku: v.sku || '-',
-                        moq: `${v.moq || 1} units`,
-                        price: `Rs. ${v.display_price}`,
-                        chatUrl: vChatUrl
-                    })
-                }
-            }
             return rows
         })
 
