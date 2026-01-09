@@ -97,17 +97,23 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning={true}>
         <Suspense fallback={null}>
-          <FacebookPixel />
-          <GoogleAnalytics />
-        </Suspense>
-        <Toaster position="top-right" />
-        <Navbar />
-        <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
-          {children}
-        </main>
-        <Footer />
-        <BottomNav />
-        <WhatsAppButton />
+          import CartSyncProvider from "@/components/CartSyncProvider";
+
+          // ...
+
+          <Suspense fallback={null}>
+            <FacebookPixel />
+            <GoogleAnalytics />
+          </Suspense>
+          <Toaster position="top-right" />
+          <CartSyncProvider />
+          <Navbar />
+          <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
+            {children}
+          </main>
+          <Footer />
+          <BottomNav />
+          <WhatsAppButton />
       </body>
     </html>
   );
