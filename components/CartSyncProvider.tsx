@@ -4,7 +4,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { createBrowserClient } from '@supabase/ssr'
-import toast from 'react-hot-toast'
 
 export default function CartSyncProvider() {
     const fetchCart = useStore(state => state.fetchCart)
@@ -19,7 +18,6 @@ export default function CartSyncProvider() {
 
     useEffect(() => {
         const performSync = async (uid: string) => {
-            toast('Sync: Starting...', { id: 'sync-start' })
             try {
                 // 1. Get Cart ID
                 const { data: cart, error: cartError } = await supabase
@@ -30,18 +28,14 @@ export default function CartSyncProvider() {
 
                 if (cartError) {
                     console.error('Cart Fetch Error', cartError)
-                    toast.error(`Sync Error: ${cartError.message}`)
                     return
                 }
 
                 if (!cart) {
-                    // toast('Sync: No existing cart found')
                     // No cart on server -> Let mergeRemoteCart handle logic (it might save local)
                     useStore.getState().mergeRemoteCart([])
                     return
                 }
-
-                // toast(`Sync: Cart Found`)
 
                 // 2. Get Cart Items
                 const { data: cartItems, error: itemsError } = await supabase
@@ -56,11 +50,9 @@ export default function CartSyncProvider() {
 
                 if (itemsError) {
                     console.error('Items Fetch Error', itemsError)
-                    toast.error(`Items Error: ${itemsError.message}`)
                     return
                 }
 
-                toast.success(`Sync: Fetched ${cartItems?.length || 0} items`)
 
                 // 3. Transform to Store Format (Safe Map)
                 const formattedItems = (cartItems || []).reduce((acc: any[], item: any) => {
@@ -87,7 +79,6 @@ export default function CartSyncProvider() {
 
             } catch (err: any) {
                 console.error('Sync Exception', err)
-                toast.error(`Sync Crash: ${err.message}`)
             }
         }
 
