@@ -4,6 +4,7 @@
 import { useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { createBrowserClient } from '@supabase/ssr'
+import toast from 'react-hot-toast'
 
 export default function CartSyncProvider() {
     const fetchCart = useStore(state => state.fetchCart)
@@ -18,22 +19,32 @@ export default function CartSyncProvider() {
 
     useEffect(() => {
         const performSync = async (uid: string) => {
+            toast('Sync: Starting...', { id: 'sync-start' })
             try {
                 // 1. Get Cart ID
-                const { data: cart } = await supabase
+                const { data: cart, error: cartError } = await supabase
                     .from('carts')
                     .select('id')
                     .eq('user_id', uid)
                     .maybeSingle()
 
+                if (cartError) {
+                    console.error('Cart Fetch Error', cartError)
+                    toast.error(`Sync Error: ${cartError.message}`)
+                    return
+                }
+
                 if (!cart) {
+                    // toast('Sync: No existing cart found')
                     // No cart on server -> Let mergeRemoteCart handle logic (it might save local)
                     useStore.getState().mergeRemoteCart([])
                     return
                 }
 
+                // toast(`Sync: Cart Found`)
+
                 // 2. Get Cart Items
-                const { data: cartItems } = await supabase
+                const { data: cartItems, error: itemsError } = await supabase
                     .from('cart_items')
                     .select(`
                         quantity,
@@ -43,26 +54,40 @@ export default function CartSyncProvider() {
                     `)
                     .eq('cart_id', cart.id)
 
-                // 3. Transform to Store Format
-                const formattedItems = (cartItems || []).map((item: any) => ({
-                    product: {
-                        id: item.product.id,
-                        name: item.product.name,
-                        display_price: item.product.display_price,
-                        images: item.product.images || [],
-                        manufacturer_id: item.product.manufacturer_id,
-                        moq: item.product.moq || 1,
-                        // Defaults
-                        base_price: 0, your_margin: 0, stock: 999, is_active: true, created_at: new Date().toISOString(), category_id: ''
-                    },
-                    quantity: item.quantity
-                }))
+                if (itemsError) {
+                    console.error('Items Fetch Error', itemsError)
+                    toast.error(`Items Error: ${itemsError.message}`)
+                    return
+                }
+
+                toast.success(`Sync: Fetched ${cartItems?.length || 0} items`)
+
+                // 3. Transform to Store Format (Safe Map)
+                const formattedItems = (cartItems || []).reduce((acc: any[], item: any) => {
+                    if (!item.product) return acc // Skip if product is missing/null
+
+                    acc.push({
+                        product: {
+                            id: item.product.id,
+                            name: item.product.name,
+                            display_price: item.product.display_price,
+                            images: item.product.images || [],
+                            manufacturer_id: item.product.manufacturer_id,
+                            moq: item.product.moq || 1,
+                            // Defaults
+                            base_price: 0, your_margin: 0, stock: 999, is_active: true, created_at: new Date().toISOString(), category_id: ''
+                        },
+                        quantity: item.quantity
+                    })
+                    return acc
+                }, [])
 
                 // 4. Merge
                 useStore.getState().mergeRemoteCart(formattedItems)
 
-            } catch (err) {
-                console.error('Sync failed', err)
+            } catch (err: any) {
+                console.error('Sync Exception', err)
+                toast.error(`Sync Crash: ${err.message}`)
             }
         }
 
