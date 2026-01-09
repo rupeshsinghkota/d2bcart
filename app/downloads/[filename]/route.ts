@@ -8,9 +8,10 @@ export async function GET(
 ) {
     const { filename } = await context.params
 
-    // Security: Only allow pdf files
+    let finalFilename = filename
     if (!filename.endsWith('.pdf')) {
-        return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
+        // Assume it's a category slug, format as catalog_{slug}.pdf
+        finalFilename = `catalog_${filename}.pdf`
     }
 
     // Construct Supabase Public URL
@@ -28,7 +29,7 @@ export async function GET(
     const { data: { publicUrl } } = supabase
         .storage
         .from('catalogs')
-        .getPublicUrl(filename)
+        .getPublicUrl(finalFilename)
 
     // Redirect to the actual storage file
     return NextResponse.redirect(publicUrl)
