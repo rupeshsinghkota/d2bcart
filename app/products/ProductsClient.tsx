@@ -20,6 +20,7 @@ import { MobileFilterBar } from '@/components/product/MobileFilterBar'
 import { MobileCategorySheet } from '@/components/product/MobileCategorySheet'
 import { ProductCard } from '@/components/product/ProductCard'
 import DownloadCatalogButton from '@/components/catalog/DownloadCatalogButton'
+import { MarketingTimer } from '@/components/marketing/MarketingTimer'
 
 interface ProductsClientProps {
     initialProducts: Product[]
@@ -481,6 +482,14 @@ export default function ProductsClient({
                     </div>
                 </div>
             </div>
+            {/* Marketing Timer: 5 Minutes (300s) on Category Page */}
+            {selectedCategory && (
+                <MarketingTimer
+                    eventType="browse_category"
+                    id={selectedCategory}
+                    delaySeconds={300}
+                />
+            )}
         </div>
     )
 }

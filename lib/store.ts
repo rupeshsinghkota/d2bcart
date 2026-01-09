@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { User, Product } from '@/types'
+import { syncCartToServer } from './cart-sync'
 
 interface CartItem {
     product: Product
@@ -17,6 +18,7 @@ interface AppState {
     clearCart: () => void
     getCartTotal: () => number
     addItems: (items: { product: Product, quantity: number }[]) => void
+    fetchCart: () => Promise<void>
 }
 
 export const useStore = create<AppState>()(
@@ -30,33 +32,40 @@ export const useStore = create<AppState>()(
             addToCart: (product, quantity) => {
                 const cart = get().cart
                 const existing = cart.find(item => item.product.id === product.id)
+                let newCart;
 
                 if (existing) {
-                    set({
-                        cart: cart.map(item =>
-                            item.product.id === product.id
-                                ? { ...item, quantity: item.quantity + quantity }
-                                : item
-                        )
-                    })
+                    newCart = cart.map(item =>
+                        item.product.id === product.id
+                            ? { ...item, quantity: item.quantity + quantity }
+                            : item
+                    )
                 } else {
-                    set({ cart: [...cart, { product, quantity }] })
+                    newCart = [...cart, { product, quantity }]
                 }
+
+                set({ cart: newCart })
+                if (get().user) syncCartToServer(newCart)
             },
 
             removeFromCart: (productId) => {
-                set({ cart: get().cart.filter(item => item.product.id !== productId) })
+                const newCart = get().cart.filter(item => item.product.id !== productId)
+                set({ cart: newCart })
+                if (get().user) syncCartToServer(newCart)
             },
 
             updateQuantity: (productId, quantity) => {
-                set({
-                    cart: get().cart.map(item =>
-                        item.product.id === productId ? { ...item, quantity } : item
-                    )
-                })
+                const newCart = get().cart.map(item =>
+                    item.product.id === productId ? { ...item, quantity } : item
+                )
+                set({ cart: newCart })
+                if (get().user) syncCartToServer(newCart)
             },
 
-            clearCart: () => set({ cart: [] }),
+            clearCart: () => {
+                set({ cart: [] })
+                if (get().user) syncCartToServer([])
+            },
 
             getCartTotal: () => {
                 return get().cart.reduce(
@@ -79,7 +88,20 @@ export const useStore = create<AppState>()(
                 })
 
                 set({ cart: newCart })
+                if (get().user) syncCartToServer(newCart)
             },
+
+            fetchCart: async () => {
+                try {
+                    const res = await fetch('/api/cart')
+                    const data = await res.json()
+                    if (data.cart && Array.isArray(data.cart)) {
+                        set({ cart: data.cart })
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch server cart', err)
+                }
+            }
         }),
         {
             name: 'd2b-cart-storage',
