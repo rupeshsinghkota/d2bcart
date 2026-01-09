@@ -90,7 +90,9 @@ export async function GET(request: Request) {
                 const u = d.users as any
                 if (!u?.phone) continue
                 const { data: orders } = await supabaseAdmin.from('orders').select('id').eq('retailer_id', d.user_id).gt('created_at', d.created_at).limit(1)
-                if (orders?.length > 0) {
+
+                // Fix TS Error: Ensure orders is defined before checking length
+                if (orders && orders.length > 0) {
                     await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
                 } else {
                     try {
