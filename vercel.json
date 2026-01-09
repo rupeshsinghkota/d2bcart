@@ -1,16 +1,10 @@
-{
-    "crons": [
-        {
-            "path": "/api/marketing/cron/follow-up",
-            "schedule": "0 10 * * *"
-        },
-        {
-            "path": "/api/marketing/cron/reactivation",
-            "schedule": "0 11 * * *"
-        },
-        {
-            "path": "/api/marketing/cron/abandoned-cart",
-            "schedule": "0 * * * *"
-        }
-    ]
+    {
+        "path": "/api/marketing/cron/daily",
+        "schedule": "0 10 * * *"
+    },
+    {
+        "path": "/api/marketing/cron/abandoned-cart",
+        "schedule": "0 * * * *"
+    }
+]
 }
