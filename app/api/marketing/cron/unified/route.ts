@@ -79,7 +79,7 @@ export async function GET(request: Request) {
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
         const { data: downloads } = await supabaseAdmin
             .from('catalog_downloads')
-            .select(`id, user_id, created_at, users (phone, business_name)`)
+            .select(`id, user_id, category_id, created_at, users (phone, business_name)`)
             .is('followup_sent_at', null)
             .lt('created_at', threeDaysAgo.toISOString())
             .limit(20)
@@ -98,7 +98,10 @@ export async function GET(request: Request) {
                         await sendWhatsAppMessage({
                             mobile: u.phone,
                             templateName: 'd2b_catalog_followup',
-                            components: { body_1: { type: 'text', value: u.business_name || 'there' } }
+                            components: {
+                                body_1: { type: 'text', value: u.business_name || 'there' },
+                                button_1: { subtype: 'url', type: 'text', value: d.category_id || 'all' }
+                            }
                         })
                         await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
                         report.followup.sent++
