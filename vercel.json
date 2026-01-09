@@ -1,11 +1,7 @@
 {
     "crons": [
         {
-            "path": "/api/marketing/cron/daily",
-            "schedule": "0 10 * * *"
-        },
-        {
-            "path": "/api/marketing/cron/abandoned-cart",
+            "path": "/api/marketing/cron/unified",
             "schedule": "0 * * * *"
         }
     ]
