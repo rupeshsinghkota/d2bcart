@@ -9,6 +9,7 @@ export async function GET(request: Request) {
 
     const template = searchParams.get('template')
     const integratedNumber = searchParams.get('integrated_number')
+    const includeButton = searchParams.get('include_button') === 'true'
 
     if (!phone) {
         return NextResponse.json({ error: 'Phone required' })
@@ -20,14 +21,19 @@ export async function GET(request: Request) {
         targetPhone = '91' + targetPhone
     }
 
+    const components: any = {
+        body_1: { type: 'text', value: 'Kotacart' }
+    }
+
+    if (includeButton) {
+        components.button_1 = { subtype: 'url', type: 'text', value: 'cart' }
+    }
+
     try {
         const result = await sendWhatsAppMessage({
             mobile: targetPhone,
             templateName: template || 'd2b_abandoned_cart',
-            components: {
-                body_1: { type: 'text', value: 'Kotacart' },
-                button_1: { subtype: 'url', type: 'text', value: 'cart' }
-            },
+            components: components,
             namespace: namespace || undefined,
             integratedNumber: integratedNumber || undefined
         })
