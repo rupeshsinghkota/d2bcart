@@ -41,10 +41,20 @@ async function HomeContent() {
   if (!profile) {
     console.error('[Home] User authenticated but profile not found in "users" table. ID:', authUser.id)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4 p-4 text-center">
         <h1 className="text-xl font-bold text-red-600">Profile Not Found</h1>
-        <p className="text-gray-600">You are logged in, but your user profile is missing.</p>
-        <p className="text-xs text-gray-400">ID: {authUser.id}</p>
+        <p className="text-gray-600 max-w-md">
+          You are logged in with Email ({authUser.email}), but we couldn't find your profile details.
+        </p>
+        <div className="flex gap-4 mt-2">
+          <form action="/auth/signout" method="post">
+            <button className="text-sm text-gray-500 hover:text-gray-900 border px-4 py-2 rounded">Sign Out</button>
+          </form>
+          <a href="/register?step=2" className="bg-emerald-600 text-white px-6 py-2 rounded shadow hover:bg-emerald-700">
+            Complete Profile
+          </a>
+        </div>
+        <p className="text-xs text-gray-400 mt-4">Auth ID: {authUser.id}</p>
       </div>
     )
   }

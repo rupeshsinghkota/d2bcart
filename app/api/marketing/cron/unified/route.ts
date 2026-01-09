@@ -139,6 +139,93 @@ export async function GET(request: Request) {
             }
         }
 
+        // ---------------------------------------------------------
+        // 3. WEEKLY TASKS: CATALOG PUSH (No Order in 7 Days)
+        // ---------------------------------------------------------
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+        const { data: weeklyCandidates } = await supabaseAdmin
+            .from('users')
+            .select('id, phone, business_name, last_weekly_catalog_sent_at')
+            .eq('user_type', 'retailer')
+            .or(`last_weekly_catalog_sent_at.is.null,last_weekly_catalog_sent_at.lt.${sevenDaysAgo.toISOString()}`)
+            .limit(20)
+
+        if (weeklyCandidates) {
+            for (const user of weeklyCandidates) {
+                if (!user.phone) continue
+
+                // 1. Check if they placed an order in the last 7 days
+                const { count } = await supabaseAdmin
+                    .from('orders')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('retailer_id', user.id)
+                    .gt('created_at', sevenDaysAgo.toISOString())
+
+                // 2. If NO orders recently, engage them
+                if (count === 0) {
+                    let categoryId: string | null = null
+
+                    // Priority A: Last Order Category (Proven Interest)
+                    const { data: lastOrder } = await supabaseAdmin
+                        .from('orders')
+                        .select('created_at, order_items(product_id, products(category_id))')
+                        .eq('retailer_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single()
+
+                    if (lastOrder?.order_items?.[0]) {
+                        const product = (lastOrder.order_items[0] as any).products
+                        if (product?.category_id) categoryId = product.category_id
+                    }
+
+                    // Priority B: Cart Interest (Current Interest)
+                    if (!categoryId) {
+                        const { data: cart } = await supabaseAdmin
+                            .from('carts')
+                            .select('cart_items(product_id, products(category_id))')
+                            .eq('user_id', user.id)
+                            .single()
+
+                        if (cart?.cart_items?.[0]) {
+                            const product = (cart.cart_items[0] as any).products
+                            if (product?.category_id) categoryId = product.category_id
+                        }
+                    }
+
+                    // Send Message
+                    try {
+                        const templateName = categoryId ? 'd2b_7_days_reminder' : 'd2b_product_browse'
+
+                        // Note: Assuming 'd2b_7_days_reminder' has a Dynamic URL Button for the category
+                        await sendWhatsAppMessage({
+                            mobile: user.phone,
+                            templateName: templateName,
+                            components: {
+                                body_1: { type: 'text', value: user.business_name || 'Partner' },
+                                // pass categoryId to button var if template supports it (e.g. button_1: { subtype: 'url', index: '0', parameters: [{ type: 'text', text: categoryId }] })
+                                // For now, we rely on the user setting up the template to likely just take {{1}} in body or maybe not support dynamic link yet. 
+                                // To support Dynamic Button w/ Msg91 V5:
+                                // we need to check if 'd2b_7_days_reminder' is set up for it. 
+                                // I will explicitly pass the button param IF categoryId exists, assuming user sets it up.
+                                ...(categoryId ? {
+                                    button_1: {
+                                        subtype: 'url',
+                                        type: 'text',
+                                        value: categoryId
+                                    }
+                                } : {})
+                            }
+                        })
+                        await supabaseAdmin.from('users').update({ last_weekly_catalog_sent_at: new Date().toISOString() }).eq('id', user.id)
+                        report.reactivation.sent++ // Reusing counter
+                    } catch (e) { report.reactivation.errors++ }
+                }
+            }
+        }
+
         return NextResponse.json({ success: true, report })
 
     } catch (error: any) {

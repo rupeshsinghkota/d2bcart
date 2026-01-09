@@ -51,17 +51,21 @@ export default function LoginPage() {
                     // Update global store immediately
                     const { useStore } = await import('@/lib/store')
                     useStore.getState().setUser(profile as any)
-                }
 
-                toast.success('Login successful!')
+                    toast.success('Login successful!')
 
-                // Redirect based on user type
-                if (profile?.user_type === 'manufacturer') {
-                    router.push('/wholesaler')
-                } else if (profile?.user_type === 'admin') {
-                    router.push('/admin')
+                    // Redirect based on user type
+                    if (profile.user_type === 'manufacturer') {
+                        router.push('/wholesaler')
+                    } else if (profile.user_type === 'admin') {
+                        router.push('/admin')
+                    } else {
+                        router.push('/products')
+                    }
                 } else {
-                    router.push('/products')
+                    // Auth exists but no profile -> Redirect to completion
+                    toast('Please complete your profile details.', { icon: '📝' })
+                    router.push('/register?step=2')
                 }
                 router.refresh()
             }
