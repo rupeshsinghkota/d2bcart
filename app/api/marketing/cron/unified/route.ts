@@ -70,76 +70,71 @@ export async function GET(request: Request) {
         }
 
         // ---------------------------------------------------------
-        // 2. DAILY TASKS: FOLLOW-UP & REACTIVATION (Run only at ~10 AM IST)
+        // 2. DAILY TASKS: FOLLOW-UP & REACTIVATION (Run Every Time)
         // ---------------------------------------------------------
-        // IST is UTC + 5:30.
-        // If we want 11:00 AM IST, that is 5:30 AM UTC.
-        // Let's run it if UTC hour is 5 or 6.
 
-        if (currentHour === 5) {
-            report.daily_tasks_run = true
+        report.daily_tasks_run = true
 
-            // A. Follow-up
-            const threeDaysAgo = new Date()
-            threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-            const { data: downloads } = await supabaseAdmin
-                .from('catalog_downloads')
-                .select(`id, user_id, created_at, users (phone, business_name)`)
-                .is('followup_sent_at', null)
-                .lt('created_at', threeDaysAgo.toISOString())
-                .limit(20)
+        // A. Follow-up
+        const threeDaysAgo = new Date()
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+        const { data: downloads } = await supabaseAdmin
+            .from('catalog_downloads')
+            .select(`id, user_id, created_at, users (phone, business_name)`)
+            .is('followup_sent_at', null)
+            .lt('created_at', threeDaysAgo.toISOString())
+            .limit(20)
 
-            if (downloads) {
-                for (const d of downloads) {
-                    const u = d.users as any
-                    if (!u?.phone) continue
-                    const { data: orders } = await supabaseAdmin.from('orders').select('id').eq('retailer_id', d.user_id).gt('created_at', d.created_at).limit(1)
-                    if (orders?.length > 0) {
+        if (downloads) {
+            for (const d of downloads) {
+                const u = d.users as any
+                if (!u?.phone) continue
+                const { data: orders } = await supabaseAdmin.from('orders').select('id').eq('retailer_id', d.user_id).gt('created_at', d.created_at).limit(1)
+                if (orders?.length > 0) {
+                    await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
+                } else {
+                    try {
+                        await sendWhatsAppMessage({
+                            mobile: u.phone,
+                            templateName: 'd2b_catalog_followup',
+                            components: { body_1: { type: 'text', value: u.business_name || 'there' } }
+                        })
                         await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
-                    } else {
-                        try {
-                            await sendWhatsAppMessage({
-                                mobile: u.phone,
-                                templateName: 'd2b_catalog_followup',
-                                components: { body_1: { type: 'text', value: u.business_name || 'there' } }
-                            })
-                            await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
-                            report.followup.sent++
-                        } catch (e) { report.followup.errors++ }
-                    }
-                    report.followup.processed++
+                        report.followup.sent++
+                    } catch (e) { report.followup.errors++ }
                 }
+                report.followup.processed++
             }
+        }
 
-            // B. Reactivation
-            const thirtyDaysAgo = new Date()
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-            const { data: inactiveUsers } = await supabaseAdmin
-                .from('users')
-                .select('id, phone, business_name, created_at')
-                .eq('user_type', 'retailer')
-                .lt('created_at', thirtyDaysAgo.toISOString())
-                .is('reactivation_sent_at', null)
-                .limit(20)
+        // B. Reactivation
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const { data: inactiveUsers } = await supabaseAdmin
+            .from('users')
+            .select('id, phone, business_name, created_at')
+            .eq('user_type', 'retailer')
+            .lt('created_at', thirtyDaysAgo.toISOString())
+            .is('reactivation_sent_at', null)
+            .limit(20)
 
-            if (inactiveUsers) {
-                for (const u of inactiveUsers) {
-                    if (!u.phone) continue
-                    const { data: lo } = await supabaseAdmin.from('orders').select('created_at').eq('retailer_id', u.id).order('created_at', { ascending: false }).limit(1).single()
-                    const lod = lo ? new Date(lo.created_at) : new Date(u.created_at)
-                    if (lod < thirtyDaysAgo) {
-                        try {
-                            await sendWhatsAppMessage({
-                                mobile: u.phone,
-                                templateName: 'd2b_reactivation',
-                                components: { body_1: { type: 'text', value: u.business_name || 'Partner' } }
-                            })
-                            await supabaseAdmin.from('users').update({ reactivation_sent_at: new Date().toISOString() }).eq('id', u.id)
-                            report.reactivation.sent++
-                        } catch (e) { report.reactivation.errors++ }
-                    }
-                    report.reactivation.processed++
+        if (inactiveUsers) {
+            for (const u of inactiveUsers) {
+                if (!u.phone) continue
+                const { data: lo } = await supabaseAdmin.from('orders').select('created_at').eq('retailer_id', u.id).order('created_at', { ascending: false }).limit(1).single()
+                const lod = lo ? new Date(lo.created_at) : new Date(u.created_at)
+                if (lod < thirtyDaysAgo) {
+                    try {
+                        await sendWhatsAppMessage({
+                            mobile: u.phone,
+                            templateName: 'd2b_reactivation',
+                            components: { body_1: { type: 'text', value: u.business_name || 'Partner' } }
+                        })
+                        await supabaseAdmin.from('users').update({ reactivation_sent_at: new Date().toISOString() }).eq('id', u.id)
+                        report.reactivation.sent++
+                    } catch (e) { report.reactivation.errors++ }
                 }
+                report.reactivation.processed++
             }
         }
 
