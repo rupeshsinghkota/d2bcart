@@ -17,15 +17,17 @@ export async function sendWhatsAppMessage({
     mobile,
     templateName,
     components,
-    namespace = process.env.MSG91_NAMESPACE || "de03d239_9cbd_4348_ad12_4d8a4ea70188"
+    namespace = process.env.MSG91_NAMESPACE || "de03d239_9cbd_4348_ad12_4d8a4ea70188",
+    integratedNumber
 }: {
     mobile: string,
     templateName: string,
     components: any,
-    namespace?: string
+    namespace?: string,
+    integratedNumber?: string
 }) {
     const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
-    const MSG91_INTEGRATED_NUMBER = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
+    const MSG91_INTEGRATED_NUMBER = integratedNumber || process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
 
     if (!MSG91_AUTH_KEY) return { success: false, error: 'Configuration missing' }
 

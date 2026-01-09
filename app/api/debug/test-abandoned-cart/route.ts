@@ -7,6 +7,9 @@ export async function GET(request: Request) {
     const phone = searchParams.get('phone')
     const namespace = searchParams.get('namespace')
 
+    const template = searchParams.get('template')
+    const integratedNumber = searchParams.get('integrated_number')
+
     if (!phone) {
         return NextResponse.json({ error: 'Phone required' })
     }
@@ -20,17 +23,22 @@ export async function GET(request: Request) {
     try {
         const result = await sendWhatsAppMessage({
             mobile: targetPhone,
-            templateName: 'd2b_abandoned_cart',
+            templateName: template || 'd2b_abandoned_cart',
             components: {
                 body_1: { type: 'text', value: 'Kotacart' },
                 button_1: { subtype: 'url', type: 'text', value: 'cart' }
             },
-            namespace: namespace || undefined
+            namespace: namespace || undefined,
+            integratedNumber: integratedNumber || undefined
         })
 
         return NextResponse.json({
             sent_to: targetPhone,
-            used_namespace: namespace || "default",
+            config: {
+                namespace: namespace || "default",
+                template: template || "d2b_abandoned_cart",
+                integrated_number: integratedNumber || "default"
+            },
             result: result
         })
     } catch (error) {
