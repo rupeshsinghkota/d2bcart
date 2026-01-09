@@ -203,7 +203,6 @@ export async function GET(
 
             // Accumulate Data (Parent + Variations)
             let nameStr = p.name
-            let skuStr = p.sku || '-'
             let moqStr = `${p.moq || 1}`
             let priceStr = `Rs. ${p.display_price}`
 
@@ -218,7 +217,6 @@ export async function GET(
                     if (!vName) vName = "Variant"
 
                     nameStr += `\n• ${vName}`
-                    skuStr += `\n${v.sku || '-'}`
                     moqStr += `\n${v.moq || 1}`
                     priceStr += `\nRs. ${v.display_price}`
                 }
@@ -227,7 +225,6 @@ export async function GET(
             rows.push({
                 image: imgData,
                 name: nameStr,
-                sku: skuStr,
                 moq: moqStr, // Removed "units" suffix to save space in condensed view
                 price: priceStr,
                 url: productLink,
@@ -243,8 +240,8 @@ export async function GET(
 
         autoTable(doc, {
             startY: 60,
-            head: [['Image', 'Product Name', 'SKU', 'MOQ', 'Price', 'Link', 'Chat']],
-            body: tableRows.map(r => ['', r.name, r.sku, r.moq, r.price, r.isLink ? 'View' : '', r.chatUrl ? 'Chat' : '']),
+            head: [['Image', 'Product Name', 'MOQ', 'Price', 'Link', 'Chat']],
+            body: tableRows.map(r => ['', r.name, r.moq, r.price, r.isLink ? 'View' : '', r.chatUrl ? 'Chat' : '']),
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129], textColor: 255 },
             styles: {
@@ -255,11 +252,10 @@ export async function GET(
             columnStyles: {
                 0: { cellWidth: 35 },     // Image
                 1: { cellWidth: 'auto' }, // Name
-                2: { cellWidth: 20 },     // SKU
-                3: { cellWidth: 20 },     // MOQ
-                4: { cellWidth: 25, halign: 'right' }, // Price
-                5: { cellWidth: 15, halign: 'center', textColor: [16, 185, 129] }, // View
-                6: { cellWidth: 15, halign: 'center', textColor: [37, 211, 102] }  // Chat (WhatsApp Green)
+                2: { cellWidth: 20 },     // MOQ
+                3: { cellWidth: 25, halign: 'right' }, // Price
+                4: { cellWidth: 15, halign: 'center', textColor: [16, 185, 129] }, // View
+                5: { cellWidth: 15, halign: 'center', textColor: [37, 211, 102] }  // Chat (WhatsApp Green)
             },
             didDrawCell: (data) => {
                 // Image Drawing
@@ -280,7 +276,7 @@ export async function GET(
                 }
 
                 // Link Drawing (View)
-                if (data.section === 'body' && data.column.index === 5) {
+                if (data.section === 'body' && data.column.index === 4) {
                     const rowData = tableRows[data.row.index]
                     if (rowData && rowData.url) {
                         doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, {
@@ -290,7 +286,7 @@ export async function GET(
                 }
 
                 // Chat Link Drawing
-                if (data.section === 'body' && data.column.index === 6) {
+                if (data.section === 'body' && data.column.index === 5) {
                     const rowData = tableRows[data.row.index]
                     if (rowData && rowData.chatUrl) {
                         doc.link(data.cell.x, data.cell.y, data.cell.width, data.cell.height, {
