@@ -58,8 +58,7 @@ export async function GET(request: Request) {
                         mobile: user.phone,
                         templateName: 'd2b_abandoned_cart',
                         components: {
-                            body_1: { type: 'text', value: user.business_name || 'Partner' },
-                            button_1: { subtype: 'url', type: 'text', value: 'cart' }
+                            body_1: { type: 'text', value: user.business_name || 'Partner' }
                         }
                     })
                     await supabaseAdmin.from('carts').update({ recovery_sent_at: new Date().toISOString() }).eq('id', cart.id)
