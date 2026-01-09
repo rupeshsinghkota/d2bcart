@@ -93,7 +93,10 @@ export const useStore = create<AppState>()(
 
             fetchCart: async () => {
                 try {
-                    const res = await fetch('/api/cart')
+                    const res = await fetch('/api/cart', {
+                        credentials: 'include',
+                        cache: 'no-store'
+                    })
                     const data = await res.json()
                     if (data.cart && Array.isArray(data.cart)) {
                         const serverCart = data.cart
