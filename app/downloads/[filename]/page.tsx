@@ -76,6 +76,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ filena
                                     alt={p.name}
                                     fill
                                     className="object-cover"
+                                    priority
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-300">No Image</div>
