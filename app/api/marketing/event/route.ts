@@ -105,7 +105,11 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const result = await sendWhatsAppMessage(user.phone, templateName, finalComponents)
+        const result = await sendWhatsAppMessage({
+            mobile: user.phone,
+            templateName,
+            components: finalComponents
+        })
 
         if (result.success) {
             await supabase.from('catalog_downloads').insert({
