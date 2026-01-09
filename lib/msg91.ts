@@ -29,7 +29,12 @@ export async function sendWhatsAppMessage({
 
     if (!MSG91_AUTH_KEY) return { success: false, error: 'Configuration missing' }
 
-    const cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
+    let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
+
+    // Auto-fix for India: If 10 digits, add '91'
+    if (cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone
+    }
 
     const payload = {
         integrated_number: MSG91_INTEGRATED_NUMBER,
