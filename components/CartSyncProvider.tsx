@@ -17,17 +17,30 @@ export default function CartSyncProvider() {
     )
 
     useEffect(() => {
+        // Initial Check
         const init = async () => {
             const { data: { session } } = await supabase.auth.getSession()
             if (session?.user) {
-                // 1. Set User in Store
                 setUser(session.user as any)
-
-                // 2. Fetch Cart from DB
-                await fetchCart()
+                fetchCart()
             }
         }
         init()
+
+        // Real-time Auth Listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                setUser(session.user as any)
+                fetchCart() // Trigger sync immediately on login
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null)
+                // Optionally clear cart or keep local
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
     }, [fetchCart, setUser, supabase])
 
     return null
