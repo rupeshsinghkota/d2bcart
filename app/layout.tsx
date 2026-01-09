@@ -9,6 +9,7 @@ import FacebookPixel from "@/components/analytics/FacebookPixel";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Suspense } from "react";
+import CartSyncProvider from "@/components/CartSyncProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -97,23 +98,18 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning={true}>
         <Suspense fallback={null}>
-          import CartSyncProvider from "@/components/CartSyncProvider";
-
-          // ...
-
-          <Suspense fallback={null}>
-            <FacebookPixel />
-            <GoogleAnalytics />
-          </Suspense>
-          <Toaster position="top-right" />
-          <CartSyncProvider />
-          <Navbar />
-          <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
-            {children}
-          </main>
-          <Footer />
-          <BottomNav />
-          <WhatsAppButton />
+          <FacebookPixel />
+          <GoogleAnalytics />
+        </Suspense>
+        <Toaster position="top-right" />
+        <CartSyncProvider />
+        <Navbar />
+        <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
+          {children}
+        </main>
+        <Footer />
+        <BottomNav />
+        <WhatsAppButton />
       </body>
     </html>
   );
