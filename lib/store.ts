@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { User, Product } from '@/types'
 import { syncCartToServer } from './cart-sync'
+import toast from 'react-hot-toast'
 
 interface CartItem {
     product: Product
@@ -19,6 +20,7 @@ interface AppState {
     getCartTotal: () => number
     addItems: (items: { product: Product, quantity: number }[]) => void
     fetchCart: () => Promise<void>
+    mergeRemoteCart: (items: CartItem[]) => void
 }
 
 export const useStore = create<AppState>()(
@@ -91,34 +93,28 @@ export const useStore = create<AppState>()(
                 if (get().user) syncCartToServer(newCart)
             },
 
-            fetchCart: async () => {
-                try {
-                    const res = await fetch('/api/cart', {
-                        credentials: 'include',
-                        cache: 'no-store'
-                    })
-                    const data = await res.json()
-                    if (data.cart && Array.isArray(data.cart)) {
-                        const serverCart = data.cart
-                        const localCart = get().cart
+            // Accepts cart items fetched by an authenticated client (e.g., CartSyncProvider)
+            mergeRemoteCart: (serverCart: CartItem[]) => {
+                const localCart = get().cart
+                const user = get().user
 
-                        // Smart Sync Logic
-                        if (serverCart.length > 0) {
-                            // 1. Server has data -> Trust Server (Overwrite local)
-                            set({ cart: serverCart })
-                        } else if (localCart.length > 0) {
-                            // 2. Server is empty, but Local has data -> Trust Local (Push to Server)
-                            // This happens on first login with an existing anonymous cart
-                            if (get().user) {
-                                syncCartToServer(localCart)
-                            }
-                        }
-                        // 3. Both empty -> Do nothing (correctly stays empty)
+                // Smart Sync Logic
+                if (serverCart.length > 0) {
+                    // 1. Server has data -> Trust Server (Overwrite local)
+                    set({ cart: serverCart })
+                    toast.success('Cart loaded from account')
+                } else if (localCart.length > 0) {
+                    // 2. Server is empty, but Local has data -> Trust Local (Push to Server)
+                    if (user) {
+                        syncCartToServer(localCart)
+                        toast.success('Cart saved to account')
                     }
-                } catch (err) {
-                    console.error('Failed to fetch server cart', err)
                 }
-            }
+                // 3. Both empty -> Do nothing
+            },
+
+            // Legacy fetch (kept for compatibility but won't be used)
+            fetchCart: async () => { }
         }),
         {
             name: 'd2b-cart-storage',
