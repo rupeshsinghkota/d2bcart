@@ -28,6 +28,17 @@ export async function GET(request: Request) {
     }
 
     try {
+        // First check if cart exists
+        const { data: cart } = await supabase
+            .from('carts')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle()
+
+        if (!cart) {
+            return NextResponse.json({ cart: [] })
+        }
+
         const { data: cartItems } = await supabase
             .from('cart_items')
             .select(`
@@ -41,9 +52,7 @@ export async function GET(request: Request) {
                     moq
                 )
             `)
-            .eq('cart_id', (
-                await supabase.from('carts').select('id').eq('user_id', session.user.id).single()
-            ).data?.id)
+            .eq('cart_id', cart.id)
 
         // Transform to match store format
         // The join returns Product as an object, which matches the Store's Product type structure roughly (subset)

@@ -14,6 +14,7 @@ export const syncCartToServer = async (cartItems: { product: Product, quantity: 
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include', // Ensure cookies are sent
                 body: JSON.stringify({ items: cartItems }),
             })
             // console.log('Cart synced to server')

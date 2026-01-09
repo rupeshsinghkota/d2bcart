@@ -96,7 +96,21 @@ export const useStore = create<AppState>()(
                     const res = await fetch('/api/cart')
                     const data = await res.json()
                     if (data.cart && Array.isArray(data.cart)) {
-                        set({ cart: data.cart })
+                        const serverCart = data.cart
+                        const localCart = get().cart
+
+                        // Smart Sync Logic
+                        if (serverCart.length > 0) {
+                            // 1. Server has data -> Trust Server (Overwrite local)
+                            set({ cart: serverCart })
+                        } else if (localCart.length > 0) {
+                            // 2. Server is empty, but Local has data -> Trust Local (Push to Server)
+                            // This happens on first login with an existing anonymous cart
+                            if (get().user) {
+                                syncCartToServer(localCart)
+                            }
+                        }
+                        // 3. Both empty -> Do nothing (correctly stays empty)
                     }
                 } catch (err) {
                     console.error('Failed to fetch server cart', err)
