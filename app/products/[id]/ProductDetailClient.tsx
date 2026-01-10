@@ -56,7 +56,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-    const { user, addToCart } = useStore()
+    const { user, cart, addToCart } = useStore()
 
     // Handle Deep Linking from Google Shopping
     useEffect(() => {
@@ -247,6 +247,11 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                         className="p-2 -mr-1 rounded-full hover:bg-black/5 active:bg-black/10 transition-colors relative"
                     >
                         <ShoppingCart className="w-5 h-5 text-gray-700" />
+                        {cart.length > 0 && (
+                            <span className="absolute top-1 right-0.5 bg-emerald-600 text-white text-[9px] font-bold px-1 min-w-[14px] h-[14px] rounded-full flex items-center justify-center border border-white">
+                                {cart.length}
+                            </span>
+                        )}
                     </button>
 
                     <button
@@ -470,12 +475,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 )}
                             </div>
 
-                            {/* Delivery Checker */}
-                            <DeliveryChecker
-                                manufacturerId={currentProduct.manufacturer_id}
-                                weight={0.5} // Standard default, logic can be improved later
-                                dimensions={{ length: 10, breadth: 10, height: 10 }}
-                            />
+
 
                             {/* Trust Badge / Offer Highlight */}
                             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-6 flex flex-col gap-2">
@@ -631,6 +631,15 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 </div>
                             )}
 
+                            {/* Delivery Checker */}
+                            <div className="mb-6">
+                                <DeliveryChecker
+                                    manufacturerId={currentProduct.manufacturer_id}
+                                    weight={0.5}
+                                    dimensions={{ length: 10, breadth: 10, height: 10 }}
+                                />
+                            </div>
+
                             {product.description && (
                                 <div className="mb-5 border-t border-gray-100 pt-5">
                                     <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
@@ -764,96 +773,93 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
             {/* Mobile Sticky Bottom Action Bar */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-40 safe-area-inset-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5 justify-center bg-amber-50/80 py-0.5 px-3 rounded-full border border-amber-100 mx-auto w-fit">
-                        <span className="text-[9px] font-bold text-amber-800 tracking-wide">⚠️ Wholesale: Min Order ₹3,999</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {/* Action Buttons - Full Width Add to Cart */}
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={addingToCart}
-                            className="flex-1 h-11 bg-emerald-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20"
-                        >
-                            <ShoppingCart className="w-4 h-4" />
-                            Add to Cart
-                        </button>
-                    </div>
+                <div className="flex items-center gap-2">
+                    {/* Action Buttons - Full Width Add to Cart */}
+                    <button
+                        onClick={handleAddToCart}
+                        disabled={addingToCart}
+                        className="flex-1 h-11 bg-emerald-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20"
+                    >
+                        <ShoppingCart className="w-4 h-4" />
+                        Add to Cart
+                    </button>
                 </div>
             </div>
 
             {/* Fullscreen Lightbox Modal */}
-            {lightboxOpen && currentProduct.images && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
-                    onClick={() => setLightboxOpen(false)}
-                >
-                    {/* Close Button */}
-                    <button
+            {
+                lightboxOpen && currentProduct.images && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
                         onClick={() => setLightboxOpen(false)}
-                        className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50"
                     >
-                        <X className="w-8 h-8" />
-                    </button>
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setLightboxOpen(false)}
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50"
+                        >
+                            <X className="w-8 h-8" />
+                        </button>
 
-                    <div className="relative w-full h-full flex items-center justify-center p-4">
-                        <Image
-                            src={currentProduct.images[activeImageIndex]}
-                            alt={currentProduct.name}
-                            fill
-                            className="object-contain"
-                        />
+                        <div className="relative w-full h-full flex items-center justify-center p-4">
+                            <Image
+                                src={currentProduct.images[activeImageIndex]}
+                                alt={currentProduct.name}
+                                fill
+                                className="object-contain"
+                            />
 
-                        {/* Navigation Arrows */}
+                            {/* Navigation Arrows */}
+                            {currentProduct.images.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveImageIndex((prev) =>
+                                                prev === 0 ? currentProduct.images!.length - 1 : prev - 1
+                                            )
+                                        }}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
+                                    >
+                                        <ChevronLeft className="w-8 h-8" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveImageIndex((prev) =>
+                                                prev === currentProduct.images!.length - 1 ? 0 : prev + 1
+                                            )
+                                        }}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
+                                    >
+                                        <ChevronRight className="w-8 h-8" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                        {/* Thumbnail Strip */}
                         {currentProduct.images.length > 1 && (
-                            <>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveImageIndex((prev) =>
-                                            prev === 0 ? currentProduct.images!.length - 1 : prev - 1
-                                        )
-                                    }}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
-                                >
-                                    <ChevronLeft className="w-8 h-8" />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveImageIndex((prev) =>
-                                            prev === currentProduct.images!.length - 1 ? 0 : prev + 1
-                                        )
-                                    }}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
-                                >
-                                    <ChevronRight className="w-8 h-8" />
-                                </button>
-                            </>
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 p-2 rounded-xl overflow-x-auto max-w-[90vw]">
+                                {currentProduct.images.map((img, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setActiveImageIndex(idx)
+                                        }}
+                                        className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                    >
+                                        <div className="relative w-full h-full">
+                                            <Image src={img} alt="" fill className="object-cover" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </div>
-                    {/* Thumbnail Strip */}
-                    {currentProduct.images.length > 1 && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 p-2 rounded-xl overflow-x-auto max-w-[90vw]">
-                            {currentProduct.images.map((img, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setActiveImageIndex(idx)
-                                    }}
-                                    className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                                >
-                                    <div className="relative w-full h-full">
-                                        <Image src={img} alt="" fill className="object-cover" />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }
 

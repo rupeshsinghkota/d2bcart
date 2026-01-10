@@ -15,30 +15,45 @@ import {
     Filter,
     FileText,
     RefreshCw,
-    MapPin
+    MapPin,
+    Eye
 } from 'lucide-react'
 import { generateInvoice } from '@/lib/invoice-generator'
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 
+// Helper Interface for Grouped Orders
+interface GroupedOrder {
+    order_number: string
+    created_at: string
+    status: string // Use generic string to handle mixed statuses or just first one
+    total_amount: number
+    pending_amount: number
+    payment_type: string
+    manufacturer: any
+    items: Order[]
+}
+
 export default function RetailerOrdersPage() {
+    // Keep 'orders' as the raw fetched rows for simplicity in filtering
     const [orders, setOrders] = useState<Order[]>([])
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<string>('all')
     const addItems = useStore((state) => state.addItems)
     const router = useRouter()
 
-    const handleBuyAgain = (order: Order) => {
-        const product = (order as any).product
-        if (!product) return
-
-        addItems([{
-            product: product,
+    const handleBuyAgain = (group: GroupedOrder) => {
+        // Add all items from the group to cart
+        const cartItems = group.items.map(order => ({
+            product: (order as any).product,
             quantity: order.quantity
-        }])
+        })).filter(item => item.product) // Safety check
 
-        toast.success('Added to cart')
+        if (cartItems.length === 0) return
+
+        addItems(cartItems)
+        toast.success(`Added ${cartItems.length} items to cart`)
         router.push('/cart')
     }
 
@@ -111,9 +126,50 @@ export default function RetailerOrdersPage() {
         return styles[status] || 'bg-gray-100 text-gray-700'
     }
 
-    const filteredOrders = filter === 'all'
+    // --- Grouping Logic ---
+    const groupOrders = (rawOrders: Order[]): GroupedOrder[] => {
+        const groups: Record<string, GroupedOrder> = {}
+
+        rawOrders.forEach(order => {
+            if (!groups[order.order_number]) {
+                groups[order.order_number] = {
+                    order_number: order.order_number,
+                    created_at: order.created_at,
+                    status: order.status, // Assuming generic status for now. 
+                    total_amount: 0,
+                    pending_amount: 0,
+                    payment_type: order.payment_type || 'full',
+                    manufacturer: (order as any).manufacturer,
+                    items: []
+                }
+            }
+
+            // Add item
+            groups[order.order_number].items.push(order)
+
+            // Aggregate totals (assuming 'total_amount' is per line item in DB)
+            groups[order.order_number].total_amount += order.total_amount
+            groups[order.order_number].pending_amount += (order.pending_amount || 0)
+        })
+
+        // Convert map to array and sort by created_at desc
+        return Object.values(groups).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+    }
+
+    const filteredRawOrders = filter === 'all'
         ? orders
         : orders.filter(o => o.status === filter)
+
+    // Group AFTER filtering to ensure we show groups that match the filter (if any item matches? or if group matches?)
+    // Actually, logic: if I filter 'Delivered', I should see groups where status is 'Delivered'.
+    // Since we take status from the first item (or common), strict filtering on raw rows works 
+    // BUT we might want to show the whole group? 
+    // Current logic: Filter raw rows -> Group them. 
+    // If an order has mixed statuses (rare), this might show partial groups.
+    // For now, assume consistent status per order_number.
+    const groupedOrders = groupOrders(filteredRawOrders)
 
     if (loading) {
         return (
@@ -157,7 +213,7 @@ export default function RetailerOrdersPage() {
                 </div>
 
                 {/* Orders Grid (Responsive) */}
-                {filteredOrders.length === 0 ? (
+                {groupedOrders.length === 0 ? (
                     <div className="bg-white rounded-xl p-12 text-center shadow-sm">
                         <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h2 className="text-xl font-semibold text-gray-600 mb-2">
@@ -174,97 +230,108 @@ export default function RetailerOrdersPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredOrders.map(order => (
-                            <div key={order.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:border-emerald-200 transition-colors">
-                                {/* Order Header */}
+                        {groupedOrders.map(group => (
+                            <div key={group.order_number} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:border-emerald-200 transition-colors">
+                                {/* Group Header */}
                                 <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        {getStatusIcon(order.status)}
+                                        {getStatusIcon(group.status)}
                                         <div>
                                             <span className="font-mono text-xs font-medium text-gray-900 block">
-                                                #{order.order_number}
+                                                #{group.order_number}
                                             </span>
                                             <span className="text-xs text-gray-500">
-                                                {new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                                {new Date(group.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                                             </span>
                                         </div>
                                     </div>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${getStatusBadge(order.status)}`}>
-                                        {order.status}
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${getStatusBadge(group.status)}`}>
+                                        {group.status}
                                     </span>
                                 </div>
 
-                                {/* Order Content */}
-                                <div className="p-4 flex gap-4 flex-1">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200 relative">
-                                        {(order as any).product?.images?.[0] ? (
-                                            <Image
-                                                src={(order as any).product.images[0]}
-                                                alt=""
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <Package className="w-8 h-8 text-gray-400" />
-                                        )}
-                                    </div>
+                                {/* Wholesaler Info */}
+                                <div className="px-4 pt-3 pb-1 flex items-center gap-1.5 text-xs text-gray-600">
+                                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                    <span className="truncate font-medium">{group.manufacturer?.business_name}</span>
+                                </div>
 
-                                    <div className="flex-1 min-w-0 flex flex-col">
-                                        <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1" title={(order as any).product?.name}>
-                                            {(order as any).product?.name}
-                                        </h3>
-
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-auto">
-                                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                                            <span className="truncate">{(order as any).manufacturer?.business_name}</span>
-                                        </div>
-
-                                        <div className="mt-3 flex items-end justify-between">
-                                            <div>
-                                                <div className="text-xs text-gray-500 mb-0.5">{order.quantity} units</div>
-                                                <div className="text-sm font-bold text-gray-900">
-                                                    {formatCurrency(order.total_amount)}
+                                {/* Items List */}
+                                <div className="p-4 space-y-3 flex-1">
+                                    {group.items.map((item, idx) => (
+                                        <div key={item.id || idx} className="flex gap-3">
+                                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200 relative">
+                                                {(item as any).product?.images?.[0] ? (
+                                                    <Image
+                                                        src={(item as any).product.images[0]}
+                                                        alt=""
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                ) : (
+                                                    <Package className="w-4 h-4 text-gray-400" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-xs font-medium text-gray-900 line-clamp-2" title={(item as any).product?.name}>
+                                                    {(item as any).product?.name}
+                                                </h4>
+                                                <div className="flex items-center justify-between mt-1">
+                                                    <div className="text-[10px] text-gray-500">
+                                                        Qty: {item.quantity}
+                                                    </div>
+                                                    <div className="text-xs font-semibold text-gray-900">
+                                                        {formatCurrency(item.total_amount)}
+                                                    </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    ))}
+                                </div>
 
-                                            {(order.pending_amount || 0) > 0 ? (
-                                                <div className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                                                    Due: {formatCurrency(order.pending_amount || 0)}
-                                                </div>
-                                            ) : (
-                                                <div className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-                                                    Paid
-                                                </div>
-                                            )}
+                                {/* Group Footer / Totals */}
+                                <div className="px-4 pb-3 flex items-end justify-between border-t border-dashed border-gray-100 pt-3">
+                                    <div>
+                                        <div className="text-xs text-gray-500">Total Amount</div>
+                                        <div className="text-sm font-bold text-gray-900">
+                                            {formatCurrency(group.total_amount)}
                                         </div>
                                     </div>
+
+                                    {(group.pending_amount || 0) > 0 ? (
+                                        <div className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                                            Due: {formatCurrency(group.pending_amount)}
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                                            Paid
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
-                                <div className="p-3 border-t bg-gray-50/50 flex items-center justify-between gap-2">
-                                    <Link
-                                        href={`/retailer/orders/${order.id}`}
-                                        className="text-xs font-medium text-gray-600 hover:text-emerald-600 flex items-center gap-1 transition-colors"
+                                <div className="p-3 border-t bg-gray-50/50 flex items-center justify-end gap-2">
+                                    <button
+                                        onClick={() => generateInvoice(group.items)}
+                                        className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                        title="Invoice"
                                     >
-                                        View Details
+                                        <FileText className="w-4 h-4" />
+                                    </button>
+                                    <Link
+                                        href={`/retailer/orders/${group.items[0].id}`}
+                                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                        title="View Details"
+                                    >
+                                        <Eye className="w-4 h-4" />
                                     </Link>
-
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => generateInvoice(order)}
-                                            className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                                            title="Invoice"
-                                        >
-                                            <FileText className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleBuyAgain(order)}
-                                            className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm"
-                                        >
-                                            <RefreshCw className="w-3 h-3" />
-                                            Reorder
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={() => handleBuyAgain(group)}
+                                        className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm"
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                        Reorder All
+                                    </button>
                                 </div>
                             </div>
                         ))}

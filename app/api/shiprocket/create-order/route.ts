@@ -24,7 +24,7 @@ export async function POST(req: Request) {
             .from('orders')
             .select(`
                 *,
-                product:products(name, images, weight, length, breadth, height),
+                product:products(name, images, weight, length, breadth, height, moq),
                 retailer:users!orders_retailer_id_fkey(business_name, city, address, phone, state, pincode, email),
                 manufacturer:users!orders_manufacturer_id_fkey(id, business_name, city, address, phone, state, pincode, email, shiprocket_pickup_code)
             `)

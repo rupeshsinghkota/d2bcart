@@ -25,9 +25,22 @@ import { generateInvoice } from '@/lib/invoice-generator'
 import { useStore } from '@/lib/store'
 import { toast } from 'react-hot-toast'
 
+// Helper Interface for Grouped Orders
+interface GroupedOrder {
+    order_number: string
+    created_at: string
+    status: string
+    total_amount: number
+    pending_amount: number
+    payment_type: string
+    manufacturer: any
+    items: Order[]
+}
+
 export default function RetailerDashboard() {
     const [user, setUser] = useState<User | null>(null)
     const [orders, setOrders] = useState<Order[]>([])
+    const [groupedRecentOrders, setGroupedRecentOrders] = useState<GroupedOrder[]>([])
     const [stats, setStats] = useState({
         totalOrders: 0,
         pendingOrders: 0,
@@ -41,6 +54,33 @@ export default function RetailerDashboard() {
     useEffect(() => {
         fetchData()
     }, [])
+
+    const groupOrders = (rawOrders: Order[]): GroupedOrder[] => {
+        const groups: Record<string, GroupedOrder> = {}
+
+        rawOrders.forEach(order => {
+            if (!groups[order.order_number]) {
+                groups[order.order_number] = {
+                    order_number: order.order_number,
+                    created_at: order.created_at,
+                    status: order.status,
+                    total_amount: 0,
+                    pending_amount: 0,
+                    payment_type: order.payment_type || 'full',
+                    manufacturer: (order as any).manufacturer,
+                    items: []
+                }
+            }
+
+            groups[order.order_number].items.push(order)
+            groups[order.order_number].total_amount += order.total_amount
+            groups[order.order_number].pending_amount += (order.pending_amount || 0)
+        })
+
+        return Object.values(groups).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+    }
 
     const fetchData = async () => {
         if (!isSupabaseConfigured) {
@@ -77,14 +117,19 @@ export default function RetailerDashboard() {
 
         if (ordersData) {
             setOrders(ordersData as Order[])
+            const grouped = groupOrders(ordersData as Order[])
+            setGroupedRecentOrders(grouped)
 
-            // Calculate stats
-            const pending = (ordersData as any[]).filter(o => ['pending', 'paid', 'confirmed'].includes(o.status)).length
-            const delivered = (ordersData as any[]).filter(o => o.status === 'delivered').length
+            // Calculate stats (Using Grouped for Counts, Raw for Amounts)
+            const totalOrders = grouped.length
+            const pending = grouped.filter(o => ['pending', 'paid', 'confirmed'].includes(o.status)).length
+            const delivered = grouped.filter(o => o.status === 'delivered').length
+
+            // Total Spent is sum of ALL line items (which is accurately reflected in grouped total_amount sum too)
             const totalSpent = (ordersData as any[]).reduce((sum, o) => sum + o.total_amount, 0)
 
             setStats({
-                totalOrders: ordersData.length,
+                totalOrders,
                 pendingOrders: pending,
                 deliveredOrders: delivered,
                 totalSpent
@@ -230,7 +275,6 @@ export default function RetailerDashboard() {
                     </div>
 
                     {/* Quick Reorder / Buy Again */}
-                    {/* Quick Reorder / Buy Again */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 flex flex-col overflow-hidden w-full max-w-full">
                         <h2 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
                             <RefreshCcw className="w-5 h-5 text-emerald-600" />
@@ -289,7 +333,7 @@ export default function RetailerDashboard() {
                         </Link>
                     </div>
 
-                    {orders.length === 0 ? (
+                    {groupedRecentOrders.length === 0 ? (
                         <div className="p-12 text-center">
                             <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-gray-900 mb-2">No orders placed yet</h3>
@@ -302,42 +346,44 @@ export default function RetailerDashboard() {
                         <div>
                             {/* Mobile View: Cards */}
                             <div className="md:hidden divide-y divide-gray-100">
-                                {orders.slice(0, 5).map(order => (
-                                    <div key={order.id} className="p-4 flex flex-col gap-4">
+                                {groupedRecentOrders.slice(0, 5).map(group => (
+                                    <div key={group.order_number} className="p-4 flex flex-col gap-4">
                                         <div className="flex justify-between items-start">
                                             <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                {order.order_number}
+                                                #{group.order_number}
                                             </span>
-                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(order.status)}`}>
-                                                {order.status}
+                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(group.status)}`}>
+                                                {group.status}
                                             </span>
                                         </div>
 
                                         <div className="flex gap-4">
-                                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative">
-                                                {(order as any).product?.images?.[0] ? (
-                                                    <Image
-                                                        src={(order as any).product.images[0]}
-                                                        alt=""
-                                                        fill
-                                                        className="object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                        <Package className="w-8 h-8" />
-                                                    </div>
-                                                )}
+                                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative grid grid-cols-2 grid-rows-2 gap-[1px]">
+                                                {/* Collage of images */}
+                                                {group.items.slice(0, 4).map((item, idx) => (
+                                                    (item as any).product?.images?.[0] ? (
+                                                        <div key={idx} className="relative w-full h-full">
+                                                            <Image
+                                                                src={(item as any).product.images[0]}
+                                                                alt=""
+                                                                fill
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
+                                                    ) : null
+                                                ))}
+                                                {group.items.length === 0 && <Package className="w-full h-full p-6 text-gray-400" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1">
-                                                    {(order as any).product?.name}
+                                                    {group.items.length} Items
                                                 </h3>
+                                                <div className="text-xs text-gray-500 mb-1 line-clamp-1">
+                                                    {group.items.map((i: any) => i.product.name).join(', ')}
+                                                </div>
                                                 <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
                                                     <MapPin className="w-3 h-3" />
-                                                    {(order as any).manufacturer?.business_name}
-                                                </div>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {order.quantity} units
+                                                    {group.manufacturer?.business_name}
                                                 </div>
                                             </div>
                                         </div>
@@ -345,15 +391,26 @@ export default function RetailerDashboard() {
                                         <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-1">
                                             <div>
                                                 <div className="text-xs text-gray-500">Total Amount</div>
-                                                <div className="text-lg font-bold text-gray-900">{formatCurrency(order.total_amount)}</div>
+                                                <div className="text-lg font-bold text-gray-900">{formatCurrency(group.total_amount)}</div>
                                             </div>
-                                            <Link
-                                                href={`/retailer/orders/${order.id}`}
-                                                className="flex items-center gap-1 text-sm font-medium text-emerald-700 bg-emerald-50 px-4 py-2 rounded-lg hover:bg-emerald-100 transition-colors"
-                                            >
-                                                View Details
-                                                <Eye className="w-4 h-4 ml-1" />
-                                            </Link>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        generateInvoice(group.items)
+                                                    }}
+                                                    className="p-2 bg-gray-100 rounded-lg text-gray-600 hover:text-emerald-700 transition-colors"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+                                                <Link
+                                                    href={`/retailer/orders`}
+                                                    className="flex items-center gap-1 text-sm font-medium text-emerald-700 bg-emerald-50 px-4 py-2 rounded-lg hover:bg-emerald-100 transition-colors"
+                                                >
+                                                    View Details
+                                                    <Eye className="w-4 h-4 ml-1" />
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -361,54 +418,57 @@ export default function RetailerDashboard() {
 
                             {/* Desktop View: Table Rows */}
                             <div className="hidden md:block divide-y divide-gray-100">
-                                {orders.slice(0, 5).map(order => (
-                                    <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors flex items-center gap-6">
-                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative">
-                                            {(order as any).product?.images?.[0] ? (
-                                                <Image
-                                                    src={(order as any).product.images[0]}
-                                                    alt=""
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                    <Package className="w-8 h-8" />
-                                                </div>
-                                            )}
+                                {groupedRecentOrders.slice(0, 5).map(group => (
+                                    <div key={group.order_number} className="p-6 hover:bg-gray-50 transition-colors flex items-center gap-6">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden border border-gray-200 relative grid grid-cols-2 grid-rows-2 gap-[1px]">
+                                            {group.items.slice(0, 4).map((item, idx) => (
+                                                (item as any).product?.images?.[0] ? (
+                                                    <div key={idx} className="relative w-full h-full">
+                                                        <Image
+                                                            src={(item as any).product.images[0]}
+                                                            alt=""
+                                                            fill
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                ) : null
+                                            ))}
                                         </div>
 
                                         <div className="flex-1 min-w-0 grid grid-cols-12 gap-6 items-center">
                                             <div className="col-span-4">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                        {order.order_number}
+                                                        {group.order_number}
                                                     </span>
                                                 </div>
                                                 <h3 className="font-medium text-gray-900 truncate">
-                                                    {(order as any).product?.name}
+                                                    {group.items.length} Items
                                                 </h3>
+                                                <div className="text-xs text-gray-500 truncate">
+                                                    {group.items.map((i: any) => i.product.name).join(', ')}
+                                                </div>
                                             </div>
 
                                             <div className="col-span-3">
                                                 <div className="flex items-center gap-1 text-sm text-gray-500">
                                                     <MapPin className="w-4 h-4 text-gray-400" />
-                                                    <span className="truncate">{(order as any).manufacturer?.business_name}</span>
+                                                    <span className="truncate">{group.manufacturer?.business_name}</span>
                                                 </div>
                                             </div>
 
                                             <div className="col-span-2">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadge(order.status)}`}>
-                                                    {order.status}
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadge(group.status)}`}>
+                                                    {group.status}
                                                 </span>
                                             </div>
 
                                             <div className="col-span-3 text-right">
                                                 <div className="font-bold text-gray-900">
-                                                    {formatCurrency(order.total_amount)}
+                                                    {formatCurrency(group.total_amount)}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
-                                                    {order.quantity} units
+                                                    {group.items.length} items
                                                 </div>
                                             </div>
                                         </div>
@@ -417,7 +477,7 @@ export default function RetailerDashboard() {
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault()
-                                                    generateInvoice(order)
+                                                    generateInvoice(group.items)
                                                 }}
                                                 className="p-2 hover:bg-gray-200 rounded-lg text-emerald-600 hover:text-emerald-700 transition-colors"
                                                 title="Download Invoice"
@@ -425,8 +485,9 @@ export default function RetailerDashboard() {
                                                 <Download className="w-5 h-5" />
                                             </button>
                                             <Link
-                                                href={`/retailer/orders/${order.id}`}
+                                                href={`/retailer/orders/${group.items[0].id}`}
                                                 className="p-2 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                                                title="View Details"
                                             >
                                                 <Eye className="w-5 h-5" />
                                             </Link>
