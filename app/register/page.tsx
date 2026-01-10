@@ -139,129 +139,149 @@ const RegisterContent = () => {
     }
 
     return (
-        <div className="min-h-screen flex bg-white">
-            {/* ... Left Side ... */}
+        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="text-center mb-6">
+                    <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                        Join D2BCart
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-600">
+                        The ultimate B2B marketplace for retailers and manufacturers
+                    </p>
+                </div>
+            </div>
 
-            {/* Right Side - Form */}
-            <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 lg:px-24 py-12 bg-white h-screen overflow-y-auto">
-                <div className="w-full max-w-lg mx-auto">
-                    {/* ... (Header) ... */}
+            <div className="sm:mx-auto sm:w-full sm:max-w-[520px]">
+                <div className="bg-white py-8 px-4 sm:rounded-2xl sm:px-10 shadow-xl border border-gray-100">
 
                     {/* Progress Indicator */}
-                    <div className="flex items-center gap-2 mb-8">
-                        <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-emerald-500' : 'bg-gray-100'}`}></div>
-                        <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-emerald-500' : 'bg-gray-100'}`}></div>
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">
+                            <span className={step >= 1 ? 'text-emerald-600' : ''}>Verify Mobile</span>
+                            <span className={step >= 2 ? 'text-emerald-600' : ''}>Business Details</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden flex">
+                            <div className={`h-full bg-emerald-500 transition-all duration-500 ease-out ${step === 1 ? 'w-1/2' : 'w-full'}`} />
+                        </div>
                     </div>
 
-                    {/* Step 1: Phone Authentication - Self Contained Form */}
+                    {/* Step 1: Phone Authentication */}
                     {step === 1 && !isProfileCompletion && (
-                        <div className="animate-fade-in space-y-6">
-                            <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                <h3 className="font-semibold text-emerald-900 mb-2">Mobile Verification</h3>
-                                <p className="text-sm text-emerald-600 mb-6">We use WhatsApp OTP for secure and instant verification.</p>
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-emerald-100/50">
-                                    <PhoneLogin />
-                                </div>
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 mb-6">
+                                <h3 className="flex items-center gap-2 font-semibold text-emerald-900 mb-1">
+                                    <Phone className="w-4 h-4" />
+                                    Mobile Verification
+                                </h3>
+                                <p className="text-xs text-emerald-700 leading-relaxed">
+                                    We use WhatsApp OTP for a secure, instant, and password-less login experience.
+                                </p>
+                            </div>
+
+                            <div className="bg-white">
+                                <PhoneLogin />
                             </div>
                         </div>
                     )}
 
-                    {/* Step 2: Business & Profile Details - Needs Main Form */}
+                    {/* Step 2: Business & Profile Details */}
                     {step === 2 && (
-                        <form onSubmit={handleSubmit} className="animate-fade-in space-y-6">
-                            <h3 className="text-xl font-bold text-gray-900 border-b pb-2">Complete Profile</h3>
-
-                            <div className="space-y-3">
-                                <label className="text-sm font-semibold text-gray-900">I am a</label>
-                                <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-gray-900">
+                                    I am a...
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setUserType('retailer')}
-                                        className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${userType === 'retailer'
-                                            ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600/20'
-                                            : 'border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30'
+                                        className={`relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 ${userType === 'retailer'
+                                            ? 'border-emerald-600 bg-emerald-50/50'
+                                            : 'border-gray-200 hover:border-emerald-200 hover:bg-gray-50'
                                             }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${userType === 'retailer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-500'}`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${userType === 'retailer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
                                             <Store className="w-5 h-5" />
                                         </div>
-                                        <div className={`font-bold ${userType === 'retailer' ? 'text-emerald-900' : 'text-gray-700'}`}>Retailer</div>
-                                        <div className="text-xs text-gray-500 mt-1">Buy products wholesale</div>
-                                        {userType === 'retailer' && <div className="absolute top-4 right-4 text-emerald-600"><Check className="w-5 h-5" /></div>}
+                                        <span className={`font-bold text-sm ${userType === 'retailer' ? 'text-emerald-900' : 'text-gray-700'}`}>Retailer</span>
+                                        {userType === 'retailer' && <div className="absolute top-2 right-2 text-emerald-600"><Check className="w-4 h-4" /></div>}
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setUserType('manufacturer')}
-                                        className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${userType === 'manufacturer'
-                                            ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600/20'
-                                            : 'border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30'
+                                        className={`relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 ${userType === 'manufacturer'
+                                            ? 'border-emerald-600 bg-emerald-50/50'
+                                            : 'border-gray-200 hover:border-emerald-200 hover:bg-gray-50'
                                             }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${userType === 'manufacturer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-500'}`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${userType === 'manufacturer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
                                             <Factory className="w-5 h-5" />
                                         </div>
-                                        <div className={`font-bold ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Wholesaler</div>
-                                        <div className="text-xs text-gray-500 mt-1">Sell to retailers</div>
-                                        {userType === 'manufacturer' && <div className="absolute top-4 right-4 text-emerald-600"><Check className="w-5 h-5" /></div>}
+                                        <span className={`font-bold text-sm ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Wholesaler</span>
+                                        {userType === 'manufacturer' && <div className="absolute top-2 right-2 text-emerald-600"><Check className="w-4 h-4" /></div>}
                                     </button>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">Business Name</label>
-                                    <div className="relative group">
-                                        <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Briefcase className="h-5 w-5 text-gray-400" />
+                                        </div>
                                         <input
                                             type="text"
                                             value={formData.business_name}
                                             onChange={(e) => updateForm('business_name', e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
-                                            placeholder="Enter business name"
+                                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-shadow"
+                                            placeholder="Enter your business name"
                                             required
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">GST Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        GST Number <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                                    </label>
                                     <input
                                         type="text"
                                         value={formData.gst_number}
                                         onChange={(e) => updateForm('gst_number', e.target.value)}
-                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg bg-white placeholder-gray-500 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                                         placeholder="22AAAAA0000A1Z5"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">City</label>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                                         <input
                                             type="text"
                                             value={formData.city}
                                             onChange={(e) => updateForm('city', e.target.value)}
-                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                                             placeholder="City"
                                             required
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-900">State</label>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
                                         <input
                                             type="text"
                                             value={formData.state}
                                             onChange={(e) => updateForm('state', e.target.value)}
-                                            className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                            className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                                             placeholder="State"
                                             required
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">Pincode</label>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
                                     <input
                                         type="text"
                                         value={formData.pincode}
@@ -269,21 +289,23 @@ const RegisterContent = () => {
                                             const val = e.target.value.replace(/\D/g, '').slice(0, 6)
                                             updateForm('pincode', val)
                                         }}
-                                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium font-mono"
+                                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm font-mono tracking-wide"
                                         placeholder="110001"
                                         required
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-900">Business Address</label>
-                                    <div className="relative group">
-                                        <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Address</label>
+                                    <div className="relative">
+                                        <div className="absolute top-3 left-3 pointer-events-none">
+                                            <MapPin className="h-5 w-5 text-gray-400" />
+                                        </div>
                                         <textarea
                                             value={formData.address}
                                             onChange={(e) => updateForm('address', e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium min-h-[120px] resize-none"
-                                            placeholder="Full street address, building, etc."
+                                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm min-h-[100px] resize-none"
+                                            placeholder="Street address, building, landmark etc."
                                             required
                                         />
                                     </div>
@@ -293,31 +315,31 @@ const RegisterContent = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                             >
                                 {loading ? (
-                                    <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
-                                    <>
-                                        Complete Profile & Start
-                                        <Check className="w-5 h-5" />
-                                    </>
+                                    <span className="flex items-center gap-2">
+                                        Complete Registration
+                                        <ArrowRight className="w-4 h-4" />
+                                    </span>
                                 )}
                             </button>
                         </form>
                     )}
 
-                    <div className="mt-10 text-center">
-                        <p className="text-gray-500 text-sm">
+                    <div className="mt-8 text-center border-t border-gray-100 pt-6">
+                        <p className="text-sm text-gray-600">
                             Already have an account?{' '}
-                            <Link href="/login" className="text-emerald-600 font-bold hover:underline">
-                                Sign In
+                            <Link href="/login" className="font-bold text-emerald-600 hover:text-emerald-500 transition-colors">
+                                Sign in
                             </Link>
                         </p>
                     </div>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     )
 }
 
