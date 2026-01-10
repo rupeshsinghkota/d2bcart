@@ -1,3 +1,5 @@
+'use server'
+
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Product, Category } from '@/types'
 import { unstable_cache } from 'next/cache'
@@ -52,6 +54,8 @@ export async function loadMoreProducts(page: number = 1) {
     const to = from + PAGE_SIZE - 1
 
     try {
+        console.log(`[loadMoreProducts] Fetching page ${page} (range ${from}-${to})`)
+
         const { data: products, error } = await supabaseAdmin
             .from('products')
             .select(`
@@ -65,11 +69,31 @@ export async function loadMoreProducts(page: number = 1) {
             .order('created_at', { ascending: false })
             .range(from, to)
 
-        if (error) throw error
+        // Log parameters and result count to file
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(process.cwd(), 'public', 'debug_log.txt');
+            const logMsg = `${new Date().toISOString()} - Page: ${page}, Range: ${from}-${to}, Found: ${products?.length || 0}, Error: ${error ? JSON.stringify(error) : 'None'}\n`;
+            fs.appendFileSync(logPath, logMsg);
+        } catch (e) { }
 
+        if (error) {
+            console.error('[loadMoreProducts] DB Error:', error)
+            throw error
+        }
+
+        console.log(`[loadMoreProducts] Successfully fetched ${products?.length} products`)
         return { products: products as Product[] }
     } catch (error) {
         console.error('Error loading more products:', error)
+        // Log to file for visibility
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(process.cwd(), 'public', 'debug_log.txt');
+            fs.appendFileSync(logPath, `${new Date().toISOString()} - loadMoreProducts Error: ${JSON.stringify(error)}\n`);
+        } catch (e) { }
         return { products: [] }
     }
 }

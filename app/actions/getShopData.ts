@@ -5,6 +5,19 @@ import { Product, Category } from '@/types'
 import { unstable_cache } from 'next/cache'
 
 // Cached Categories Fetcher (Longer Cache: 1 Hour)
+const SYNONYMS: Record<string, string[]> = {
+    'cover': ['case', 'backcover', 'protection'],
+    'case': ['cover', 'backcover', 'protection'],
+    'glass': ['tempered', 'guard', 'screen'],
+    'tempered': ['glass', 'guard', 'screen'],
+    'cable': ['wire', 'cord', 'charger'],
+    'charger': ['adapter', 'dock', 'cable'],
+    'stand': ['holder', 'mount'],
+    'holder': ['stand', 'mount'],
+    'earphone': ['headset', 'headphones', 'buds', 'airpods'],
+    'buds': ['earphone', 'headset', 'airpods'],
+};
+
 export const getShopCategories = unstable_cache(
     async () => {
         try {
@@ -47,33 +60,73 @@ export const getShopCategories = unstable_cache(
 )
 
 // Cached Products Fetcher (Shorter Cache: 5 mins)
-export const getShopProducts = unstable_cache(
-    async (categoryId?: string, page: number = 1, limit: number = 20) => {
-        try {
-            console.log('Fetching shop products...', { categoryId, page })
-            const from = (page - 1) * limit
-            const to = from + limit - 1
+// Cached Products Fetcher (Shorter Cache: 5 mins)
+// Cached Products Fetcher (Shorter Cache: 5 mins)
+// export const getShopProducts = unstable_cache(
+export const getShopProducts = async (categoryId?: string, page: number = 1, limit: number = 20, searchQuery: string = '') => {
+    try {
+        console.log('Fetching shop products...', { categoryId, page, searchQuery })
+        const from = (page - 1) * limit
+        const to = from + limit - 1
 
-            // Need all categories to find descendants if filtering by category
-            // We can fetch this cheaply or pass it in, but ideally we fetch strictly from DB
-            // To be safe and fast, let's fetch just ids for hierarchy if needed
-            let targetIds: string[] = []
-            if (categoryId) {
-                const { data: allCats } = await supabaseAdmin.from('categories').select('id, parent_id')
-                if (allCats) {
-                    const getDescendants = (pid: string): string[] => {
-                        const children = allCats.filter(c => c.parent_id === pid)
-                        let ids = children.map(c => c.id)
-                        children.forEach(child => ids.push(...getDescendants(child.id)))
-                        return ids
-                    }
-                    targetIds = [categoryId, ...getDescendants(categoryId)]
-                } else {
-                    targetIds = [categoryId]
+        // Need all categories to find descendants if filtering by category
+        let targetIds: string[] = []
+        if (categoryId) {
+            const { data: allCats } = await supabaseAdmin.from('categories').select('id, parent_id')
+            if (allCats) {
+                const getDescendants = (pid: string): string[] => {
+                    const children = allCats.filter(c => c.parent_id === pid)
+                    let ids = children.map(c => c.id)
+                    children.forEach(child => ids.push(...getDescendants(child.id)))
+                    return ids
                 }
+                targetIds = [categoryId, ...getDescendants(categoryId)]
+            } else {
+                targetIds = [categoryId]
             }
+        }
 
-            let query = supabaseAdmin
+        let query = supabaseAdmin
+            .from('products')
+            .select(`
+                    *,
+                    manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                    category:categories!products_category_id_fkey(name, slug),
+                    variations:products!parent_id(display_price, moq)
+                `, { count: 'exact' })
+            .eq('is_active', true)
+            .is('parent_id', null)
+            .order('created_at', { ascending: false })
+
+        // Search filter - Using Postgres Full Text Search with Prefix Matching (Partial Support)
+        if (searchQuery) {
+            // "Sam Cov" -> "Sam:* & Cov:*"
+            const sanitized = searchQuery.trim().replace(/[|&!:()]/g, '').split(/\s+/).filter(w => w.length > 0)
+            if (sanitized.length > 0) {
+                const formattedQuery = sanitized.map(w => `${w}:*`).join(' & ')
+                query = query.textSearch('search_vector', formattedQuery, {
+                    config: 'english'
+                })
+            }
+        }
+
+        if (categoryId && targetIds.length > 0) {
+            query = query.in('category_id', targetIds)
+        }
+
+        query = query.range(from, to)
+
+        const { data: products, error, count } = await query
+
+        if (error) {
+            console.error('Supabase Query Error:', error)
+            return { products: [], totalProducts: 0 }
+        }
+
+        // Fallback: If FTS returned no results, try simple ILIKE on strict name match
+        // This fixes cases like "1+" where FTS might strip the "+" symbol
+        if ((!products || products.length === 0) && searchQuery) {
+            const fallbackQuery = supabaseAdmin
                 .from('products')
                 .select(`
                     *,
@@ -83,30 +136,38 @@ export const getShopProducts = unstable_cache(
                 `, { count: 'exact' })
                 .eq('is_active', true)
                 .is('parent_id', null)
+                .ilike('name', `%${searchQuery}%`)
                 .order('created_at', { ascending: false })
+                .range(from, to)
 
-            if (categoryId && targetIds.length > 0) {
-                query = query.in('category_id', targetIds)
+            const { data: fallbackProducts, count: fallbackCount } = await fallbackQuery
+
+            if (fallbackProducts && fallbackProducts.length > 0) {
+                return {
+                    products: (fallbackProducts as Product[]) || [],
+                    totalProducts: fallbackCount || 0
+                }
             }
-
-            query = query.range(from, to)
-
-            const { data: products, error, count } = await query
-
-            if (error) throw error
-
-            return {
-                products: (products as Product[]) || [],
-                totalProducts: count || 0
-            }
-        } catch (error) {
-            console.error('Error fetching products:', error)
-            return { products: [], totalProducts: 0 }
         }
-    },
-    ['shop-products-v1'], // tags are dynamic based on args in next/cache logic usually, but here key is static + args
-    { revalidate: 300, tags: ['products'] }
-)
+
+        return {
+            products: (products as Product[]) || [],
+            totalProducts: count || 0
+        }
+    } catch (error) {
+        console.error('Error fetching products:', error)
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(process.cwd(), 'public', 'debug_log.txt');
+            fs.appendFileSync(logPath, `${new Date().toISOString()} - Catch Error: ${JSON.stringify(error)}\n`);
+        } catch (e) { }
+        return { products: [], totalProducts: 0 }
+    }
+}
+// ['shop-products-v2'], // Bump version for search param change
+// { revalidate: 300, tags: ['products'] }
+// )
 
 // Legacy compatibility wrapper (but optimized)
 export const getShopData = async (categoryId?: string, page: number = 1, limit: number = 20) => {
@@ -158,30 +219,43 @@ export async function paginateShopProducts(
             .eq('is_active', true)
             .is('parent_id', null)
 
-        // Search filter - enhanced with more fields and word tokenization
+        // Search filter - Using Postgres Full Text Search (Robust & Fast)
+        // Search filter - Using Postgres Full Text Search with Prefix Matching (Partial Support)
         if (searchQuery) {
-            // Sanitize and prepare search query
-            const sanitizedQuery = searchQuery.trim().replace(/[%_]/g, '')
+            // Cleaning and formatting the query for Full Text Search
+            const cleanedQuery = searchQuery
+                .replace(/[!&|():*]/g, ' ') // Remove special chars that break tsquery
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .join(' & ') // Join words with AND operator
 
-            if (sanitizedQuery.length > 0) {
-                // For multi-word searches, each word must match somewhere
-                const words = sanitizedQuery.split(/\s+/).filter(w => w.length >= 2)
+            // 1. Expand Synonyms
+            // const expandedQuery = expandSearchQuery(searchQuery); // This was from the example, but we'll build it directly for prefixing
 
-                if (words.length > 1) {
-                    // Multi-word: search for entire phrase first, then individual words
-                    const phraseFilter = `name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%,sku.ilike.%${sanitizedQuery}%`
-                    query = query.or(phraseFilter)
-                } else {
-                    // Single word or short query: search across multiple fields
-                    const searchFilter = [
-                        `name.ilike.%${sanitizedQuery}%`,
-                        `description.ilike.%${sanitizedQuery}%`,
-                        `sku.ilike.%${sanitizedQuery}%`,
-                        `hsn_code.ilike.%${sanitizedQuery}%`
-                    ].join(',')
-                    query = query.or(searchFilter)
+            // 2. Format for Prefix Matching (Standard FTS)
+            // We convert "Samsung Cover" -> "Samsung:* & (Cover | Case | ...):*"
+            // Note: expandSearchQuery returns "(word | syn)" format. We need to handle the prefixing carefully.
+            // Simplified approach: Just stick adjacent to the OR groups logic.
+
+            // Actually, let's refine expandSearchQuery to handle the formatting ready for textSearch
+            // Re-implementing inside the flow for clarity:
+
+            const terms = searchQuery.trim().split(/\s+/);
+            const tsParts = terms.map(term => {
+                const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const syns = SYNONYMS[clean];
+                if (syns) {
+                    // (term | syn1 | syn2):*
+                    return `(${term} | ${syns.join(' | ')}):*`;
                 }
-            }
+                return `${term}:*`;
+            });
+            const finalTsQuery = tsParts.join(' & ');
+
+            query = query.textSearch('search_vector', finalTsQuery, {
+                config: 'english'
+            })
         }
 
         // Category filter

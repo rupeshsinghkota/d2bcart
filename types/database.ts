@@ -55,6 +55,7 @@ export interface Product {
     tax_rate?: number // Added GST Tax Rate
     sku?: string // Added SKU for variants
     parent_id?: string // Added parent_id for variations
+    search_vector?: any // Full Text Search Vector
     // Joined fields
     manufacturer?: User
     category?: Category

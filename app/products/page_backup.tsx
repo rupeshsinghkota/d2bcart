@@ -34,6 +34,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
                 return {
                     title: `${category.name} | D2BCart`,
                     description: `Browse wholesale ${category.name} from verified manufacturers on D2BCart.`,
+                    openGraph: {
+                        title: `${category.name} | D2BCart`,
+                        description: `Browse wholesale ${category.name} directly from manufacturers.`,
+                    }
                 }
             }
         }
@@ -60,7 +64,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function ProductsPage({ searchParams }: Props) {
     return (
-        <Suspense fallback={<div className="p-20 text-center">Loading...</div>}>
+        <Suspense fallback={<ProductsSkeleton />}>
             <ProductsContent searchParams={searchParams} />
         </Suspense>
     )
@@ -86,7 +90,19 @@ async function ProductsContent({ searchParams }: Props) {
         }
 
         // 3. Fetch Products
-        const { products, totalProducts } = await getShopProducts(currentCategory?.id, 1, 20, searchQuery)
+        let products: Product[] = []
+        let totalProducts = 0
+
+        if (searchQuery) {
+            console.log("DEBUG: BYPASSING DB FOR SEARCH");
+            // Return empty to test if page loads
+            products = []
+            totalProducts = 0
+        } else {
+            const result = await getShopProducts(currentCategory?.id, 1, 20, searchQuery)
+            products = result.products
+            totalProducts = result.totalProducts
+        }
 
         // Collection Page JSON-LD
         const jsonLd = {
@@ -129,4 +145,27 @@ async function ProductsContent({ searchParams }: Props) {
             </div>
         )
     }
+}
+
+function ProductsSkeleton() {
+    return (
+        <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col md:flex-row gap-8">
+                {/* Sidebar Skeleton */}
+                <div className="hidden md:block w-64 space-y-4">
+                    <div className="h-40 bg-gray-100 rounded-xl" />
+                    <div className="h-64 bg-gray-100 rounded-xl" />
+                </div>
+                {/* Main Content Skeleton */}
+                <div className="flex-1 space-y-6">
+                    <div className="h-12 bg-gray-100 rounded-xl w-3/4" />
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="aspect-[3/4] bg-gray-100 rounded-xl" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
 }
