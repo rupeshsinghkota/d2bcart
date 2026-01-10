@@ -30,6 +30,8 @@ import {
     Menu
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import DeliveryChecker from '@/components/product/DeliveryChecker'
+import TrustPolicy from '@/components/product/TrustPolicy'
 
 const MobileMenu = dynamic(() => import('@/components/MobileMenu'), { ssr: false })
 
@@ -468,6 +470,13 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 )}
                             </div>
 
+                            {/* Delivery Checker */}
+                            <DeliveryChecker
+                                manufacturerId={currentProduct.manufacturer_id}
+                                weight={0.5} // Standard default, logic can be improved later
+                                dimensions={{ length: 10, breadth: 10, height: 10 }}
+                            />
+
                             {/* Trust Badge / Offer Highlight */}
                             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-6 flex flex-col gap-2">
                                 <div className="flex items-start gap-2">
@@ -637,8 +646,10 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 </div>
                             )}
 
+
+
                             {/* Desktop Action Buttons */}
-                            <div className="hidden md:flex gap-3 mt-6">
+                            <div className="hidden md:flex gap-3 mt-3">
                                 <button
                                     onClick={handleAddToCart}
                                     className="flex-1 py-3.5 px-6 border-2 border-emerald-600 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-emerald-600/20"
@@ -646,8 +657,10 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
                                 </button>
-
                             </div>
+
+                            {/* Trust & Return Policy */}
+                            <TrustPolicy />
                         </div>
 
                         {/* Manufacturer Info Card */}
@@ -750,17 +763,22 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
             </div>
 
             {/* Mobile Sticky Bottom Action Bar */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 z-40 safe-area-inset-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <div className="flex items-center gap-3">
-                    {/* Action Buttons - Full Width Add to Cart */}
-                    <button
-                        onClick={handleAddToCart}
-                        disabled={addingToCart}
-                        className="flex-1 h-12 bg-emerald-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
-                    >
-                        <ShoppingCart className="w-5 h-5" />
-                        Add to Cart
-                    </button>
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-40 safe-area-inset-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 justify-center bg-amber-50/80 py-0.5 px-3 rounded-full border border-amber-100 mx-auto w-fit">
+                        <span className="text-[9px] font-bold text-amber-800 tracking-wide">⚠️ Wholesale: Min Order ₹3,999</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* Action Buttons - Full Width Add to Cart */}
+                        <button
+                            onClick={handleAddToCart}
+                            disabled={addingToCart}
+                            className="flex-1 h-11 bg-emerald-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20"
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Add to Cart
+                        </button>
+                    </div>
                 </div>
             </div>
 

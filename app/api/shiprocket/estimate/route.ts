@@ -136,11 +136,35 @@ export async function POST(req: Request) {
                     id: fastest.courier_company_id
                 }
             })
-        } else {
-            return NextResponse.json({ error: serviceData.message, rate: 0 })
+            // FALLBACK LOGIC: If Shiprocket says not serviceable, return a Flat Rate (e.g. 150)
+            // This prevents "Checkout Blocked" issues for remote locations.
+            console.warn(`Shiprocket Serviceability Failed for ${delivery_pincode}. Using Fallback.`, serviceData.message)
+            return NextResponse.json({
+                success: true,
+                couriers: [{
+                    rate: 150,
+                    etd: '5-7 Days',
+                    courier_name: 'Standard Shipping',
+                    id: 'FALLBACK_SHIP'
+                }],
+                cheapest: { rate: 150, etd: '5-7 Days', courier_name: 'Standard Shipping', id: 'FALLBACK_SHIP' },
+                fastest: { rate: 150, etd: '5-7 Days', courier_name: 'Standard Shipping', id: 'FALLBACK_SHIP' }
+            })
         }
 
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('Shiprocket API Error:', error)
+        // CRITICAL FALLBACK: Do not block sale on API error.
+        return NextResponse.json({
+            success: true,
+            couriers: [{
+                rate: 150,
+                etd: '5-7 Days',
+                courier_name: 'Standard Shipping',
+                id: 'FALLBACK_SHIP_ERR'
+            }],
+            cheapest: { rate: 150, etd: '5-7 Days', courier_name: 'Standard Shipping', id: 'FALLBACK_SHIP_ERR' },
+            fastest: { rate: 150, etd: '5-7 Days', courier_name: 'Standard Shipping', id: 'FALLBACK_SHIP_ERR' }
+        })
     }
 }

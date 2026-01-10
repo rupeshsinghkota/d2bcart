@@ -15,7 +15,7 @@ interface Props {
 export const revalidate = 3600 // Revalidate every hour
 
 async function getProduct(id: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('products')
         .select(`
       *,

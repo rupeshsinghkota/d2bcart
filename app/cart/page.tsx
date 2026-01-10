@@ -21,7 +21,11 @@ import {
     Store,
     ChevronUp,
     Shield,
-    Percent
+    Percent,
+    ShieldCheck,
+    Building,
+    FileText,
+    MapPin
 } from 'lucide-react'
 import Image from 'next/image'
 import { calculateTax } from '@/utils/tax'
@@ -97,6 +101,21 @@ export default function CartPage() {
         checkUser()
         loadRazorpayScript()
     }, [])
+
+    // Facebook Pixel: InitiateCheckout
+    useEffect(() => {
+        if (cart.length > 0 && !loading) {
+            import('@/lib/fpixel').then((fpixel) => {
+                fpixel.event('InitiateCheckout', {
+                    content_ids: cart.map(item => item.product.id),
+                    content_type: 'product',
+                    currency: 'INR',
+                    value: getCartTotal(),
+                    num_items: cart.length
+                })
+            })
+        }
+    }, [cart.length, loading])
 
     const loadRazorpayScript = () => {
         const script = document.createElement('script')
@@ -258,10 +277,103 @@ export default function CartPage() {
         return paymentOption === 'advance' ? getAdvanceAmount() : getFullAmount()
     }
 
+    const [guestForm, setGuestForm] = useState({
+        name: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: ''
+    })
+
+    // Load persisted pincode from Product Page
+    useEffect(() => {
+        const storedPin = localStorage.getItem('d2b_pincode')
+        if (storedPin && storedPin.length === 6) {
+            setGuestForm(prev => ({ ...prev, pincode: storedPin }))
+            // Trigger visual shipping update if needed, though handlePlaceOrder calculation is separate
+            // We can treat this as "User Pincode" for accurate shipping estimates even before full address
+            if (!user) {
+                // Determine logic to trigger calc
+            }
+        }
+    }, [user])
+
+    const handleGuestInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target
+        setGuestForm(prev => ({ ...prev, [name]: value }))
+    }
+
     const handlePlaceOrder = async () => {
-        if (!user) {
-            toast.error('Please login to place order')
-            router.push('/login')
+        let currentUser = user
+
+        // GUEST CHECKOUT LOGIC
+        if (!currentUser) {
+            // Validate Guest Form
+            if (!guestForm.name || !guestForm.phone || !guestForm.address || !guestForm.pincode || guestForm.phone.length < 10) {
+                toast.error('Please fill all shipping details correctly')
+                return // Stop here, show validation error
+            }
+
+            setPlacingOrder(true) // Start loading UI
+            const toastId = toast.loading('Creating your account...')
+
+            try {
+                // Auto-Register Guest
+                const regRes = await fetch('/api/auth/guest-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(guestForm)
+                })
+                const regData = await regRes.json()
+
+                if (!regRes.ok) {
+                    toast.dismiss(toastId)
+                    if (regRes.status === 409) {
+                        toast.error(regData.message) // "User exists, please login"
+                        router.push('/login')
+                    } else {
+                        toast.error(regData.error || 'Registration failed')
+                    }
+                    setPlacingOrder(false)
+                    return
+                }
+
+                // Auto-Login
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    phone: `+91${guestForm.phone}`,
+                    password: regData.password
+                })
+
+                if (loginError) {
+                    // Fallback to email login if phone fail? Or just proceed with user_id?
+                    // If login fails, we can't persist session, but we HAVE the user_id for the order.
+                    // For now, let's treat login error as non-blocking for the ORDER, but warn.
+                    console.error("Auto-login failed", loginError)
+                }
+
+                toast.success('Account created! Proceeding to payment...', { id: toastId })
+
+                // Update local user state so shipping/order logic works
+                currentUser = {
+                    id: regData.user_id,
+                    ...guestForm,
+                    business_name: guestForm.name,
+                    email: regData.email // Important for Razorpay prefill
+                }
+                setUser(currentUser)
+
+            } catch (err: any) {
+                toast.dismiss(toastId)
+                toast.error(err.message)
+                setPlacingOrder(false)
+                return
+            }
+        }
+
+        // --- Original Check Logic (modified to use currentUser) ---
+        if (!currentUser) {
+            setPlacingOrder(false)
             return
         }
 
@@ -378,12 +490,12 @@ export default function CartPage() {
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_signature: response.razorpay_signature,
                                 cart_payload: cartPayload, // Pass the cart data
-                                user_id: user.id,
+                                user_id: currentUser.id, // Use currentUser
                                 user_address: {
-                                    address: user.address,
-                                    city: user.city,
-                                    state: user.state,
-                                    pincode: user.pincode
+                                    address: currentUser.address,
+                                    city: currentUser.city,
+                                    state: currentUser.state || '', // Handle potential missing state
+                                    pincode: currentUser.pincode
                                 },
                                 payment_option: paymentOption,
                                 payment_breakdown: {
@@ -423,9 +535,9 @@ export default function CartPage() {
                     }
                 },
                 prefill: {
-                    name: user.business_name,
-                    email: user.email,
-                    contact: user.phone
+                    name: currentUser.business_name || currentUser.full_name, // Use currentUser
+                    email: currentUser.email,
+                    contact: currentUser.phone
                 },
                 theme: {
                     color: '#059669'
@@ -721,6 +833,119 @@ export default function CartPage() {
                             })}
                         </div>
 
+                        {/* Guest / User Shipping Details */}
+                        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <MapPin className="w-5 h-5 text-emerald-600" />
+                                Shipping Details
+                            </h3>
+
+                            {user ? (
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-gray-900">{user.business_name || user.full_name}</p>
+                                        <p className="text-sm text-gray-600 mt-1">{user.address}</p>
+                                        <p className="text-sm text-gray-600">{user.city}, {user.state} - {user.pincode}</p>
+                                        <p className="text-sm text-gray-600 mt-1">Mobile: {user.phone}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => router.push('/profile')}
+                                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-white px-3 py-1.5 rounded-lg border border-emerald-100 shadow-sm"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Your Name / Business Name</label>
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value={guestForm.name}
+                                                onChange={handleGuestInput}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="Enter name"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                                            <input
+                                                type="tel"
+                                                name="phone"
+                                                value={guestForm.phone}
+                                                onChange={handleGuestInput}
+                                                maxLength={10}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="10-digit mobile number"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                        <textarea
+                                            name="address"
+                                            value={guestForm.address}
+                                            onChange={handleGuestInput}
+                                            rows={2}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all resize-none"
+                                            placeholder="Full delivery address"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                                            <input
+                                                type="text"
+                                                name="pincode"
+                                                value={guestForm.pincode}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                                                    setGuestForm(prev => ({ ...prev, pincode: val }))
+                                                    // Trigger shipping calc if 6 digits
+                                                    if (val.length === 6) {
+                                                        // We can fake a user object for calcShipping
+                                                        setUser({ pincode: val })
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="Pin Code"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                                            <input
+                                                type="text"
+                                                name="city"
+                                                value={guestForm.city}
+                                                onChange={handleGuestInput}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="City"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 lg:col-span-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                                            <input
+                                                type="text"
+                                                name="state"
+                                                value={guestForm.state}
+                                                onChange={handleGuestInput}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="State"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                        Your account will be created automatically for order tracking.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Order Summary */}
                         < div >
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
@@ -852,15 +1077,28 @@ export default function CartPage() {
                                         )}
                                     </button>
 
-                                    {/* Trust Badges */}
-                                    <div className="flex items-center justify-center gap-4 pt-2">
-                                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                                            <Shield className="w-3 h-3" />
-                                            Pay Shipping to Verify Order
+                                    {/* Trust Badges - Enhanced */}
+                                    <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
+                                        <div className="flex flex-col items-center text-center gap-1">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-1">
+                                                <ShieldCheck className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-gray-700">100% Secure</span>
+                                            <span className="text-[9px] text-gray-400">Payment Protection</span>
                                         </div>
-                                        <div className="text-[10px] text-gray-400">•</div>
-                                        <div className="text-[10px] text-gray-400">
-                                            Rest on Delivery
+                                        <div className="flex flex-col items-center text-center gap-1">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-1">
+                                                <Building className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-gray-700">Verified Sellers</span>
+                                            <span className="text-[9px] text-gray-400">Direct from Factory</span>
+                                        </div>
+                                        <div className="flex flex-col items-center text-center gap-1">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-1">
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-gray-700">GST Invoice</span>
+                                            <span className="text-[9px] text-gray-400">Available on Request</span>
                                         </div>
                                     </div>
                                 </div>
