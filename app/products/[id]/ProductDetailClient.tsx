@@ -417,24 +417,24 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                         {/* Main Product Card */}
                         <div className="space-y-4 px-3 md:px-0">
                             {/* Product Header */}
-                            <div className="border-b border-gray-100 pb-4 mb-4">
-                                <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-1.5 tracking-tight leading-snug">
+                            {/* Product Header */}
+                            <div className="mb-3">
+                                <h1 className="text-xl md:text-3xl font-extrabold text-gray-900 mb-1 leading-tight">
                                     {currentProduct.name}
                                 </h1>
 
                                 {/* PRICE DISPLAY */}
-                                {/* PRICE DISPLAY */}
                                 {variations.length === 0 ? (
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl md:text-3xl font-extrabold text-emerald-600 tracking-tight">
+                                            <span className="text-2xl md:text-4xl font-black text-emerald-600 tracking-tight">
                                                 {formatCurrency(totalDisplayPrice)}
                                             </span>
-                                            <span className="text-sm font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-                                                {quantity} {quantity === 1 ? 'Unit' : 'Units'}
+                                            <span className="text-xs font-semibold text-gray-400">
+                                                for {quantity} {quantity === 1 ? 'Unit' : 'Units'}
                                             </span>
                                         </div>
-                                        <div className="text-sm text-gray-500 font-medium">
+                                        <div className="text-xs font-medium text-gray-500">
                                             {formatCurrency(currentProduct.display_price)} / unit
                                         </div>
                                     </div>
@@ -443,31 +443,30 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         {totalDisplayPrice > 0 ? (
                                             <>
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-2xl md:text-4xl font-extrabold text-emerald-600 tracking-tight">
+                                                    <span className="text-2xl md:text-5xl font-black text-emerald-600 tracking-tight">
                                                         {formatCurrency(totalDisplayPrice)}
                                                     </span>
-                                                    <span className="text-xs md:text-sm font-semibold text-gray-400 uppercase tracking-wider">Total</span>
+                                                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                        Total
+                                                    </span>
                                                 </div>
-                                                <p className="text-xs md:text-sm text-emerald-600 font-medium">
+                                                <p className="text-xs text-gray-500 font-medium">
                                                     {getTotalSelectedItems()} items selected
                                                 </p>
                                             </>
                                         ) : (
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                                                    <span className="text-xl md:text-4xl font-bold text-gray-900 tracking-tight">
                                                         {formatCurrency(
                                                             (variations && variations.length > 0
                                                                 ? Math.min(...variations.map(v => v.display_price * (v.moq || 1)))
                                                                 : (currentProduct.display_price || currentProduct.base_price) * (currentProduct.moq || 1))
                                                         )}
                                                     </span>
-                                                    <span className="text-xs md:text-sm font-medium text-gray-500">
-                                                        / starting pack price
+                                                    <span className="text-xs font-medium text-gray-500">
+                                                        / starting pack
                                                     </span>
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    Min. pack size varies by model
                                                 </div>
                                             </div>
                                         )}
@@ -477,24 +476,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
 
 
-                            {/* Trust Badge / Offer Highlight */}
-                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-6 flex flex-col gap-2">
-                                <div className="flex items-start gap-2">
-                                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-bold text-emerald-900">Pay Shipping Only & Confirm Order</p>
-                                        <p className="text-xs text-emerald-700">Pay only shipping charges now. Pay the rest comfortably on delivery (COD).</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 pt-2 border-t border-emerald-100/50">
-                                    <div className="bg-white p-1 rounded-full">
-                                        <Package className="w-3 h-3 text-emerald-600" />
-                                    </div>
-                                    <span className="text-xs font-medium text-emerald-800">
-                                        Minimum Order Reduced to <span className="font-bold">₹3,999</span> per seller!
-                                    </span>
-                                </div>
-                            </div>
+
 
                             {/* BULK VARIATION GRID */}
                             {variations.length > 0 ? (
@@ -594,37 +576,45 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                             })}
                                         </div>
                                     </div>
-                                    <div className="mt-3 text-center md:hidden">
-                                        <p className="text-xs text-gray-400 font-medium animate-pulse">Scroll to see more models ↓</p>
+                                    <div className="mt-2 text-center md:hidden">
+                                        <p className="text-[10px] text-emerald-600 font-medium animate-pulse flex items-center justify-center gap-1">
+                                            <ChevronRight className="w-2.5 h-2.5 rotate-90" />
+                                            More models below
+                                            <ChevronRight className="w-2.5 h-2.5 rotate-90" />
+                                        </p>
                                     </div>
                                 </div>
                             ) : (
                                 // SINGLE PRODUCT QUANTITY SELECTOR
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Select Quantity (MOQ: {currentProduct.moq || 1})
+                                <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <label className="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                                        Select Quantity
                                     </label>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center bg-gray-100 rounded-xl overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-xs text-gray-500 font-medium">
+                                            Min Order: {currentProduct.moq || 1} units
+                                        </div>
+
+                                        <div className="flex items-center bg-white rounded-full shadow-sm border border-gray-200 p-1">
                                             <button
                                                 onClick={() => setQuantity(Math.max(currentProduct.moq || 1, quantity - (currentProduct.moq || 1)))}
-                                                className="p-3 hover:bg-gray-200 transition-colors"
+                                                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
                                             >
-                                                <Minus className="w-5 h-5 text-gray-600" />
+                                                <Minus className="w-5 h-5" />
                                             </button>
                                             <input
                                                 type="number"
                                                 value={quantity}
                                                 step={currentProduct.moq || 1}
                                                 onChange={(e) => setQuantity(Math.max(currentProduct.moq || 1, parseInt(e.target.value) || currentProduct.moq || 1))}
-                                                className="w-16 text-center bg-transparent py-3 font-semibold focus:outline-none"
+                                                className="w-16 text-center text-lg font-bold text-gray-900 bg-transparent focus:outline-none"
                                                 min={currentProduct.moq || 1}
                                             />
                                             <button
                                                 onClick={() => setQuantity(quantity + (currentProduct.moq || 1))}
-                                                className="p-3 hover:bg-gray-200 transition-colors"
+                                                className="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700 transition-colors"
                                             >
-                                                <Plus className="w-5 h-5 text-gray-600" />
+                                                <Plus className="w-5 h-5" />
                                             </button>
                                         </div>
                                     </div>
@@ -638,6 +628,25 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     weight={0.5}
                                     dimensions={{ length: 10, breadth: 10, height: 10 }}
                                 />
+                            </div>
+
+                            {/* Trust Badge / Offer Highlight (Moved) */}
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-6 flex flex-col gap-2">
+                                <div className="flex items-start gap-2">
+                                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-emerald-900">Pay Shipping Only & Confirm Order</p>
+                                        <p className="text-xs text-emerald-700">Pay only shipping charges now. Pay the rest comfortably on delivery (COD).</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 pt-2 border-t border-emerald-100/50">
+                                    <div className="bg-white p-1 rounded-full">
+                                        <Package className="w-3 h-3 text-emerald-600" />
+                                    </div>
+                                    <span className="text-xs font-medium text-emerald-800">
+                                        Minimum Order Reduced to <span className="font-bold">₹3,999</span> per seller!
+                                    </span>
+                                </div>
                             </div>
 
                             {product.description && (
