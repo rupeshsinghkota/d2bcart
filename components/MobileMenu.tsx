@@ -135,8 +135,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                                 href={item.href}
                                 onClick={onClose}
                                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${pathname === item.href
-                                        ? 'bg-emerald-50 text-emerald-700 font-medium'
-                                        : 'text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                                    : 'text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <item.icon className={`w-5 h-5 ${pathname === item.href ? 'text-emerald-600' : 'text-gray-400'}`} />
@@ -158,8 +158,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                                     href={item.href}
                                     onClick={onClose}
                                     className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${pathname === item.href
-                                            ? 'bg-emerald-50 text-emerald-700 font-medium'
-                                            : 'text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-emerald-50 text-emerald-700 font-medium'
+                                        : 'text-gray-700 hover:bg-gray-50'
                                         }`}
                                 >
                                     <item.icon className={`w-5 h-5 ${pathname === item.href ? 'text-emerald-600' : 'text-gray-400'}`} />
@@ -175,7 +175,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                     {/* Support & Settings */}
                     <div className="px-3 py-2">
                         <Link
-                            href="/support"
+                            href="/contact"
                             onClick={onClose}
                             className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
                         >
