@@ -79,19 +79,20 @@ export async function POST(req: Request) {
         const crypto = require('crypto')
         const addressHash = crypto.createHash('md5').update(addressAuthString).digest('hex').substring(0, 6).toUpperCase()
 
-        const pickupLocationName = `MANUF_${mfr.id.split('-')[0].substring(0, 8)}_${addressHash}`
+        // CHANGED PREFIX to force fresh sync for all users (Fixed "Old Pincode" issue)
+        const pickupLocationName = `MFR_NEW_${mfr.id.split('-')[0].substring(0, 8)}_${addressHash}`
         let pickupLocationCode = mfr.shiprocket_pickup_code
 
-        // If code differs (or doesn't exist), register new one
+        // If code differs (or is old MANUF_ format), register new one
         if (pickupLocationCode !== pickupLocationName) {
-            console.log(`[Shiprocket] Address changed (Hash: ${addressHash}). Registering new pickup: ${pickupLocationName}`)
+            console.log(`[Shiprocket] Address Sync: ${pickupLocationCode} -> ${pickupLocationName}`)
 
             const pickupPayload = {
                 pickup_location: pickupLocationName,
-                name: mfr.business_name || 'Wholesaler',
+                name: mfr.business_name || 'Wholesaler', // Shiprocket requires unique name? No, location code unique
                 email: mfr.email,
                 phone: mfr.phone,
-                address: (mfr.address?.length > 10) ? mfr.address : `Shop 1, ${mfr.address || "Market"}`, // Validation
+                address: (mfr.address?.length > 10) ? mfr.address : `Shop 1, ${mfr.address || "Main Market"}`,
                 city: mfr.city,
                 state: mfr.state || "Delhi",
                 country: "India",
@@ -198,8 +199,12 @@ export async function POST(req: Request) {
         // Vol = L * B * H  =>  H = Vol / (L * B)
         const calculatedHeight = Math.ceil(totalVolume / (maxL * maxB)) || 10
 
+        // Force Unique Order ID for Shiprocket to prevent "Existing Order" address lock
+        // If we retry, we want a NEW order with FRESH address data.
+        const uniqueOrderId = `${primaryOrder.order_number}-R${Math.floor(Date.now() / 1000).toString().slice(-4)}`
+
         const orderPayload = {
-            order_id: primaryOrder.order_number, // Use the shared Order Number (they should match if grouped)
+            order_id: uniqueOrderId, // Use Unique ID
             order_date: new Date(primaryOrder.created_at).toISOString().split('T')[0],
             pickup_location: pickupLocationCode,
             billing_customer_name: primaryOrder.retailer.business_name,
@@ -232,7 +237,15 @@ export async function POST(req: Request) {
 
         if (!shiprocketOrder.order_id) {
             console.error('Shiprocket Error:', shiprocketOrder)
-            return NextResponse.json({ error: `Shiprocket Error: ${shiprocketOrder.message || JSON.stringify(shiprocketOrder.errors)}` }, { status: 400 })
+            return NextResponse.json({
+                error: `Shiprocket Error: ${shiprocketOrder.message || JSON.stringify(shiprocketOrder.errors)}`,
+                debug_info: {
+                    used_pickup_code: pickupLocationCode,
+                    generated_hash: addressHash,
+                    manufacturer_pincode: mfr.pincode,
+                    shiprocket_message: shiprocketOrder
+                }
+            }, { status: 400 })
         }
 
         // 6. AWB & Pickup (Simplified: Reuse same flow)
