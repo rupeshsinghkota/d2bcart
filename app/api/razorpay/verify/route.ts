@@ -4,12 +4,18 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
     try {
+        const body = await req.json()
         const {
             razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature,
-            order_ids // Accept array of internal order IDs
-        } = await req.json()
+            order_ids,
+            cart_payload,
+            user_id,
+            user_address,
+            payment_option,
+            payment_breakdown
+        } = body
 
         const secret = process.env.RAZORPAY_KEY_SECRET!
 
@@ -22,9 +28,6 @@ export async function POST(req: Request) {
         if (generated_signature !== razorpay_signature) {
             return NextResponse.json({ error: 'Invalid Signature' }, { status: 400 })
         }
-
-        const body = await req.json()
-        const { cart_payload, user_id, user_address, payment_option, payment_breakdown } = body
 
         if (!cart_payload || !user_id) {
             // Fallback for old way if needed, but we are enforcing new way
