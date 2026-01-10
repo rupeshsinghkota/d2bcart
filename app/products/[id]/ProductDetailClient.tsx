@@ -25,8 +25,13 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
-    ZoomIn
+    ZoomIn,
+    ShieldCheck,
+    Menu
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+const MobileMenu = dynamic(() => import('@/components/MobileMenu'), { ssr: false })
 
 interface ProductDetailClientProps {
     product: Product
@@ -45,7 +50,9 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [requested, setRequested] = useState(false)
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
+
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
 
     const { user, addToCart } = useStore()
 
@@ -220,7 +227,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                     {currentProduct.category && (
                         <div className="mr-1">
                             <DownloadCatalogButton
@@ -235,13 +242,21 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                     )}
                     <button
                         onClick={() => router.push('/cart')}
-                        className="p-2 -mr-2 rounded-full hover:bg-black/5 active:bg-black/10 transition-colors relative"
+                        className="p-2 -mr-1 rounded-full hover:bg-black/5 active:bg-black/10 transition-colors relative"
                     >
                         <ShoppingCart className="w-5 h-5 text-gray-700" />
-                        {/* Optional: Add Cart Badge here if we had cart count */}
+                    </button>
+
+                    <button
+                        onClick={() => setIsMenuOpen(true)}
+                        className="p-2 -mr-2 rounded-full hover:bg-black/5 active:bg-black/10 transition-colors relative"
+                    >
+                        <Menu className="w-5 h-5 text-gray-700" />
                     </button>
                 </div>
             </div>
+
+            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
 
             {/* Desktop Back Button */}
             <div className="hidden md:block bg-white border-b">
@@ -451,6 +466,25 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Trust Badge / Offer Highlight */}
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-6 flex flex-col gap-2">
+                                <div className="flex items-start gap-2">
+                                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-sm font-bold text-emerald-900">Pay Shipping Only & Confirm Order</p>
+                                        <p className="text-xs text-emerald-700">Pay only shipping charges now. Pay the rest comfortably on delivery (COD).</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 pt-2 border-t border-emerald-100/50">
+                                    <div className="bg-white p-1 rounded-full">
+                                        <Package className="w-3 h-3 text-emerald-600" />
+                                    </div>
+                                    <span className="text-xs font-medium text-emerald-800">
+                                        Minimum Order Reduced to <span className="font-bold">₹3,999</span> per seller!
+                                    </span>
+                                </div>
                             </div>
 
                             {/* BULK VARIATION GRID */}

@@ -274,7 +274,7 @@ export default function ManufacturerOrderDetails() {
                                                     ? 'bg-amber-100 text-amber-700'
                                                     : 'bg-green-100 text-green-700'
                                                     }`}>
-                                                    {order.payment_type === 'advance' ? '20% Advance' : 'Full Payment'}
+                                                    {order.payment_type === 'advance' ? 'COD (Shipping Paid)' : 'Full Payment'}
                                                 </span>
                                             </div>
                                             {(order.pending_amount || 0) > 0 && (

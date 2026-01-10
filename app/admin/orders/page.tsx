@@ -133,13 +133,14 @@ export default function AdminOrdersPage() {
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Wholesaler</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Amount</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Payment</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredOrders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                                         No orders found matching your criteria.
                                     </td>
                                 </tr>
@@ -177,6 +178,12 @@ export default function AdminOrdersPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.payment_type === 'advance' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                                                    }`}>
+                                                    {order.payment_type === 'advance' ? 'COD (Ship Paid)' : 'Prepaid'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                                                     className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -187,7 +194,7 @@ export default function AdminOrdersPage() {
                                         </tr>
                                         {expandedOrderId === order.id && (
                                             <tr key={`${order.id}-details`} className="bg-gray-50">
-                                                <td colSpan={7} className="px-6 py-4">
+                                                <td colSpan={8} className="px-6 py-4">
                                                     <div className="grid md:grid-cols-3 gap-6 text-sm">
                                                         <div className="space-y-2">
                                                             <h4 className="font-semibold text-gray-900">Shipping Details</h4>
@@ -216,6 +223,14 @@ export default function AdminOrdersPage() {
                                                             <div className="flex justify-between">
                                                                 <span className="text-gray-500">Quantity:</span>
                                                                 <span>{order.quantity}</span>
+                                                            </div>
+                                                            <div className="flex justify-between border-t border-dashed border-gray-200 pt-2 mt-2">
+                                                                <span className="text-gray-500">Already Paid:</span>
+                                                                <span className="text-green-600 font-medium">{formatCurrency(order.paid_amount || 0)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-500">Pending (COD):</span>
+                                                                <span className="text-amber-600 font-bold">{formatCurrency(order.pending_amount || 0)}</span>
                                                             </div>
                                                             <div className="flex justify-between pt-2 border-t border-gray-200 font-medium">
                                                                 <span>Total:</span>

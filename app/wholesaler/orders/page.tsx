@@ -508,7 +508,7 @@ const OrdersContent = () => {
                                             {group.length} Product{group.length > 1 ? 's' : ''}
                                         </div>
                                         <div className="flex gap-4">
-                                            <span>Pay: {group[0].payment_type === 'advance' ? '20% Adv' : 'Full'}</span>
+                                            <span>Pay: {group[0].payment_type === 'advance' ? 'COD (Shipping Paid)' : 'Full'}</span>
                                         </div>
                                     </div>
                                 </div>

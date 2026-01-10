@@ -235,7 +235,7 @@ export default function RetailerOrdersPage() {
                                                         <div className="text-gray-500">{order.quantity} units</div>
                                                         <div className={`mt-1 font-medium px-1.5 py-0.5 rounded text-[10px] inline-block ${order.payment_type === 'advance' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
                                                             }`}>
-                                                            {order.payment_type === 'advance' ? '20% Adv' : 'Full Pay'}
+                                                            {order.payment_type === 'advance' ? 'COD (Shipping Paid)' : 'Full Pay'}
                                                         </div>
                                                     </div>
                                                 </div>

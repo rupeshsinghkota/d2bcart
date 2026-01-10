@@ -34,10 +34,10 @@ declare global {
 }
 
 // Minimum order value per seller (₹5000)
-const MIN_ORDER_PER_SELLER = 5000
+const MIN_ORDER_PER_SELLER = 3999
 
 // Advance payment percentage
-const ADVANCE_PAYMENT_PERCENT = 20
+const ADVANCE_PAYMENT_PERCENT = 0
 
 type PaymentOption = 'advance' | 'full'
 
@@ -331,22 +331,12 @@ export default function CartPage() {
 
             const razorpayOrder = await orderRes.json()
 
-            // 3. Create 'Pending' Orders in Supabase
-            // Distribute shipping cost: first item per manufacturer gets the full shipping cost
-            const dbOrderIds: string[] = []
-            const manufacturerOrderNumbers = new Map<string, string>()
+
+            // 3. Prepare Cart Payload for Post-Payment Creation
+            // We do NOT create orders in DB yet. We wait for payment success.
             const processedManufacturers = new Set<string>()
-
-            for (const item of cart) {
+            const cartPayload = cart.map(item => {
                 const mfId = item.product.manufacturer_id
-
-                // Get or create order number for this manufacturer
-                if (!manufacturerOrderNumbers.has(mfId)) {
-                    manufacturerOrderNumbers.set(mfId, `D2B-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`)
-                }
-                const orderNumber = manufacturerOrderNumbers.get(mfId)
-                const manufacturerPayout = item.product.base_price * item.quantity
-                const platformProfit = item.product.your_margin * item.quantity
 
                 // Only first item from each manufacturer gets shipping cost
                 const isFirstItemFromMfr = !processedManufacturers.has(mfId)
@@ -355,38 +345,19 @@ export default function CartPage() {
 
                 processedManufacturers.add(mfId)
 
-                const itemTotal = item.product.display_price * item.quantity
-
-                // Calculate pending amount per item proportionally
-                const itemPendingRatio = itemTotal / totalProductAmount
-                const itemPendingAmount = Math.round(remainingBalance * itemPendingRatio)
-
-                const { data: orderData, error } = await supabase.from('orders').insert({
-                    order_number: orderNumber,
-                    retailer_id: user.id,
-                    manufacturer_id: item.product.manufacturer_id,
+                return {
+                    manufacturer_id: mfId,
                     product_id: item.product.id,
                     quantity: item.quantity,
                     unit_price: item.product.display_price,
-                    total_amount: itemTotal + shipCost, // Full price (GST-inclusive)
-                    tax_amount: 0, // GST included in price
-                    tax_rate_snapshot: item.product.tax_rate || 18,
-                    manufacturer_payout: manufacturerPayout,
-                    platform_profit: platformProfit + (shipCost * 0.1),
-                    status: 'pending',
-                    shipping_address: `${user.address}, ${user.city}, ${user.state} - ${user.pincode}`,
-                    shipping_cost: shipCost,
+                    base_price: item.product.base_price,
+                    your_margin: item.product.your_margin,
+                    tax_rate: item.product.tax_rate || 18,
+                    ship_cost: shipCost,
                     courier_name: selectedCourier?.courier || null,
                     courier_company_id: selectedCourier?.id?.toString() || null,
-                    payment_type: paymentOption, // 'advance' or 'full'
-                    paid_amount: paymentOption === 'advance' ? Math.ceil((itemTotal * ADVANCE_PAYMENT_PERCENT / 100)) + shipCost : itemTotal + shipCost,
-                    pending_amount: itemPendingAmount, // Amount to collect on delivery
-                    created_at: new Date().toISOString()
-                } as any).select('id').single()
-
-                if (error) throw error
-                if (orderData) dbOrderIds.push((orderData as any).id)
-            }
+                }
+            })
 
             // 4. Open Razorpay Checkout
             const options = {
@@ -397,7 +368,7 @@ export default function CartPage() {
                 description: 'Order Payment',
                 order_id: razorpayOrder.id,
                 handler: async function (response: any) {
-                    // 5. Verify Payment
+                    // 5. Verify Payment & Create Order
                     try {
                         const verifyRes = await fetch('/api/razorpay/verify', {
                             method: 'POST',
@@ -406,7 +377,21 @@ export default function CartPage() {
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_signature: response.razorpay_signature,
-                                order_ids: dbOrderIds
+                                cart_payload: cartPayload, // Pass the cart data
+                                user_id: user.id,
+                                user_address: {
+                                    address: user.address,
+                                    city: user.city,
+                                    state: user.state,
+                                    pincode: user.pincode
+                                },
+                                payment_option: paymentOption,
+                                payment_breakdown: {
+                                    total_product_amount: totalProductAmount,
+                                    total_shipping_amount: totalShippingAmount,
+                                    payable_amount: payableAmount,
+                                    remaining_balance: remainingBalance
+                                }
                             })
                         })
 
@@ -809,7 +794,7 @@ export default function CartPage() {
                                             </div>
                                         </label>
 
-                                        {/* Advance Payment */}
+                                        {/* Advance Payment -> Rebranded to Pay Shipping Only */}
                                         <label className={`block p-3 border rounded-xl cursor-pointer transition-all ${paymentOption === 'advance' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' : 'border-gray-200 hover:border-emerald-200'}`}>
                                             <div className="flex items-center gap-3">
                                                 <input
@@ -822,10 +807,12 @@ export default function CartPage() {
                                                 />
                                                 <div className="flex-1">
                                                     <div className="flex justify-between font-medium text-sm text-gray-900">
-                                                        <span>Pay {(ADVANCE_PAYMENT_PERCENT)}% Advance</span>
+                                                        <span>Pay Shipping Only (COD)</span>
                                                         <span>{formatCurrency(getAdvanceAmount())}</span>
                                                     </div>
-                                                    <p className="text-xs text-emerald-600 font-medium mt-0.5">Rest {formatCurrency(getRemainingAmount())} on delivery</p>
+                                                    <p className="text-xs text-emerald-600 font-medium mt-0.5">
+                                                        Pay ONLY shipping now. Pay {formatCurrency(getRemainingAmount())} (Product Value) on delivery.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </label>
@@ -834,14 +821,16 @@ export default function CartPage() {
                                     {/* Grand Total */}
                                     <div className="space-y-2 pb-2">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-lg font-bold text-gray-900">Payable Now</span>
+                                            <span className="text-lg font-bold text-gray-900">
+                                                {paymentOption === 'advance' ? 'Shipping Payable Now' : 'Payable Now'}
+                                            </span>
                                             <span className="text-xl font-bold text-emerald-600">
                                                 {formatCurrency(getPayableAmount())}
                                             </span>
                                         </div>
                                         {paymentOption === 'advance' && (
                                             <div className="flex justify-between items-center pt-1 border-t border-dashed border-gray-200">
-                                                <span className="text-sm font-medium text-gray-500">Due on Delivery</span>
+                                                <span className="text-sm font-medium text-gray-500">Pay on Delivery (Product Value)</span>
                                                 <span className="text-sm font-bold text-gray-700">{formatCurrency(getRemainingAmount())}</span>
                                             </div>
                                         )}
@@ -858,7 +847,7 @@ export default function CartPage() {
                                         ) : (
                                             <>
                                                 <CreditCard className="w-5 h-5" />
-                                                Pay Now
+                                                {paymentOption === 'advance' ? 'Pay Shipping to Confirm Order' : 'Pay Now'}
                                             </>
                                         )}
                                     </button>
@@ -867,11 +856,11 @@ export default function CartPage() {
                                     <div className="flex items-center justify-center gap-4 pt-2">
                                         <div className="flex items-center gap-1 text-[10px] text-gray-400">
                                             <Shield className="w-3 h-3" />
-                                            Secure Payment
+                                            Pay Shipping to Verify Order
                                         </div>
                                         <div className="text-[10px] text-gray-400">•</div>
                                         <div className="text-[10px] text-gray-400">
-                                            Powered by Razorpay
+                                            Rest on Delivery
                                         </div>
                                     </div>
                                 </div>
@@ -899,7 +888,7 @@ export default function CartPage() {
                                 <p className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
                                     <Shield className="w-2.5 h-2.5" />
                                     {paymentOption === 'advance'
-                                        ? `Paying Advance (${ADVANCE_PAYMENT_PERCENT}%)`
+                                        ? `Shipping Only (Rest on Delivery)`
                                         : 'Full Payment'}
                                 </p>
                             </div>
@@ -917,7 +906,7 @@ export default function CartPage() {
                                 ) : (
                                     <>
                                         <CreditCard className="w-5 h-5" />
-                                        <span>{paymentOption === 'advance' ? 'Pay Advance' : 'Pay Full'}</span>
+                                        <span>{paymentOption === 'advance' ? 'Confirm (COD)' : 'Pay Full'}</span>
                                     </>
                                 )}
                             </button>

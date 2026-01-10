@@ -10,6 +10,7 @@ import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Suspense } from "react";
 import CartSyncProvider from "@/components/CartSyncProvider";
+import AnnouncementBar from "@/components/AnnouncementBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -103,6 +104,7 @@ export default function RootLayout({
         </Suspense>
         <Toaster position="top-right" />
         <CartSyncProvider />
+        <AnnouncementBar />
         <Navbar />
         <main className="min-h-screen bg-gray-50 pb-16 md:pb-0">
           {children}
