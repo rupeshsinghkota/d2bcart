@@ -526,13 +526,15 @@ export default function CartPage() {
                             clearCart()
                             router.push('/retailer/orders')
                         } else {
-                            toast.error('Payment Verification Failed')
+                            toast.error(verifyData.error || 'Payment Verification Failed')
                             console.error('Verification Error', verifyData)
+                            setPlacingOrder(false)
                         }
 
-                    } catch (verifyError) {
+                    } catch (verifyError: any) {
                         console.error('Verification Exception', verifyError)
-                        toast.error('Payment verification failed after success')
+                        toast.error(verifyError.message || 'Payment verification failed after success')
+                        setPlacingOrder(false)
                     }
                 },
                 prefill: {
