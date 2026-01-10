@@ -183,20 +183,40 @@ export default function CartPage() {
         try {
             await Promise.all(Object.entries(itemsByMfr).map(async ([manufacturerId, items]) => {
                 try {
-                    // Combine weight and find max dimensions
+                    // Combine weight and calculate total volume
                     let totalWeight = 0
-                    let maxLength = 10, maxBreadth = 10, maxHeight = 10
+                    let totalVolume = 0
+                    let maxL = 10, maxB = 10
 
                     items.forEach(item => {
-                        // Weight is per MOQ pack, so calculate effective weight per unit
+                        // User Clarification: Weight & Dims are for the "MOQ Pack"
                         const moq = item.product.moq || 1
-                        const weightPerUnit = (item.product.weight || 0.5) / moq
-                        totalWeight += weightPerUnit * item.quantity
+                        const sets = item.quantity / moq // e.g. 50 units / 10 moq = 5 packs
 
-                        maxLength = Math.max(maxLength, item.product.length || 10)
-                        maxBreadth = Math.max(maxBreadth, item.product.breadth || 10)
-                        maxHeight = Math.max(maxHeight, item.product.height || 10)
+                        // Weight is for the PACK (MOQ), so multiply by number of PACKS (sets), not units
+                        const weightPerSet = item.product.weight || 0.5
+                        totalWeight += weightPerSet * sets
+
+                        const l = item.product.length || 10
+                        const b = item.product.breadth || 10
+                        const h = item.product.height || 10
+
+                        // Track Max Dimensions (of a single pack)
+                        maxL = Math.max(maxL, l)
+                        maxB = Math.max(maxB, b)
+
+                        // Volume per set * number of sets
+                        totalVolume += (l * b * h) * sets
                     })
+
+                    // Calculate Total Declared Value for Insurance Surcharge accuracy
+                    const totalValue = items.reduce((sum, item) => sum + (item.product.display_price * item.quantity), 0)
+
+                    // Estimate Package Height based on fixed Base Area (MaxL * MaxB)
+                    // This simulates stacking packs on top of each other
+                    const calculatedHeight = Math.ceil(totalVolume / (maxL * maxB)) || 10
+
+                    // console.log(`[Shipping Calc] Mfr: ${manufacturerId}, Wt: ${totalWeight}, Vol: ${totalVolume}, Dims: ${maxL}x${maxB}x${calculatedHeight}, Val: ${totalValue}`)
 
                     const res = await fetch('/api/shiprocket/estimate', {
                         method: 'POST',
@@ -205,10 +225,11 @@ export default function CartPage() {
                             manufacturer_id: manufacturerId,
                             delivery_pincode: shippingPincode,
                             weight: totalWeight,
-                            length: maxLength,
-                            breadth: maxBreadth,
-                            height: maxHeight,
-                            cod: paymentOption === 'advance' ? 1 : 0 // 1 = COD, 0 = Prepaid
+                            length: maxL,
+                            breadth: maxB,
+                            height: calculatedHeight,
+                            declared_value: totalValue,
+                            cod: paymentOption === 'advance' ? 1 : 0
                         })
                     })
                     const data = await res.json()

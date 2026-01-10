@@ -9,7 +9,16 @@ let tokenCache: { token: string | null, expiry: number | null } = {
 
 export async function POST(req: Request) {
     try {
-        const { manufacturer_id, delivery_pincode, weight = 0.5, length = 10, breadth = 10, height = 10, cod = 0 } = await req.json()
+        const {
+            manufacturer_id,
+            delivery_pincode,
+            weight = 0.5,
+            length = 10,
+            breadth = 10,
+            height = 10,
+            declared_value = 1000,
+            cod = 0
+        } = await req.json()
 
         if (!delivery_pincode) {
             return NextResponse.json({ error: 'Delivery pincode required' }, { status: 400 })
@@ -42,29 +51,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Manufacturer pincode not found' }, { status: 400 })
         }
 
-        const email = process.env.SHIPROCKET_EMAIL
-        const password = process.env.SHIPROCKET_PASSWORD
-
-        // 1. Auth (Cached)
-        const now = Date.now()
+        // 1. Get Token (Cached or New)
         let token = tokenCache.token
+        const now = Date.now()
 
-        if (!token || !tokenCache.expiry || now > tokenCache.expiry) {
-            console.log('Shiprocket Token Expired or Missing. Logging in...')
+        if (!token || now > tokenCache.expiry!) {
+            // console.log('Refreshing Shiprocket Token...')
             const authRes = await fetch('https://apiv2.shiprocket.in/v1/external/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email: process.env.SHIPROCKET_EMAIL,
+                    password: process.env.SHIPROCKET_PASSWORD
+                })
             })
 
             if (!authRes.ok) {
-                throw new Error('Shiprocket Authentication Failed')
+                console.error('Shiprocket Auth Failed:', await authRes.text())
+                return NextResponse.json({ error: 'Shiprocket authentication failed' }, { status: 500 })
             }
 
             const authData = await authRes.json()
             token = authData.token
-
-            // Cache for 24 hours (or slightly less to be safe)
             tokenCache = {
                 token,
                 expiry: now + (24 * 60 * 60 * 1000) - 60000
@@ -77,8 +85,12 @@ export async function POST(req: Request) {
         const params = new URLSearchParams({
             pickup_postcode: pickup_pincode,
             delivery_postcode: delivery_pincode,
-            weight: weight.toString(),
-            cod: cod.toString()
+            weight: weight?.toString() || '0.5',
+            length: length?.toString() || '10',
+            breadth: breadth?.toString() || '10',
+            height: height?.toString() || '10',
+            declared_value: declared_value?.toString() || '1000',
+            cod: cod?.toString() || '0'
         })
 
         const serviceRes = await fetch(`https://apiv2.shiprocket.in/v1/external/courier/serviceability/?${params.toString()}`, {

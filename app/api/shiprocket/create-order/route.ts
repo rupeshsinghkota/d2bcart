@@ -169,9 +169,9 @@ export async function POST(req: Request) {
             : orders.reduce((sum, o) => sum + (o.unit_price * o.quantity), 0)
 
         // Aggregated Weight & Dimensions Logic
-        // Logic: Product Weight/Dimensions are for the "MOQ Set" (e.g. 10 units = 5kg)
+        // FIXED: Product Weight/Dimensions are "Per MOQ Pack" (User Clarification).
         // Quantity is "Total Units".
-        // Sets Count = Quantity / MOQ
+        // Sets Count = Quantity / MOQ.
 
         let totalWeight = 0
         let totalVolume = 0
@@ -179,24 +179,28 @@ export async function POST(req: Request) {
 
         orders.forEach(o => {
             const moq = o.product.moq || 1
-            const setsCount = o.quantity / moq // e.g. 20 units / 10 moq = 2 sets
+            const sets = o.quantity / moq // e.g. 50 units / 10 moq = 5 packs
 
+            // Weight is for the PACK (MOQ), so multiply by number of PACKS (sets)
             const w = o.product.weight || 0.5
-            totalWeight += w * setsCount
+            totalWeight += w * sets
 
             const l = o.product.length || 10
             const b = o.product.breadth || 10
             const h = o.product.height || 10
             const vol = l * b * h
 
-            totalVolume += vol * setsCount
-
+            // Track Max Dimensions (of a single pack)
             maxL = Math.max(maxL, l)
             maxB = Math.max(maxB, b)
+
+            // Volume per set * number of sets
+            totalVolume += vol * sets
         })
 
-        // Calculate height required to fit total volume given maxL and maxB
-        // Vol = L * B * H  =>  H = Vol / (L * B)
+        // Estimate Package Dimensions: Stacking Logic
+        // Base Area = MaxL * MaxB (Largest item footprint)
+        // Height = Total Volume / Base Area
         const calculatedHeight = Math.ceil(totalVolume / (maxL * maxB)) || 10
 
         // Force Unique Order ID for Shiprocket to prevent "Existing Order" address lock
@@ -269,7 +273,30 @@ export async function POST(req: Request) {
         let awbCode = awbData.response?.data?.awb_code
         let courierName = awbData.response?.data?.courier_name
 
-        if (!awbCode) {
+        // Fallback Logic: If assignment failed and we requested a specific courier, retry WITHOUT it
+        // Error usually is "Selected courier not serviceable"
+        if (!awbCode && awbPayload.courier_id) {
+            console.log(`[Shiprocket] Preferred Courier ${awbPayload.courier_id} failed. Retrying with Auto-Assignment.`)
+            delete awbPayload.courier_id
+
+            const retryResponse = await fetch('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(awbPayload)
+            })
+            const retryData = await retryResponse.json()
+
+            awbCode = retryData.response?.data?.awb_code
+            courierName = retryData.response?.data?.courier_name
+
+            if (!awbCode) {
+                // Final Failure after Retry
+                console.error('AWB Retry Failed:', retryData)
+                const errorMessage = retryData.message || (retryData.response?.data?.awb_assign_error) || 'AWB assignment failed'
+                return NextResponse.json({ error: errorMessage, details: retryData }, { status: 400 })
+            }
+        } else if (!awbCode) {
+            // Initial Failure (no courier preference or general error)
             console.error('AWB Assignment Failed:', awbData)
             const errorMessage = awbData.message || (awbData.response?.data?.awb_assign_error) || 'AWB assignment failed'
             return NextResponse.json({ error: errorMessage, details: awbData }, { status: 400 })
