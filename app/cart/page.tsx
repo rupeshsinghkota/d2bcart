@@ -55,6 +55,7 @@ export default function CartPage() {
     const [shippingEstimates, setShippingEstimates] = useState<Record<string, any>>({})
     const [calculatingShipping, setCalculatingShipping] = useState(false)
     const [manufacturerStates, setManufacturerStates] = useState<Record<string, string>>({})
+    const [shippingPincode, setShippingPincode] = useState('')
 
     // Payment option: 'advance' = 20% + shipping, 'full' = 100% + shipping
     const [paymentOption, setPaymentOption] = useState<PaymentOption>('full')
@@ -137,16 +138,17 @@ export default function CartPage() {
                 .eq('id', user.id)
                 .single()
             setUser(profile)
+            if ((profile as any)?.pincode) setShippingPincode((profile as any).pincode)
         }
         setLoading(false)
     }
 
-    // Effect to auto-calculate shipping when User & Cart are ready
+    // Effect to auto-calculate shipping when Pincode & Cart are ready
     useEffect(() => {
-        if (user?.pincode && cart.length > 0) {
+        if (shippingPincode && shippingPincode.length === 6 && cart.length > 0) {
             calculateShippingForCart()
         }
-    }, [user, cart, paymentOption])
+    }, [shippingPincode, cart, paymentOption])
 
     // Store manufacturer info for display
     const [manufacturerInfo, setManufacturerInfo] = useState<Record<string, { state: string; name: string }>>({})
@@ -201,7 +203,7 @@ export default function CartPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             manufacturer_id: manufacturerId,
-                            delivery_pincode: user.pincode,
+                            delivery_pincode: shippingPincode,
                             weight: totalWeight,
                             length: maxLength,
                             breadth: maxBreadth,
@@ -291,10 +293,8 @@ export default function CartPage() {
         const storedPin = localStorage.getItem('d2b_pincode')
         if (storedPin && storedPin.length === 6) {
             setGuestForm(prev => ({ ...prev, pincode: storedPin }))
-            // Trigger visual shipping update if needed, though handlePlaceOrder calculation is separate
-            // We can treat this as "User Pincode" for accurate shipping estimates even before full address
             if (!user) {
-                // Determine logic to trigger calc
+                setShippingPincode(storedPin)
             }
         }
     }, [user])
@@ -907,8 +907,7 @@ export default function CartPage() {
                                                     setGuestForm(prev => ({ ...prev, pincode: val }))
                                                     // Trigger shipping calc if 6 digits
                                                     if (val.length === 6) {
-                                                        // We can fake a user object for calcShipping
-                                                        setUser({ pincode: val })
+                                                        setShippingPincode(val)
                                                     }
                                                 }}
                                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
