@@ -67,24 +67,35 @@ export async function POST(req: Request) {
         }
         const token = authData.token
 
-        // 4. Handle Pickup Location (Use primary order's manufacturer)
-        let pickupLocationCode = primaryOrder.manufacturer.shiprocket_pickup_code
+        // 4. Handle Pickup Location (Auto-Sync Address)
+        // We generate a unique pickup code based on the address hash. 
+        // If address changes, hash changes -> new code -> new pickup location registration.
 
-        if (!pickupLocationCode) {
-            const pickupNickname = `MANUF_${primaryOrder.manufacturer.id.substring(0, 8)}`
-            // ... (Existing Pickup Creation Logic could be here, simplified for brevity as it was working)
-            // Re-using existing pickup logic block if possible or assuming established. 
-            // Ideally we copy the logic block. I will inject the registration logic briefly.
+        const mfr = primaryOrder.manufacturer
+        const addressAuthString = `${mfr.address}|${mfr.city}|${mfr.state}|${mfr.pincode}|${mfr.phone}`.toLowerCase().replace(/\s/g, '')
+
+        // Simple hash function (or import crypto if environment allows, but basic DJB2 or similar is enough for this)
+        // Using built-in crypto is safer if available in Edge/Node runtime
+        const crypto = require('crypto')
+        const addressHash = crypto.createHash('md5').update(addressAuthString).digest('hex').substring(0, 6).toUpperCase()
+
+        const pickupLocationName = `MANUF_${mfr.id.split('-')[0].substring(0, 8)}_${addressHash}`
+        let pickupLocationCode = mfr.shiprocket_pickup_code
+
+        // If code differs (or doesn't exist), register new one
+        if (pickupLocationCode !== pickupLocationName) {
+            console.log(`[Shiprocket] Address changed (Hash: ${addressHash}). Registering new pickup: ${pickupLocationName}`)
+
             const pickupPayload = {
-                pickup_location: pickupNickname,
-                name: primaryOrder.manufacturer.business_name || 'Wholesaler',
-                email: primaryOrder.manufacturer.email,
-                phone: primaryOrder.manufacturer.phone,
-                address: (primaryOrder.manufacturer.address?.length > 10) ? primaryOrder.manufacturer.address : `Shop No 1, ${primaryOrder.manufacturer.address || "Main Market"}`,
-                city: primaryOrder.manufacturer.city,
-                state: primaryOrder.manufacturer.state || "Delhi",
+                pickup_location: pickupLocationName,
+                name: mfr.business_name || 'Wholesaler',
+                email: mfr.email,
+                phone: mfr.phone,
+                address: (mfr.address?.length > 10) ? mfr.address : `Shop 1, ${mfr.address || "Market"}`, // Validation
+                city: mfr.city,
+                state: mfr.state || "Delhi",
                 country: "India",
-                pin_code: primaryOrder.manufacturer.pincode || "110001"
+                pin_code: mfr.pincode || "110001"
             }
 
             const addPickupResponse = await fetch('https://apiv2.shiprocket.in/v1/external/settings/company/addpickup', {
@@ -92,13 +103,30 @@ export async function POST(req: Request) {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(pickupPayload)
             })
+
             const pickupData = await addPickupResponse.json()
+
+            // Success OR "Already Exists" (in case we retrying same hash but DB wasn't updated)
             if (pickupData.success || (pickupData.message && pickupData.message.includes('already exists'))) {
-                pickupLocationCode = pickupNickname
-                await supabaseAdmin.from('users').update({ shiprocket_pickup_code: pickupNickname }).eq('id', primaryOrder.manufacturer.id)
+                // Update DB with NEW code
+                pickupLocationCode = pickupLocationName
+                await supabaseAdmin.from('users').update({ shiprocket_pickup_code: pickupLocationName }).eq('id', mfr.id)
             } else {
-                return NextResponse.json({ error: `Failed to register pickup location: ${JSON.stringify(pickupData.errors || pickupData.message)}` }, { status: 400 })
+                console.error('[Shiprocket] Pickup Creation Failed:', pickupData)
+                // Fallback: If creation fails, try using existing code if available, else error
+                if (!pickupLocationCode) {
+                    return NextResponse.json({ error: `Failed to register pickup location: ${JSON.stringify(pickupData.errors || pickupData.message)}` }, { status: 400 })
+                }
+                // If we have an old code, we might proceed but warn? No, address mismatch is bad.
+                // But preventing shipment is worse. Proceeding with old code (implicit fallback if variable assignment skipped)
+                // Actually current var 'pickupLocationCode' still holds old value.
             }
+        }
+
+        // Verify final code
+        if (!pickupLocationCode) {
+            // Should not happen unless logic above failed for fresh user
+            return NextResponse.json({ error: 'Could not resolve pickup location code' }, { status: 400 })
         }
 
         // 5. Build Aggregated Order Payload
