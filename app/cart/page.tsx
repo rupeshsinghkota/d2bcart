@@ -482,6 +482,7 @@ export default function CartPage() {
                 handler: async function (response: any) {
                     // 5. Verify Payment & Create Order
                     try {
+                        console.log('[Cart] Verifying Payment. User:', currentUser.id, 'Payload Items:', cartPayload.length)
                         const verifyRes = await fetch('/api/razorpay/verify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },

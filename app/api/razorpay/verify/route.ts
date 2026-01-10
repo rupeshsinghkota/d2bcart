@@ -37,6 +37,8 @@ export async function POST(req: Request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
+        console.log(`[Verify] Processing payload for User: ${user_id}, CartItems: ${cart_payload?.length}`)
+
         const manufacturerOrderNumbers = new Map<string, string>()
         const formattedOrders = []
 
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
         const { total_product_amount, remaining_balance } = payment_breakdown
 
         for (const item of cart_payload) {
+            // ... existing loop ...
             const mfId = item.manufacturer_id
 
             if (!manufacturerOrderNumbers.has(mfId)) {
@@ -95,9 +98,17 @@ export async function POST(req: Request) {
             })
         }
 
+        if (formattedOrders.length === 0) {
+            console.error('[Verify] No orders formatted. Payload empty?')
+            return NextResponse.json({ error: 'No orders created from payload' }, { status: 400 })
+        }
+
         const { error } = await supabaseAdmin.from('orders').insert(formattedOrders)
 
-        if (error) throw error
+        if (error) {
+            console.error('[Verify] DB Insert Error:', error)
+            throw error
+        }
 
         return NextResponse.json({ success: true })
 
