@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { sendWhatsAppMessage } from '@/lib/msg91'
 
 export async function POST(req: Request) {
     try {
@@ -111,6 +112,31 @@ export async function POST(req: Request) {
         if (error) {
             console.error('[Verify] DB Insert Error:', error)
             throw error
+        }
+
+        // WhatsApp Notification to Admin
+        try {
+            const adminPhone = process.env.NEXT_PUBLIC_ADMIN_PHONE || "917557777987"
+            // Use a generic template or placeholder. 
+            // Note: Msg91 requires a valid template. If 'd2b_new_order_admin' doesn't exist, this will error safely.
+            const templateName = process.env.MSG91_TEMPLATE_NEW_ORDER || "d2b_new_order_admin"
+
+            // Construct a simple summary param? 
+            // Assuming template has 1 variable {{1}} for Order ID or Summary
+            await sendWhatsAppMessage({
+                mobile: adminPhone,
+                templateName: templateName,
+                components: [
+                    {
+                        type: 'body',
+                        parameters: [
+                            { type: 'text', text: formattedOrders[0].order_number }
+                        ]
+                    }
+                ]
+            })
+        } catch (waError) {
+            console.error('WhatsApp Notification Failed:', waError)
         }
 
         return NextResponse.json({ success: true })
