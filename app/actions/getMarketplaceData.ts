@@ -25,23 +25,30 @@ export const getMarketplaceData = unstable_cache(
                 .eq('is_active', true)
                 .is('parent_id', null)
                 .order('created_at', { ascending: false })
-                .limit(20) // Increased to 20 to match page size
+                .limit(60) // Increased to 60 to get a mix of categories (Holders, Cables, etc.)
 
             // Redundant filter to be 100% sure variations are excluded
-            const filteredProducts = (products as Product[] || []).filter(p => !p.parent_id)
+            let filteredProducts = (products as Product[] || []).filter(p => !p.parent_id)
+
+            // Randomize the feed (Fisher-Yates Shuffle)
+            // This prevents "Newest" (e.g. 20 Holders) from dominating the feed
+            for (let i = filteredProducts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [filteredProducts[i], filteredProducts[j]] = [filteredProducts[j], filteredProducts[i]];
+            }
 
             if (prodError) console.error('Error fetching products:', prodError)
 
             return {
                 categories: favoritesFirst(categories),
-                products: filteredProducts
+                products: filteredProducts.slice(0, 24) // Return top 24 after shuffle
             }
         } catch (error) {
             console.error('Server Action Error:', error)
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v6'],
+    ['marketplace-data-v7'],
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']
