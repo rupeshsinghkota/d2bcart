@@ -45,7 +45,7 @@ export default function ContactPage() {
                                 </div>
                                 <div>
                                     <div className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">WhatsApp</div>
-                                    <a href="https://wa.me/919117474683" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-emerald-600 transition-colors">+91 91174 74683</a>
+                                    <a href="https://wa.me/917557777987" target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-emerald-600 transition-colors">+91 75577 77987</a>
                                 </div>
                             </div>
                             <div className="flex gap-4">

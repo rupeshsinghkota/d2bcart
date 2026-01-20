@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export default function SellerPage() {
-    const whatsappNumber = '919117474683'; // Verified support number
+    const whatsappNumber = '917557777987'; // Verified support number
     const whatsappMessage = encodeURIComponent('Hi, I am a supplier/wholesaler and I want to sell my products on d2bcart.');
     const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 

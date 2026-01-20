@@ -54,7 +54,7 @@ export default function RootLayout({
     description: 'B2B Marketplace connecting retailers with manufacturers for wholesale trade.',
     contactPoint: {
       '@type': 'ContactPoint',
-      telephone: '+91-9117474683',
+      telephone: '+91-7557777987',
       contactType: 'customer service',
       availableLanguage: ['English', 'Hindi']
     },
@@ -67,7 +67,7 @@ export default function RootLayout({
       addressCountry: 'IN'
     },
     sameAs: [
-      'https://wa.me/919117474683',
+      'https://wa.me/917557777987',
       'https://www.facebook.com/profile.php?id=61569202844764',
       'https://www.instagram.com/d2b_cart/'
     ]

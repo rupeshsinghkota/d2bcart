@@ -196,7 +196,7 @@ export async function GET(
             }
 
             // WhatsApp Message
-            const waNumber = '919117474683'
+            const waNumber = '917557777987'
             const productLink = `${baseUrl}/products/${p.id}`
             const message = `Hi, I am interested in this product: ${p.name} (SKU: ${p.sku || 'N/A'}). Link: ${productLink}`
             const chatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`
@@ -326,7 +326,7 @@ export async function GET(
             doc.text("[Link: " + categoryUrl + "]", 14, finalY + 25)
         }
 
-        doc.text("Contact Support: +91-9117474683", 14, finalY + 55)
+        doc.text("Contact Support: +91-7557777987", 14, finalY + 55)
 
         // 4. Track Download (DB)
         await supabase.from('catalog_downloads').insert({
