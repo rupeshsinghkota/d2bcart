@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Product, Category } from '@/types'
 import { formatCurrency } from '@/lib/utils'
-import { Search, Filter, Package, MapPin, Heart, Plus, Loader2 } from 'lucide-react'
+import { Search, Filter, Package, MapPin, Heart, Plus, Loader2, ArrowUpDown } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useInView } from 'react-intersection-observer'
 
@@ -253,6 +253,42 @@ export default function ProductsClient({
                 <div className="relative max-w-7xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{getPageTitle()}</h1>
+
+                        {/* Desktop Sort Dropdown */}
+                        <div className="relative group">
+                            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm">
+                                <ArrowUpDown className="w-4 h-4" />
+                                <span>
+                                    {sortBy === 'recommended' ? 'Recommended' :
+                                        sortBy === 'newest' ? 'Newest First' :
+                                            sortBy === 'price_asc' ? 'Price: Low to High' :
+                                                sortBy === 'price_desc' ? 'Price: High to Low' : 'Sort'}
+                                </span>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-30">
+                                <div className="p-1">
+                                    {[
+                                        { label: 'Recommended', value: 'recommended' },
+                                        { label: 'Newest First', value: 'newest' },
+                                        { label: 'Price: Low to High', value: 'price_asc' },
+                                        { label: 'Price: High to Low', value: 'price_desc' }
+                                    ].map(option => (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => setSortBy(option.value)}
+                                            className={`w-full text-left px-4 py-2.5 text-sm rounded-lg transition-colors ${sortBy === option.value
+                                                ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

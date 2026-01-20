@@ -33,6 +33,8 @@ import dynamic from 'next/dynamic'
 import DeliveryChecker from '@/components/product/DeliveryChecker'
 import TrustPolicy from '@/components/product/TrustPolicy'
 
+import { useProductTracking } from '@/hooks/useProductTracking'
+
 const MobileMenu = dynamic(() => import('@/components/MobileMenu'), { ssr: false })
 
 interface ProductDetailClientProps {
@@ -42,6 +44,9 @@ interface ProductDetailClientProps {
 }
 
 export default function ProductDetailClient({ product, manufacturerProducts, variations = [] }: ProductDetailClientProps) {
+    // Integrate Intelligent Tracking
+    useProductTracking(product.id)
+
     const router = useRouter()
     const searchParams = useSearchParams()
 

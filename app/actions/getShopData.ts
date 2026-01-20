@@ -264,6 +264,56 @@ export async function paginateShopProducts(
         }
 
         // Sorting
+        // 1. Recommended (Algorithm)
+        if (sortBy === 'recommended') {
+            const { data: rankedProducts, error: rpcError } = await supabaseAdmin
+                .rpc('get_ranked_products', {
+                    target_category_id: categoryId || null,
+                    limit_count: limit,
+                    offset_count: from
+                })
+
+            if (rpcError) {
+                console.error('Recommendation Engine Error:', rpcError)
+                // Fallback to newest if RPC fails
+                query = query.order('created_at', { ascending: false })
+            } else {
+                // Fetch full details for ranked products if needed, or structured returns
+                // The RPC returns most fields, but we need relations like manufacturer/category
+                // Since RPC returns are simpler, we might just use the RPC result directly 
+                // IF we updated the RPC to return joined JSON. 
+                // For now, let's assume RPC returns compatible basic fields, but complex relations might needed.
+                // STRATEGY B: Get IDs from RPC and fetch full objects to match `Product` type perfectly.
+
+                const productIds = rankedProducts.map((p: any) => p.id)
+
+                if (productIds.length > 0) {
+                    const { data: fullProducts, error: fetchError } = await supabaseAdmin
+                        .from('products')
+                        .select(`
+                            *,
+                            manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                            category:categories!products_category_id_fkey(name, slug),
+                            variations:products!parent_id(display_price, moq)
+                        `)
+                        .in('id', productIds)
+
+                    if (!fetchError && fullProducts) {
+                        // Re-sort to match RPC order (Important!)
+                        const sortedFullProducts = productIds
+                            .map((id: string) => fullProducts.find(p => p.id === id))
+                            .filter(Boolean) as Product[]
+
+                        return {
+                            products: sortedFullProducts,
+                            totalProducts: 100 // Estimate for infinite scroll or fetch count separately
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Standard Sorting
         switch (sortBy) {
             case 'price_asc':
                 query = query.order('display_price', { ascending: true })
@@ -273,7 +323,9 @@ export async function paginateShopProducts(
                 break
             case 'newest':
             default:
-                query = query.order('created_at', { ascending: false })
+                if (sortBy !== 'recommended') { // Avoid double sort if fallback happened
+                    query = query.order('created_at', { ascending: false })
+                }
                 break
         }
 

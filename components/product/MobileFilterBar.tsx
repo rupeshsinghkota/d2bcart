@@ -13,6 +13,7 @@ export const MobileFilterBar = ({ currentSort, onSortChange, onOpenFilter }: Mob
     const [isSortOpen, setIsSortOpen] = useState(false)
 
     const sortOptions = [
+        { label: 'Recommended', value: 'recommended' },
         { label: 'Newest First', value: 'newest' },
         { label: 'Price: Low to High', value: 'price_asc' },
         { label: 'Price: High to Low', value: 'price_desc' },
