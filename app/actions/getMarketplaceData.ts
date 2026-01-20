@@ -22,39 +22,62 @@ export const getMarketplaceData = unstable_cache(
                     offset_count: 0
                 })
 
+            let finalProducts: Product[] = []
+
+            // Check if RPC failed or returned nothing
             if (rpcError || !rankedProducts) {
-                console.error('Recommendation RPC Error:', rpcError)
-                return { categories: [], products: [] }
+                console.warn('Recommendation RPC failed or missing (Migration might be needed). Falling back to "Newest".', rpcError)
+
+                // FALLBACK: Fetch Newest Products directly
+                const { data: fallbackProducts, error: fallbackError } = await supabaseAdmin
+                    .from('products')
+                    .select(`
+                        *,
+                        manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
+                        category:categories!products_category_id_fkey(name, slug),
+                        variations:products!parent_id(display_price, moq)
+                    `)
+                    .eq('is_active', true)
+                    .is('parent_id', null)
+                    .order('created_at', { ascending: false })
+                    .limit(24)
+
+                if (fallbackError) {
+                    console.error('Fallback Product Fetch Error:', fallbackError)
+                    // At fewest, return categories if products fail entirely
+                    return { categories: favoritesFirst(categories), products: [] }
+                }
+
+                finalProducts = (fallbackProducts as Product[]) || []
+            } else {
+                // HAPPY PATH: RPC Succeeded
+
+                // 3. Fetch Full Details for these Ranked Products
+                const productIds = rankedProducts.map((p: any) => p.id)
+
+                const { data: fullProducts, error: fetchError } = await supabaseAdmin
+                    .from('products')
+                    .select(`
+                        *,
+                        manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
+                        category:categories!products_category_id_fkey(name, slug),
+                        variations:products!parent_id(display_price, moq)
+                    `)
+                    .in('id', productIds)
+
+                if (fetchError) {
+                    console.error('Product Details Fetch Error:', fetchError)
+                    // Don't fail completely, try to return what we have or empty
+                    return { categories: favoritesFirst(categories), products: [] }
+                }
+
+                // 4. Re-sort to match the Algorithm's Rank
+                const sortedProducts = productIds
+                    .map((id: string) => fullProducts.find(p => p.id === id))
+                    .filter(Boolean) as Product[]
+
+                finalProducts = sortedProducts.filter(p => !p.parent_id)
             }
-
-            // 3. Fetch Full Details for these Ranked Products
-            // RPC returns minimal data, we need relations (Category, Manufacturer, etc.)
-            const productIds = rankedProducts.map((p: any) => p.id)
-
-            const { data: fullProducts, error: fetchError } = await supabaseAdmin
-                .from('products')
-                .select(`
-                    *,
-                    manufacturer:users!products_manufacturer_id_fkey(is_verified, business_name),
-                    category:categories!products_category_id_fkey(name, slug),
-                    variations:products!parent_id(display_price, moq)
-                `)
-                .in('id', productIds)
-
-            if (fetchError) {
-                console.error('Product Details Fetch Error:', fetchError)
-                return { categories: [], products: [] }
-            }
-
-            // 4. Re-sort to match the Algorithm's Rank (Important!)
-            // The .in() query returns results in arbitrary order
-            const sortedProducts = productIds
-                .map((id: string) => fullProducts.find(p => p.id === id))
-                .filter(Boolean) as Product[]
-
-            // Filter variants just in case (though RPC shouldn't return them if we updated it, 
-            // but our RPC does left join products, so we should ensure check)
-            const finalProducts = sortedProducts.filter(p => !p.parent_id)
 
             return {
                 categories: favoritesFirst(categories),
@@ -65,7 +88,7 @@ export const getMarketplaceData = unstable_cache(
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v8'],
+    ['marketplace-data-v9'], // Bump version
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']
