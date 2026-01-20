@@ -58,7 +58,7 @@ export default function ProductsClient({
 
     // New State for Mobile & Sorting
     const [isFilterOpen, setIsFilterOpen] = useState(false)
-    const [sortBy, setSortBy] = useState('newest')
+    const [sortBy, setSortBy] = useState('recommended')
 
     // Debounce search input
     useEffect(() => {
@@ -90,7 +90,7 @@ export default function ProductsClient({
 
     // Reset and Fetch when Filters Change (uses debounced search)
     useEffect(() => {
-        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'newest' && page === 1 && !debouncedSearchQuery;
+        const isInitialMount = products.length > 0 && selectedCategory === initialSelectedCategory && sortBy === 'recommended' && page === 1 && !debouncedSearchQuery;
 
         if (!isInitialMount) {
             setPage(1)

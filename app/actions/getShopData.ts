@@ -184,7 +184,7 @@ export async function paginateShopProducts(
     categoryId: string | null,
     page: number = 1,
     limit: number = 20,
-    sortBy: string = 'newest',
+    sortBy: string = 'recommended',
     searchQuery: string = ''
 ) {
     try {
@@ -322,10 +322,20 @@ export async function paginateShopProducts(
                 query = query.order('display_price', { ascending: false })
                 break
             case 'newest':
+                query = query.order('created_at', { ascending: false })
+                break
+            case 'default':
             default:
-                if (sortBy !== 'recommended') { // Avoid double sort if fallback happened
-                    query = query.order('created_at', { ascending: false })
-                }
+                // If fell through to default but wasn't explicitly 'newest' or 'price',
+                // AND it wasn't 'recommended' (which is handled above), 
+                // Then treat as 'recommended' if we want it strictly everywhere?
+                // Actually, the client defaults 'recommended' now, so logic above runs.
+                // But for pure fail-safe, if someone sends empty sort, we should probably run algo?
+                // Let's keep 'newest' as the technical fallback for "unknown string" to avoid recursion complexity, 
+                // since 'recommended' block is separate.
+
+                // However, let's make sure the param default is 'recommended'
+                query = query.order('created_at', { ascending: false })
                 break
         }
 
