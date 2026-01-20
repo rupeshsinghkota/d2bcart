@@ -1190,45 +1190,45 @@ export default function CartPage() {
                 )}
             </div>
 
-            {/* Mobile Sticky Bottom Checkout Bar - Floating Glass Island */}
-            {cart.length > 0 && (
-                <div className="md:hidden fixed bottom-4 left-4 right-4 z-40">
-                    <div className="absolute inset-0 bg-gray-900/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_32px_rgb(0,0,0,0.2)] ring-1 ring-white/10"></div>
-                    <div className="relative px-6 py-4 flex items-center justify-between gap-4 text-white">
-                        {/* Total Section */}
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight">
-                                {paymentOption === 'advance' ? 'Pay Only' : 'Total'}
-                            </span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-black tracking-tight text-white">
-                                    {formatCurrency(getPayableAmount())}
+            {/* Mobile Sticky Bottom Checkout Bar - Floating Glass Island */
+                cart.length > 0 && (
+                    <div className="md:hidden fixed bottom-[calc(4rem+1rem+env(safe-area-inset-bottom))] left-4 right-4 z-50">
+                        <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_32px_rgb(0,0,0,0.3)] ring-1 ring-white/10"></div>
+                        <div className="relative px-5 py-3.5 flex items-center justify-between gap-3 text-white">
+                            {/* Total Section */}
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-tight truncate">
+                                    {paymentOption === 'advance' ? 'Pay Only' : 'Total'}
                                 </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-black tracking-tight text-white truncate">
+                                        {formatCurrency(getPayableAmount())}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Pay Button - Swipe Style */}
-                        <button
-                            onClick={handlePlaceOrder}
-                            disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
-                            className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-gray-900 px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95"
-                        >
-                            {placingOrder ? (
-                                <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
-                            ) : calculatingShipping ? (
-                                <span className="text-xs font-bold">Waiting...</span>
-                            ) : (
-                                <>
-                                    <span>Checkout</span>
-                                    <div className="bg-gray-900/20 p-1 rounded-full">
-                                        <ArrowLeft className="w-3 h-3 rotate-180 text-gray-900" />
-                                    </div>
-                                </>
-                            )}
-                        </button>
+                            {/* Pay Button - Swipe Style */}
+                            <button
+                                onClick={handlePlaceOrder}
+                                disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
+                                className="flex-shrink-0 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-gray-900 px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95"
+                            >
+                                {placingOrder ? (
+                                    <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+                                ) : calculatingShipping ? (
+                                    <span className="text-xs font-bold whitespace-nowrap">Waiting...</span>
+                                ) : (
+                                    <>
+                                        <span>Checkout</span>
+                                        <div className="bg-gray-900/20 p-1 rounded-full">
+                                            <ArrowLeft className="w-3 h-3 rotate-180 text-gray-900" />
+                                        </div>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
         </div >
     )
 }

@@ -8,6 +8,9 @@ export default function WhatsAppButton() {
     const pathname = usePathname()
     const [message, setMessage] = useState('')
 
+    // Don't show on Cart page to avoid overlap with Sticky Checkout Bar
+    if (pathname === '/cart') return null
+
     useEffect(() => {
         // Construct message with full URL
         const baseUrl = window.location.origin
