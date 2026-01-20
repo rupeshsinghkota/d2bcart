@@ -24,9 +24,10 @@ export const getMarketplaceData = unstable_cache(
 
             let finalProducts: Product[] = []
 
-            // Check if RPC failed or returned nothing
-            if (rpcError || !rankedProducts) {
-                console.warn('Recommendation RPC failed or missing (Migration might be needed). Falling back to "Newest".', rpcError)
+            // Check if RPC failed OR returned no results (Cold Start Problem)
+            if (rpcError || !rankedProducts || rankedProducts.length === 0) {
+                if (rpcError) console.warn('Recommendation RPC Error (Will fallback):', rpcError)
+                else console.log('Recommendation Algorithm returned 0 results (Cold Start). Falling back to "Newest".')
 
                 // FALLBACK: Fetch Newest Products directly
                 const { data: fallbackProducts, error: fallbackError } = await supabaseAdmin
@@ -88,7 +89,7 @@ export const getMarketplaceData = unstable_cache(
             return { categories: [], products: [] }
         }
     },
-    ['marketplace-data-v9'], // Bump version
+    ['marketplace-data-v10'], // Bump version
     {
         revalidate: 300, // Cache for 5 minutes
         tags: ['marketplace', 'products']
