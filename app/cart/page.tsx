@@ -1162,7 +1162,7 @@ export default function CartPage() {
                                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         ) : (
                                             <>
-                                                {paymentOption === 'advance' ? 'Pay Shipping & Confirm' : 'Secure Checkout'}
+                                                {paymentOption === 'advance' ? 'Pay Shipping & Confirm' : 'Complete Order'}
                                                 <ArrowLeft className="w-5 h-5 rotate-180" />
                                             </>
                                         )}
@@ -1219,7 +1219,7 @@ export default function CartPage() {
                                     <span className="text-xs font-bold whitespace-nowrap">Waiting...</span>
                                 ) : (
                                     <>
-                                        <span>Checkout</span>
+                                        <span>Complete Order</span>
                                         <div className="bg-gray-900/20 p-1 rounded-full">
                                             <ArrowLeft className="w-3 h-3 rotate-180 text-gray-900" />
                                         </div>
