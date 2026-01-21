@@ -59,7 +59,11 @@ export default function ManufacturerProductsPage() {
                 if (!res.success) throw new Error(res.error)
                 // If warning exists (Fallback used), show it
                 if (res.warning) return `Refined (Fallback): ${res.warning}`
-                return `Refined! Added tags: ${res.tags?.join(', ')}`
+                // Show variation update count if available
+                const varMsg = res.variationUpdateCount
+                    ? ` | ${res.variationUpdateCount} variations updated`
+                    : (res.debug ? ` | Debug: ${res.debug}` : '')
+                return `Refined! Added ${res.tags?.length || 0} tags${varMsg}`
             })(),
             {
                 loading: 'AI Refining Product...',
