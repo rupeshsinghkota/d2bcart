@@ -178,12 +178,14 @@ export async function refineProduct(productId: string) {
                 ${chunk.map((v, i) => `${i + 1}. ID: ${v.id}, Name: "${v.name}"`).join('\n')}
 
                 Instructions:
-                1. "refined_name": ONLY the distinguishing attribute (max 25 chars)
-                   - Mobile: "Vivo X200", "iPhone 15"
-                   - Clothing: "Red XL", "Black M"
-                   - Other: Just the unique part
+                1. "refined_name": Clean, readable model name (max 25 chars)
+                   - EXPAND abbreviations: "1+" → "OnePlus", "Sam" → "Samsung", "Moto" → "Motorola"
+                   - Fix formatting: "1+13T" → "OnePlus 13T", "VIVO.Y17S" → "Vivo Y17s"
+                   - Clean special chars: Remove dots, underscores, emoji, make readable
                 2. "variant_label": Same as refined_name
-                3. "smart_tags": 8-12 search terms with variations/misspellings
+                3. "smart_tags": 8-12 search terms including:
+                   - Original abbreviation AND full name (e.g., "1+13t", "oneplus 13t")
+                   - Variations/misspellings
                 
                 Return JSON with ALL ${chunk.length} variations:
                 { "variations": [{ "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": [...] }] }
