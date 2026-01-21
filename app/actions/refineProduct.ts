@@ -166,30 +166,29 @@ export async function refineProduct(productId: string) {
             const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
             const varPrompt = `
-            Parent Product: "${aiName}" (Refined Name)
-            Parent Description: "${aiDescription?.substring(0, 100)}..."
+            Parent Product: "${aiName}" (Full Product Name)
             
             Variations to Refine:
             ${variations.map((v, i) => `${i + 1}. ID: ${v.id}, Current Name: "${v.name}"`).join('\n')}
 
-            Instructions:
-            1. Generate a "refined_name" for EACH variation:
-               - MUST be UNDER 50 CHARACTERS (important for SEO)
-               - Standalone, search-friendly product name
-               - Example: "Vivo Y17s Butterfly Phone Case"
-            2. Generate a SHORT "variant_label" (max 15 chars):
-               - Examples: "Vivo Y17s", "Samsung M06", "Red"
+            CRITICAL Instructions:
+            1. Generate a "refined_name" that is ONLY the model/device identifier:
+               - It should be JUST "Vivo X200" or "Samsung M06" - NOT a full product name
+               - The parent product already has the full title, so variation name = model only
+               - Max 25 characters
+               - Examples: "Vivo Y17s", "iPhone 15 Pro", "Realme 14 Pro+", "Samsung A06"
+               - BAD: "GTEL Vivo X200 Glass Protector" (too long, repeats parent info)
+               - GOOD: "Vivo X200"
+            2. "variant_label" should be the same as refined_name (the model identifier)
             3. Generate 8-12 "smart_tags" per variation including:
-               - Model name variations (e.g., "vivo y17s", "y17s", "vivoy17s")
-               - Product type (e.g., "case", "cover", "back cover")
-               - Pattern/design (e.g., "butterfly", "printed")
-               - Common misspellings (e.g., "vivo y17", "vevo")
-               - Related terms (e.g., "mobile case", "phone cover")
+               - Model name variations (e.g., "vivo x200", "x200", "vivox200")
+               - Product type from parent (e.g., "screen protector", "tempered glass")
+               - Common misspellings
             
-            Return a JSON object with a "variations" array:
+            Return a JSON object:
             {
                "variations": [
-                  { "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": ["..."] }
+                  { "id": "...", "refined_name": "Vivo X200", "variant_label": "Vivo X200", "smart_tags": ["..."] }
                ]
             }
             `
