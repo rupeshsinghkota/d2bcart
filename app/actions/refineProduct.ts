@@ -21,8 +21,6 @@ export async function refineProduct(productId: string) {
                         )
                     } catch {
                         // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
                     }
                 },
             },
@@ -30,11 +28,13 @@ export async function refineProduct(productId: string) {
     )
 
     // 1. Fetch Product
-    const { data: product, error: fetchError } = await supabase
+    const { data: productData, error: fetchError } = await supabase
         .from('products')
         .select('*')
         .eq('id', productId)
         .single()
+
+    const product = productData as any
 
     if (fetchError || !product) {
         return { success: false, error: 'Product not found' }
@@ -51,6 +51,8 @@ export async function refineProduct(productId: string) {
     let aiName: string | undefined
     let aiDescription: string | undefined
     let isFallback = false
+    let variationUpdateCount = 0
+    let debugMessage = 'Init'
 
     try {
         const OpenAI = require("openai")
@@ -59,8 +61,8 @@ export async function refineProduct(productId: string) {
         const prompt = `
         You are an E-commerce SEO Expert. Analyze this product title and existing description to generate a better version.
         
-        Input Title: "${(product as any).name}"
-        Input Description: "${(product as any).description || ''}"
+        Input Title: "${product.name}"
+        Input Description: "${product.description || ''}"
         
         Instructions:
         1. **Preserve Information**: Do NOT remove any technical details, specs, or unique info from the Input Description.
@@ -68,12 +70,12 @@ export async function refineProduct(productId: string) {
            - Use <h2> for section headers like "Key Features", "Specifications", "Why Buy This", "Product Overview".
            - Use <ul><li> for features and specs.
            - Use <p> for paragraphs.
-           - NO markdown code blocks (\`\`\`html).Return ONLY the raw HTML string for the description.
-        3. ** SEO **: Optimize the refined_name and refined_description for better search visibility.
+           - NO markdown code blocks (\`\`\`html). Return ONLY the raw HTML string for the description.
+        3. **SEO**: Optimize the refined_name and refined_description for better search visibility.
         
         Return a JSON object with strictly these fields:
-        "refined_name"(string, SEO optimized, capitalized, professional),
-            "refined_description"(string, HTML content with <h2>, <p>, <ul>.DO NOT wrap in \`\`\`html),
+        "refined_name" (string, SEO optimized, capitalized, professional),
+        "refined_description" (string, HTML content with <h2>, <p>, <ul>. DO NOT wrap in \`\`\`html),
         "brand" (string, guess if not explicit),
         "model" (string),
         "type" (string e.g. "Case", "Charger"),
@@ -105,7 +107,6 @@ export async function refineProduct(productId: string) {
         }
     } catch (error: any) {
         console.error('OpenAI Error:', error)
-        // Fallback Logic
         isFallback = true
         aiTags = [
             product.name.split(' ')[0],
@@ -127,12 +128,11 @@ export async function refineProduct(productId: string) {
         ai_metadata: aiMetadata
     }
 
-    // Only update name/description if AI successfully generated them
     if (aiName) updatePayload.name = aiName
     if (aiDescription) updatePayload.description = aiDescription
 
-    const { error: updateError } = await supabase
-        .from('products')
+    const { error: updateError } = await (supabase
+        .from('products') as any)
         .update(updatePayload)
         .eq('id', productId)
 
@@ -140,9 +140,118 @@ export async function refineProduct(productId: string) {
         return { success: false, error: updateError.message }
     }
 
-    if (isFallback) {
-        return { success: true, tags: aiTags, warning: 'AI Limit Hit - Generated basic tags.' }
+    // 4. Update Variations (Batch AI Processing)
+    const { data: variationsData } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('parent_id', productId)
+
+    const variations = variationsData as any[]
+
+    if (variations && variations.length > 0 && !isFallback && apiKey) {
+        console.log('--- Starting Batch Variation Refinement ---')
+        console.log('Parent Name:', aiName)
+        console.log('Variation Count:', variations.length)
+
+        try {
+            const OpenAI = require("openai")
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+            const varPrompt = `
+            Parent Product: "${aiName}" (Refined Name)
+            Parent Description: "${aiDescription?.substring(0, 100)}..."
+            
+            Variations to Refine:
+            ${variations.map((v, i) => `${i + 1}. ID: ${v.id}, Current Name: "${v.name}"`).join('\n')}
+
+            Instructions:
+            1. Generate a "refined_name" for EACH variation. It MUST be a standalone, search-friendly name.
+               - Example: If Parent is "iPhone 13 Case" and variant is "VIVO.Y17S", name it "Vivo Y17s iPhone 13 Style Case".
+               - Do NOT use the format "Parent Name - Variation". Make it natural.
+            2. Generate a SHORT "variant_label" that is ONLY the distinguishing part (e.g., "Vivo Y17s", "Samsung M06", "Red").
+               - This is for display in the admin UI.
+            3. Generate 3-5 "smart_tags" specific to that variation.
+            
+            Return a JSON object with a "variations" array:
+            {
+               "variations": [
+                  { "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": ["..."] }
+               ]
+            }
+            `
+            console.log('Sending Batch Prompt to OpenAI...')
+
+            const varCompletion = await openai.chat.completions.create({
+                messages: [{ role: "user", content: varPrompt }],
+                model: "gpt-3.5-turbo",
+                response_format: { type: "json_object" }
+            })
+
+            const varContent = varCompletion.choices[0].message.content
+            console.log('Batch AI Response:', varContent)
+
+            const varResult = JSON.parse(varContent)
+
+            if (varResult.variations && Array.isArray(varResult.variations)) {
+                for (const refinedVar of varResult.variations) {
+                    console.log(`Updating Variation: ${refinedVar.id} -> ${refinedVar.refined_name} (${refinedVar.variant_label})`)
+                    await (supabase
+                        .from('products') as any)
+                        .update({
+                            name: refinedVar.refined_name,
+                            smart_tags: refinedVar.smart_tags,
+                            ai_metadata: {
+                                refined_by: 'openai_gpt_3.5_turbo_batch',
+                                parent_id: productId,
+                                variant_label: refinedVar.variant_label || ''
+                            }
+                        })
+                        .eq('id', refinedVar.id)
+                    variationUpdateCount++
+                }
+            }
+            debugMessage = 'Batch Success'
+
+        } catch (error: any) {
+            console.error('Variation AI Error:', error)
+            debugMessage = `Batch Error: ${error.message}`
+            // Fallback: Just rename using old logic if AI fails
+            if (aiName && aiName !== product.name) {
+                const oldName = product.name
+                for (const v of variations) {
+                    if (v.name.startsWith(oldName)) {
+                        const newVarName = v.name.replace(oldName, aiName)
+                        await (supabase.from('products') as any).update({ name: newVarName }).eq('id', v.id)
+                    }
+                }
+            }
+        }
+    } else if (variations && variations.length > 0 && aiName && aiName !== product.name) {
+        debugMessage = `Skipped AI: V=${variations.length} FB=${isFallback}`
+        const oldName = product.name
+        for (const v of variations) {
+            if (v.name.startsWith(oldName)) {
+                const newVarName = v.name.replace(oldName, aiName)
+                await (supabase.from('products') as any).update({ name: newVarName }).eq('id', v.id)
+            }
+        }
+    } else {
+        debugMessage = `Skipped: V=${variations?.length} FB=${isFallback} Key=${!!apiKey}`
     }
 
-    return { success: true, tags: aiTags }
+    if (isFallback) {
+        return {
+            success: true,
+            tags: aiTags,
+            warning: 'AI Limit Hit - Generated basic tags.',
+            debug: debugMessage
+        }
+    }
+
+    return {
+        success: true,
+        tags: aiTags,
+        variationUpdateCount,
+        debug: debugMessage
+    }
 }

@@ -101,15 +101,31 @@ export default function EditProductPage() {
                 if (existingVars && existingVars.length > 0) {
                     setExistingVariations(existingVars)
                     // Convert to Variation format for editing
-                    const variationsList: Variation[] = existingVars.map((v: any) => ({
-                        id: v.id,
-                        name: v.name.replace(`${product.name} - `, ''),
-                        sku: v.sku || '',
-                        price: v.base_price?.toString() || '',
-                        stock: v.stock?.toString() || '0',
-                        moq: v.moq?.toString() || '1',
-                        dbId: v.id
-                    }))
+                    // Use variant_label from ai_metadata if available, else extract from name
+                    const variationsList: Variation[] = existingVars.map((v: any) => {
+                        let displayName = v.name
+
+                        // Priority 1: Use variant_label from ai_metadata (AI-generated short label)
+                        if (v.ai_metadata?.variant_label) {
+                            displayName = v.ai_metadata.variant_label
+                        } else {
+                            // Priority 2: Extract suffix after " - " if present
+                            const dashIndex = v.name.lastIndexOf(' - ')
+                            if (dashIndex !== -1 && dashIndex < v.name.length - 3) {
+                                displayName = v.name.substring(dashIndex + 3)
+                            }
+                        }
+
+                        return {
+                            id: v.id,
+                            name: displayName,
+                            sku: v.sku || '',
+                            price: v.base_price?.toString() || '',
+                            stock: v.stock?.toString() || '0',
+                            moq: v.moq?.toString() || '1',
+                            dbId: v.id
+                        }
+                    })
                     setVariations(variationsList)
                 }
             }
