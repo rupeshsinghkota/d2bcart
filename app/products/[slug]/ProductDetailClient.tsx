@@ -657,9 +657,10 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                             {product.description && (
                                 <div className="mb-5 border-t border-gray-100 pt-5">
                                     <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                                    <p className={`text-gray-600 text-sm md:text-base leading-relaxed whitespace-pre-wrap ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
-                                        {product.description}
-                                    </p>
+                                    <div
+                                        className={`text-gray-600 text-sm md:text-base prose prose-sm max-w-none ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}
+                                        dangerouslySetInnerHTML={{ __html: product.description }}
+                                    />
                                     <button
                                         onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                                         className="text-emerald-600 font-medium text-sm mt-2 hover:text-emerald-700 hover:underline focus:outline-none"

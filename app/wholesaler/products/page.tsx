@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Product } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { revalidateData } from '@/app/actions/revalidate'
+import { refineProduct } from '@/app/actions/refineProduct'
 import {
     Plus,
     Search,
@@ -14,7 +15,8 @@ import {
     Trash2,
     Package,
     ArrowLeft,
-    Upload
+    Upload,
+    Sparkles
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
@@ -48,6 +50,23 @@ export default function ManufacturerProductsPage() {
 
         if (data) setProducts(data as Product[])
         setLoading(false)
+    }
+
+    const handleRefine = async (id: string) => {
+        toast.promise(
+            (async () => {
+                const res = await refineProduct(id)
+                if (!res.success) throw new Error(res.error)
+                // If warning exists (Fallback used), show it
+                if (res.warning) return `Refined (Fallback): ${res.warning}`
+                return `Refined! Added tags: ${res.tags?.join(', ')}`
+            })(),
+            {
+                loading: 'AI Refining Product...',
+                success: (msg: any) => msg,
+                error: (err) => `Error: ${err.message}`
+            }
+        )
     }
 
     const handleToggleSelect = (id: string) => {
@@ -370,7 +389,14 @@ export default function ManufacturerProductsPage() {
 
                                         {/* Quick Actions Overlay - Hide when selected to avoid confusion? Or just keep it. */}
                                         {!isSelected && (
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex-col gap-2">
+                                                <button
+                                                    onClick={() => handleRefine(product.id)}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform flex items-center gap-2"
+                                                >
+                                                    <Sparkles className="w-4 h-4" />
+                                                    AI Refine
+                                                </button>
                                                 <Link
                                                     href={`/wholesaler/products/${product.id}/edit`}
                                                     className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
@@ -395,6 +421,14 @@ export default function ManufacturerProductsPage() {
                                             <p className="text-sm text-gray-500">
                                                 {product.category?.name || 'Uncategorized'}
                                             </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 mb-2">
+                                            {product.smart_tags ? (
+                                                <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">
+                                                    AI Refined
+                                                </span>
+                                            ) : null}
                                         </div>
 
                                         <div className="flex items-end justify-between">

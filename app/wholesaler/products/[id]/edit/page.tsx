@@ -307,8 +307,17 @@ export default function EditProductPage() {
                                     value={formData.description}
                                     onChange={(e) => updateForm('description', e.target.value)}
                                     className="input min-h-[100px]"
-                                    placeholder="Describe your product"
+                                    placeholder="Describe your product (HTML supported)"
                                 />
+                                {formData.description && (
+                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="text-xs font-semibold text-gray-500 mb-2 uppercase">Preview</div>
+                                        <div
+                                            className="prose prose-sm max-w-none text-gray-600"
+                                            dangerouslySetInnerHTML={{ __html: formData.description }}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div>

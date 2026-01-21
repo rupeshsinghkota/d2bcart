@@ -57,6 +57,8 @@ export interface Product {
     sku?: string // Added SKU for variants
     parent_id?: string // Added parent_id for variations
     search_vector?: any // Full Text Search Vector
+    smart_tags?: string[] // AI Generated Tags
+    ai_metadata?: any // AI Generated Metadata (JSONB)
     // Joined fields
     manufacturer?: User
     category?: Category

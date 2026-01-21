@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
     "clsx": "^2.1.1",
@@ -17,6 +18,7 @@
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
+    "openai": "^6.16.0",
     "papaparse": "^5.5.3",
     "razorpay": "^2.9.6",
     "react": "19.2.3",

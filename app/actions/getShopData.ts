@@ -60,9 +60,6 @@ export const getShopCategories = unstable_cache(
 )
 
 // Cached Products Fetcher (Shorter Cache: 5 mins)
-// Cached Products Fetcher (Shorter Cache: 5 mins)
-// Cached Products Fetcher (Shorter Cache: 5 mins)
-// export const getShopProducts = unstable_cache(
 export const getShopProducts = async (categoryId?: string, page: number = 1, limit: number = 20, searchQuery: string = '') => {
     try {
         console.log('Fetching shop products...', { categoryId, page, searchQuery })
@@ -136,54 +133,58 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
             return { products: [], totalProducts: 0 }
         }
 
-        // Fallback: If FTS returned no results, try aggressive ILIKE matching
-        // This handles cases like "nord 5" where FTS might fail if the vector isn't perfectly updated or strict
-        // We split terms and ensure ALL terms are present in the name (AND logic), but order doesn't match.
+        // Fallback: If FTS returned no results, try aggressive Ranked Partial Search
+        // This handles cases like "nord 5" or "oneplus cover" where we want to prioritize
+        // products that match MORE words (Relevance Sort).
         if ((!products || products.length === 0) && searchQuery) {
-            // "nord 5 cover" -> name ILIKE '%nord%' AND name ILIKE '%5%' AND (name ILIKE '%cover%' OR name ILIKE '%case%'...)
-
             const cleanQuery = searchQuery.replace(/[!&|():*]/g, ' ').trim()
             const terms = cleanQuery.split(/\s+/).filter(Boolean)
 
             if (terms.length > 0) {
-                let fallbackQuery = supabaseAdmin
-                    .from('products')
-                    .select(`
-                        *,
-                        manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-                        category:categories!products_category_id_fkey(name, slug),
-                        variations:products!parent_id(display_price, moq)
-                    `, { count: 'exact' })
-                    .eq('is_active', true)
-                    .is('parent_id', null)
+                // Prepare Query: "term1 | term2 | ..." (Matches ANY)
+                // The RPC will handle sorting by how MANY terms match (ts_rank).
+                const orQuery = terms.join(' | ')
 
-                // Add ILIKE for each term
-                terms.forEach(term => {
-                    const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '')
-                    const syns = SYNONYMS[clean] || []
+                const { data: rankedProducts, error: rpcError } = await supabaseAdmin
+                    .rpc('search_products_ranked', {
+                        search_query: orQuery,
+                        limit_count: limit,
+                        offset_count: from
+                    })
 
-                    if (syns.length > 0) {
-                        // OR group for synonyms: (name ilike '%term%' OR name ilike '%syn%')
-                        // Supabase .or() is tricky to chain with ANDs. 
-                        // Simplest robust fallback: Just match the raw term first. 
-                        // If we want synonym support in fallback, we'd need raw SQL or complex filters.
-                        // Let's stick to the PRIMARY term for fallback robustness.
-                        fallbackQuery = fallbackQuery.ilike('name', `%${term}%`)
-                    } else {
-                        fallbackQuery = fallbackQuery.ilike('name', `%${term}%`)
-                    }
-                })
+                if (rpcError) {
+                    console.error('Ranked Search RPC Error:', rpcError)
+                    return { products: [], totalProducts: 0 }
+                }
 
-                fallbackQuery = fallbackQuery
-                    .order('created_at', { ascending: false })
-                    .range(from, to)
+                if (rankedProducts && rankedProducts.length > 0) {
+                    const ids = rankedProducts.map((p: any) => p.id)
 
-                const { data: fallbackProducts, count: fallbackCount } = await fallbackQuery
+                    // Fetch full details with relations for these IDs
+                    // We must fetch manually because the RPC only returns the product row, 
+                    // but our app expects joined relations (manufacturer, category, etc.)
+                    const { data: fullProducts } = await supabaseAdmin
+                        .from('products')
+                        .select(`
+                            *,
+                            manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                            category:categories!products_category_id_fkey(name, slug),
+                            variations:products!parent_id(display_price, moq)
+                        `)
+                        .in('id', ids)
 
-                if (fallbackProducts && fallbackProducts.length > 0) {
-                    return {
-                        products: (fallbackProducts as Product[]) || [],
-                        totalProducts: fallbackCount || 0
+                    if (fullProducts) {
+                        // CRITICAL: Restore the Rank Order!
+                        // The .in() query returns results in random order. 
+                        // We map our sorted 'ids' list to the fetched objects to preserve relevance.
+                        const sortedProducts = ids
+                            .map((id: string) => fullProducts.find(p => p.id === id))
+                            .filter(Boolean) as Product[]
+
+                        return {
+                            products: sortedProducts,
+                            totalProducts: sortedProducts.length // Approximate for fallback
+                        }
                     }
                 }
             }
@@ -204,9 +205,6 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
         return { products: [], totalProducts: 0 }
     }
 }
-// ['shop-products-v2'], // Bump version for search param change
-// { revalidate: 300, tags: ['products'] }
-// )
 
 // Legacy compatibility wrapper (but optimized)
 export const getShopData = async (categoryId?: string, page: number = 1, limit: number = 20) => {
