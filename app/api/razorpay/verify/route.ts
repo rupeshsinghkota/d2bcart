@@ -15,7 +15,8 @@ export async function POST(req: Request) {
             user_id,
             user_address,
             payment_option,
-            payment_breakdown
+            payment_breakdown,
+            attribution // Extract attribution data
         } = body
 
         const secret = process.env.RAZORPAY_KEY_SECRET!
@@ -98,7 +99,14 @@ export async function POST(req: Request) {
                 paid_amount: paidAmount,
                 pending_amount: itemPendingAmount,
                 payment_id: razorpay_payment_id,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                // Ad Attribution
+                utm_source: attribution?.utm_source,
+                utm_medium: attribution?.utm_medium,
+                utm_campaign: attribution?.utm_campaign,
+                gclid: attribution?.gclid,
+                fbclid: attribution?.fbclid,
+                attribution_data: attribution
             })
         }
 
@@ -106,13 +114,48 @@ export async function POST(req: Request) {
             console.error('[Verify] No orders formatted. Payload empty?')
             return NextResponse.json({ error: 'No orders created from payload' }, { status: 400 })
         }
-
         const { error } = await supabaseAdmin.from('orders').insert(formattedOrders)
-
         if (error) {
             console.error('[Verify] DB Insert Error:', error)
             throw error
         }
+
+        // --- Facebook CAPI: Server-Side Tracking ---
+        try {
+            // Fetch user details for matching
+            const { data: userData } = await supabaseAdmin
+                .from('users')
+                .select('email,phone')
+                .eq('id', user_id)
+                .single()
+
+            if (userData) {
+                const { sendFacebookEvent } = await import('@/lib/facebook-capi')
+
+                // Calculate total value across all sub-orders
+                const totalValue = formattedOrders.reduce((sum, o) => sum + o.paid_amount, 0)
+
+                await sendFacebookEvent(
+                    'Purchase',
+                    {
+                        currency: 'INR',
+                        value: totalValue,
+                        order_id: razorpay_payment_id,
+                        content_ids: formattedOrders.map(o => o.product_id),
+                        content_type: 'product'
+                    },
+                    {
+                        email: userData.email,
+                        phone: userData.phone,
+                        fbc: attribution?.fbclid ? `fb.1.${Date.now()}.${attribution.fbclid}` : undefined,
+                        fbp: undefined // Could pass from frontend cookies if available
+                    }
+                )
+            }
+        } catch (capiError) {
+            console.error('CAPI Tracking Failed (Non-blocking):', capiError)
+        }
+        // -------------------------------------------
 
         // WhatsApp Notification to Admin
         try {

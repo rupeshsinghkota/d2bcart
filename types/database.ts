@@ -95,6 +95,13 @@ export interface Order {
     paid_at?: string
     shipped_at?: string
     delivered_at?: string
+    // Ad Attribution
+    utm_source?: string
+    utm_medium?: string
+    utm_campaign?: string
+    gclid?: string
+    fbclid?: string
+    attribution_data?: any
     // Joined fields
     product?: Product
     retailer?: User

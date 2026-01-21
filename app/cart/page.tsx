@@ -577,14 +577,24 @@ export default function CartPage() {
                                     total_shipping_amount: totalShippingAmount,
                                     payable_amount: payableAmount,
                                     remaining_balance: remainingBalance
-                                }
+                                },
+                                attribution: (() => {
+                                    try {
+                                        const saved = localStorage.getItem('d2b_attribution')
+                                        return saved ? JSON.parse(saved) : null
+                                    } catch (e) {
+                                        return null
+                                    }
+                                })()
                             })
                         })
 
                         const verifyData = await verifyRes.json()
                         if (verifyData.success) {
                             // Facebook Pixel: Purchase
-                            import('@/lib/fpixel').then((fpixel) => {
+                            // Fix: Await import and add delay to ensure event fires before navigation
+                            try {
+                                const fpixel = await import('@/lib/fpixel')
                                 fpixel.event('Purchase', {
                                     content_type: 'product',
                                     content_ids: cart.map(item => item.product.id),
@@ -593,11 +603,17 @@ export default function CartPage() {
                                     num_items: cart.length,
                                     transaction_id: response.razorpay_payment_id,
                                 })
-                            })
+                            } catch (e) {
+                                console.error('Pixel Error', e)
+                            }
 
                             toast.success('Payment Successful!')
                             clearCart()
-                            router.push('/retailer/orders')
+
+                            // Small delay to allow Pixel & GTM to fire
+                            setTimeout(() => {
+                                router.push('/retailer/orders')
+                            }, 1000)
                         } else {
                             toast.error(verifyData.error || 'Payment Verification Failed')
                             console.error('Verification Error', verifyData)
