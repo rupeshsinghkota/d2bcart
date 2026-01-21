@@ -30,9 +30,10 @@ export default function WhatsAppButton() {
         })
     }
 
+    const phone = process.env.NEXT_PUBLIC_ADMIN_PHONE || '917557777987'
     return (
         <a
-            href={`https://wa.me/917557777987?text=${message}`}
+            href={`https://wa.me/${phone}?text=${message}`}
             onClick={handleClick}
             target="_blank"
             rel="noopener noreferrer"

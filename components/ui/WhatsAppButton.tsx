@@ -12,7 +12,7 @@ interface WhatsAppButtonProps {
     showIcon?: boolean
 }
 
-const DEFAULT_NUMBER = '917557777987' // Support Number
+const DEFAULT_NUMBER = process.env.NEXT_PUBLIC_ADMIN_PHONE || '917557777987' // Support Number
 
 export function WhatsAppButton({
     phoneNumber = DEFAULT_NUMBER,

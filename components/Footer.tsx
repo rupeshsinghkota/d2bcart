@@ -201,10 +201,18 @@ export default function Footer() {
                     </p>
                     <div className="flex gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                         {/* Build a visually pleasing placeholder for payment icons using CSS */}
-                        <div className="flex gap-2">
-                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
-                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
-                            <div className="h-6 w-10 bg-gray-200 rounded border border-gray-300"></div>
+                        <div className="flex gap-3 items-center grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+                            {/* Visa */}
+                            <svg className="h-6 w-auto" viewBox="0 0 50 32" xmlns="http://www.w3.org/2000/svg"><path fill="#1434CB" d="M18.5 2h3.5l-5.5 19h-3.5L18.5 2zm11.2 0h3.4l-2 19h-3.2l2-19h-0.2zM45 2h3l-2 19h-2.8l-1.8-10.8c-0.2-1.2-0.6-2.5-0.6-2.5h-0.2c0 0-0.4 1.3-0.8 2.5L37.8 21h-3.2L45 2zM12.5 13.8c-0.2-0.8-1.5-4.2-3-7.8l-1-2C8.2 3.2 7.8 2.5 7.2 2.2C6.8 2 4.2 2 4.2 2L4 3c0 0 4.2 1 5.2 3.2c0.2 0.5 1.5 6.5 2 8.5C11.5 15.8 12.2 18 12.5 13.8z" /><path fill="#FFF" d="M22 2h-3.5l5.5 19h3.5L22 2z" /></svg>
+
+                            {/* Mastercard */}
+                            <svg className="h-7 w-auto" viewBox="0 0 50 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" fillRule="evenodd"><path fill="#FF5F00" d="M19.3 10.3c2.3 2.5 3.6 5.9 3.6 9.7s-1.3 7.2-3.6 9.7c-2.3-2.5-3.6-5.9-3.6-9.7s1.3-7.2 3.6-9.7" /><path fill="#EB001B" d="M22.9 20c0-3.8-1.3-7.2-3.6-9.7c-2.7-2.9-6.6-4.7-10.9-4.7C3.8 5.6 0 9.4 0 14.1s3.8 8.4 8.4 8.4c4.3 0 8.2-1.8 10.9-4.7c2.3-2.5 3.6-5.9 3.6-9.7" /><path fill="#F79E1B" d="M42 14.1c0 4.7-3.8 8.4-8.4 8.4c-4.3 0-8.2-1.8-10.9-4.7c-2.3-2.5-3.6-5.9-3.6-9.7s1.3-7.2 3.6-9.7c2.7-2.9 6.6-4.7 10.9-4.7c4.6 0 8.4 3.8 8.4 8.4" /></g></svg>
+
+                            {/* RuPay */}
+                            <svg className="h-4 w-auto" viewBox="0 0 100 32" xmlns="http://www.w3.org/2000/svg"><path fill="#1A3F78" d="M42.3 2h8.4l-4.5 11l4.8 12h-8.8l-1.8-5.2h-3.8l-2 5.2h-8.8l11-23h0.2l5.3 0zm-2.8 5.8l-1.8 5.2h3.5l-1.7-5.2zM27 2h8.5v16c0 4.2-2.5 6-6.2 6H20V2h7V2z m-1.2 16.5c1.2 0 2.2-0.8 2.2-2.5V7.5h-2.2v11zM65 2h8.5v16c0 4-2.5 6-6.2 6H58V2h7V2zm-1.2 16.5c1.2 0 2.2-0.8 2.2-2.5V7.5h-2.2v11zM85 9.5l-4.5 13.5h-8l-4.5-13.5h8.2l0.8 3.5l0.8-3.5h7.2z" /></svg>
+
+                            {/* UPI */}
+                            <svg className="h-8 w-auto" viewBox="0 0 100 32" xmlns="http://www.w3.org/2000/svg"><path fill="#666" d="M12 2L4 14h16l-8-12zm0 24c-6.6 0-12-5.4-12-12h24c0 6.6-5.4 12-12 12z" /></svg>
                         </div>
                     </div>
                 </div>
