@@ -95,140 +95,108 @@ export default function Footer() {
     }
 
     return (
-        <footer className="bg-white border-t border-gray-200 pt-12 pb-24 md:pb-12">
-            <div className="max-w-7xl mx-auto px-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <footer className="bg-white border-t border-gray-200 pt-16 pb-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
                     {/* Brand Column */}
                     <div className="space-y-4">
-                        <Link href="/" className="flex items-center gap-2.5 group">
-                            <div className="relative">
-                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                                    <span className="text-white font-black text-xl tracking-tight">D</span>
-                                </div>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white"></div>
+                        <Link href="/" className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white">
+                                <span className="font-bold text-lg">D</span>
                             </div>
-                            <div className="flex flex-col leading-none">
-                                <span className="font-extrabold text-xl text-gray-900 tracking-tight">D2B<span className="text-emerald-600">Cart</span></span>
-                                <span className="text-[9px] text-gray-400 font-medium tracking-wider uppercase">B2B Marketplace</span>
-                            </div>
+                            <span className="font-bold text-xl text-gray-900">D2BCart</span>
                         </Link>
-                        <p className="text-gray-500 text-sm leading-relaxed">
-                            India's leading B2B marketplace connecting retailers directly with verified manufacturers.
+                        <p className="text-gray-600 text-sm leading-relaxed">
+                            Your trusted B2B marketplace connecting retailers directly with top manufacturers. Shop with confidence and ease.
                         </p>
-                        <div className="flex items-center gap-4 pt-2">
-                            <SocialLink href="https://www.facebook.com/profile.php?id=61569202844764" icon={Facebook} />
-                            <SocialLink href="https://www.instagram.com/d2b_cart/" icon={Instagram} />
+                        <div className="flex gap-4 pt-2">
+                            <a href="https://www.facebook.com/profile.php?id=61569202844764" target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-full text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <Facebook size={18} />
+                            </a>
+                            <a href="https://www.instagram.com/d2b_cart/" target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-50 rounded-full text-gray-600 hover:bg-pink-50 hover:text-pink-600 transition-colors">
+                                <Instagram size={18} />
+                            </a>
                         </div>
                     </div>
 
-                    {/* Support Column */}
+                    {/* Quick Links */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Support & Help</h3>
-                        <ul className="space-y-3 text-sm text-gray-600">
-                            {getSupportLinks().map((link, idx) => (
-                                <li key={idx}>
-                                    <Link href={link.href} className="hover:text-emerald-600 transition-colors">
+                        <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Quick Links</h3>
+                        <ul className="space-y-3">
+                            {getQuickLinks().map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-gray-600 hover:text-emerald-600 transition-colors text-sm">
                                         {link.label}
                                     </Link>
                                 </li>
                             ))}
-                            <li className="flex items-start gap-2 pt-2">
-                                <Phone className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                                <a href="https://wa.me/917557777987" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 transition-colors font-medium">WhatsApp: +91 75577 77987</a>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <Mail className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                                <a href="mailto:support@d2bcart.com" className="hover:text-emerald-600 transition-colors">support@d2bcart.com</a>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <MapPin className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                                <span className="text-gray-600">Vaibhav Heritage Height, Sector 16, Greater Noida, Uttar Pradesh, 201009</span>
-                            </li>
                         </ul>
                     </div>
 
-                    {/* Quick Links (Dynamic) */}
+                    {/* Customer Support */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">
-                            {userRole === 'manufacturer' ? 'Seller Tools' : userRole === 'admin' ? 'Admin Tools' : 'Quick Actions'}
-                        </h3>
-                        <ul className="space-y-3 text-sm text-gray-600">
-                            {getQuickLinks().map((link, idx) => (
-                                <li key={idx}>
-                                    <Link href={link.href} className="hover:text-emerald-600 transition-colors flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Customer Support</h3>
+                        <ul className="space-y-3">
+                            {getSupportLinks().map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-gray-600 hover:text-emerald-600 transition-colors text-sm">
                                         {link.label}
                                     </Link>
                                 </li>
                             ))}
-                            {!userRole && (
-                                <li className="pt-2">
-                                    <Link href="/sell" className="text-emerald-700 font-medium hover:text-emerald-800 transition-colors">
-                                        Become a Seller →
-                                    </Link>
-                                </li>
-                            )}
                         </ul>
                     </div>
 
-                    {/* Legal & Trust */}
+                    {/* Contact Info */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4">Legal</h3>
-                        <ul className="space-y-3 text-sm text-gray-600">
-                            <li>
-                                <Link href="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Contact Us</h3>
+                        <ul className="space-y-4">
+                            <li className="flex items-start gap-3">
+                                <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                                <span className="text-gray-600 text-sm">
+                                    Vaibhav Heritage Height, Sector 16,<br />
+                                    Greater Noida, Uttar Pradesh, 201009
+                                </span>
                             </li>
-                            <li>
-                                <Link href="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
+                            <li className="flex items-center gap-3">
+                                <Phone className="w-5 h-5 text-emerald-600 shrink-0" />
+                                <a href="tel:+917557777987" className="text-gray-900 font-medium hover:text-emerald-600 transition-colors">
+                                    +91-7557777987
+                                </a>
                             </li>
-                            <li>
-                                <Link href="/gst-info" className="hover:text-emerald-600 transition-colors">GST Information</Link>
+                            <li className="flex items-center gap-3">
+                                <Mail className="w-5 h-5 text-emerald-600 shrink-0" />
+                                <a href="mailto:support@d2bcart.com" className="text-gray-600 text-sm hover:text-emerald-600 transition-colors">
+                                    support@d2bcart.com
+                                </a>
                             </li>
                         </ul>
-                        <div className="mt-6 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                            <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm mb-1">
-                                <ShieldCheck className="w-4 h-4" />
-                                <span>100% Secure Payments</span>
+
+                        {/* Trust Badge */}
+                        <div className="mt-6 flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                            <div>
+                                <p className="text-xs font-semibold text-emerald-800">100% Secure Payments</p>
+                                <p className="text-[10px] text-emerald-600">Encrypted & Safe Transactions</p>
                             </div>
-                            <p className="text-xs text-emerald-600/80">
-                                We ensure secure payment processing for all B2B transactions.
-                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-gray-100 pt-8 mt-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-sm text-gray-500">
+                {/* Bottom Bar */}
+                <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <p className="text-sm text-gray-500 order-2 md:order-1 text-center md:text-left">
                         © {currentYear} D2BCart. All rights reserved.
                     </p>
-                    <div className="flex gap-4">
-                        {/* Styled Payment Methods Container */}
-                        <div className="flex items-center gap-4 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
-                            {/* Visa */}
-                            <img src="/payment-icons/visa.svg" alt="Visa" className="h-6 w-auto" />
 
-                            {/* Mastercard */}
-                            <img src="/payment-icons/mastercard.svg" alt="Mastercard" className="h-8 w-auto" />
-
-                            {/* RuPay */}
-                            <img src="/payment-icons/rupay.svg" alt="RuPay" className="h-5 w-auto" />
-
-                            {/* UPI */}
-                            <img src="/payment-icons/upi.svg" alt="UPI" className="h-6 w-auto" />
-                        </div>
+                    <div className="flex items-center gap-3 order-1 md:order-2 bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+                        <img src="/payment-icons/visa.svg" alt="Visa" className="h-5 w-auto" />
+                        <img src="/payment-icons/mastercard.svg" alt="Mastercard" className="h-7 w-auto" />
+                        <img src="/payment-icons/rupay.svg" alt="RuPay" className="h-4 w-auto" />
+                        <img src="/payment-icons/upi.svg" alt="UPI" className="h-5 w-auto" />
                     </div>
                 </div>
             </div>
         </footer>
-    )
-}
-
-function SocialLink({ href, icon: Icon }: { href: string, icon: any }) {
-    return (
-        <a
-            href={href}
-            className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all duration-300"
-        >
-            <Icon className="w-4 h-4" />
-        </a>
     )
 }
