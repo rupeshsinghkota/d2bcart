@@ -1,5 +1,8 @@
 import { ImageResponse } from 'next/og'
 
+// Route segment config
+export const runtime = 'edge'
+
 // Image metadata
 export const size = {
     width: 32,
@@ -14,19 +17,19 @@ export default function Icon() {
             // ImageResponse JSX element
             <div
                 style={{
-                    fontSize: 20,
-                    background: '#10b981', // emerald-500
+                    fontSize: 24,
+                    background: '#059669', // Emerald 600
                     width: '100%',
                     height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    borderRadius: '6px',
+                    borderRadius: 4, // Slight rounding for favicon
                     fontWeight: 800,
                 }}
             >
-                D2B
+                D
             </div>
         ),
         // ImageResponse options

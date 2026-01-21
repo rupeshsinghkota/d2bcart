@@ -1,35 +1,33 @@
 import { ImageResponse } from 'next/og'
 
-// Image metadata
+export const runtime = 'edge'
+
 export const size = {
     width: 180,
     height: 180,
 }
 export const contentType = 'image/png'
 
-// Image generation
 export default function Icon() {
     return new ImageResponse(
         (
-            // ImageResponse JSX element
             <div
                 style={{
-                    fontSize: 100,
-                    background: 'linear-gradient(to bottom right, #10b981, #059669)', // emerald-500 to 600
+                    fontSize: 120,
+                    background: '#059669', // Emerald 600
                     width: '100%',
                     height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    borderRadius: '36px',
-                    fontWeight: 900,
+                    borderRadius: 24, // Apple style rounded corners (though OS does it too, this looks good on other platforms)
+                    fontWeight: 800,
                 }}
             >
-                D2B
+                D
             </div>
         ),
-        // ImageResponse options
         {
             ...size,
         }

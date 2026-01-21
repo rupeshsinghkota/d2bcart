@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
   description: "Connect directly with manufacturers. Skip the middleman, get wholesale prices.",
   keywords: ["B2B marketplace", "wholesale", "manufacturers", "retailers", "direct trade", "bulk buying"],
+  icons: {
+    icon: '/icon', // Dynamically generated
+    apple: '/apple-icon', // Dynamically generated
+    shortcut: '/logo.svg' // SVG Source
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -50,7 +55,8 @@ export default function RootLayout({
     '@type': 'Organization',
     name: 'D2BCart',
     url: siteUrl,
-    logo: `${siteUrl}/logo.png`,
+    logo: `${siteUrl}/logo.svg`, // Updated to SVG
+
     description: 'B2B Marketplace connecting retailers with manufacturers for wholesale trade.',
     contactPoint: {
       '@type': 'ContactPoint',

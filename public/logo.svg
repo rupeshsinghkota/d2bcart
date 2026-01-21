@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#grad1)" />
+  <path d="M140 256 L200 256 C230 256 250 240 250 210 C250 180 230 164 200 164 L140 164 Z M140 348 L140 120 L200 120 C255 120 294 150 294 210 C294 245 275 270 245 285 L300 348 L240 348 L190 290 L184 290 L184 348 Z" fill="white" />
+  <path d="M372 348 L372 260 L330 260 L330 220 L372 220 L372 164 L330 164 L330 120 L416 120 C445 120 460 140 460 170 C460 190 450 205 430 215 C450 225 460 240 460 260 C460 290 445 310 416 310 L372 310 Z M372 348 L460 348 L460 310 L372 310 Z" fill="white" opacity="0" /> <!-- Simplified D2B hint -->
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="280" fill="white" dy="20">D</text>
+</svg>

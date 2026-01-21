@@ -36,7 +36,7 @@ export default function FacebookPixel() {
                     }
                     if (fpixel.FB_PIXEL_ID) {
                         window.fbq('init', fpixel.FB_PIXEL_ID);
-                        window.fbq('track', 'PageView');
+
                     }
                 }}
             />

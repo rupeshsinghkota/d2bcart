@@ -119,6 +119,14 @@ const RegisterContent = () => {
                 }
             }
 
+            // Track Registration
+            import('@/lib/fpixel').then((fpixel) => {
+                fpixel.event('CompleteRegistration', {
+                    content_name: userType,
+                    status: true
+                })
+            })
+
             toast.success('Profile setup successful!')
             // Redirect based on user type
             if (userType === 'manufacturer') {
