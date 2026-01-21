@@ -177,15 +177,22 @@ export async function refineProduct(productId: string) {
                 Variations to Refine (${chunk.length} items):
                 ${chunk.map((v, i) => `${i + 1}. ID: ${v.id}, Name: "${v.name}"`).join('\n')}
 
+                You are an SEO expert. Generate the MOST SEARCHABLE name for each variation.
+
                 Instructions:
-                1. "refined_name": Clean, readable model name (max 25 chars)
-                   - EXPAND abbreviations: "1+" → "OnePlus", "Sam" → "Samsung", "Moto" → "Motorola"
-                   - Fix formatting: "1+13T" → "OnePlus 13T", "VIVO.Y17S" → "Vivo Y17s"
-                   - Clean special chars: Remove dots, underscores, emoji, make readable
+                1. "refined_name": The name people ACTUALLY search for (max 25 chars)
+                   - Use your knowledge of how people search on e-commerce sites
+                   - "1+13T" → "OnePlus 13T" (this is what people type)
+                   - "Sam.A06" → "Samsung A06" (expand brands)
+                   - "VIVO_Y17S" → "Vivo Y17s" (proper casing)
+                   - Keep it SHORT but recognizable
                 2. "variant_label": Same as refined_name
-                3. "smart_tags": 8-12 search terms including:
-                   - Original abbreviation AND full name (e.g., "1+13t", "oneplus 13t")
-                   - Variations/misspellings
+                3. "smart_tags": 10-15 search terms people might use including:
+                   - Full name ("oneplus 13t")
+                   - Abbreviations ("1+ 13t", "op 13t")
+                   - Common misspellings ("onplus", "one plus")
+                   - Alternative terms ("nord", "flagship")
+                   - Hindi phonetic ("वनप्लस" if applicable)
                 
                 Return JSON with ALL ${chunk.length} variations:
                 { "variations": [{ "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": [...] }] }
