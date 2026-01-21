@@ -98,13 +98,26 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
             .is('parent_id', null)
             .order('created_at', { ascending: false })
 
-        // Search filter - Using Postgres Full Text Search with Prefix Matching (Partial Support)
+        // Search filter - Using Postgres Full Text Search (Robust & Fast)
         if (searchQuery) {
-            // "Sam Cov" -> "Sam:* & Cov:*"
-            const sanitized = searchQuery.trim().replace(/[|&!:()]/g, '').split(/\s+/).filter(w => w.length > 0)
-            if (sanitized.length > 0) {
-                const formattedQuery = sanitized.map(w => `${w}:*`).join(' & ')
-                query = query.textSearch('search_vector', formattedQuery, {
+            // Cleaning and formatting the query for Full Text Search
+            const cleanQuery = searchQuery.replace(/[!&|():*]/g, ' ').trim()
+            const terms = cleanQuery.split(/\s+/).filter(Boolean)
+
+            if (terms.length > 0) {
+                // 1. Build TS Query with Synonyms
+                // "nord 5 cover" -> "(nord:* & 5:* & (cover | case | protection):*)"
+                const tsParts = terms.map(term => {
+                    const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '')
+                    const syns = SYNONYMS[clean]
+                    if (syns) {
+                        return `(${term} | ${syns.join(' | ')}):*`
+                    }
+                    return `${term}:*`
+                })
+                const finalTsQuery = tsParts.join(' & ')
+
+                query = query.textSearch('search_vector', finalTsQuery, {
                     config: 'english'
                 })
             }
@@ -123,29 +136,55 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
             return { products: [], totalProducts: 0 }
         }
 
-        // Fallback: If FTS returned no results, try simple ILIKE on strict name match
-        // This fixes cases like "1+" where FTS might strip the "+" symbol
+        // Fallback: If FTS returned no results, try aggressive ILIKE matching
+        // This handles cases like "nord 5" where FTS might fail if the vector isn't perfectly updated or strict
+        // We split terms and ensure ALL terms are present in the name (AND logic), but order doesn't match.
         if ((!products || products.length === 0) && searchQuery) {
-            const fallbackQuery = supabaseAdmin
-                .from('products')
-                .select(`
-                    *,
-                    manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
-                    category:categories!products_category_id_fkey(name, slug),
-                    variations:products!parent_id(display_price, moq)
-                `, { count: 'exact' })
-                .eq('is_active', true)
-                .is('parent_id', null)
-                .ilike('name', `%${searchQuery}%`)
-                .order('created_at', { ascending: false })
-                .range(from, to)
+            // "nord 5 cover" -> name ILIKE '%nord%' AND name ILIKE '%5%' AND (name ILIKE '%cover%' OR name ILIKE '%case%'...)
 
-            const { data: fallbackProducts, count: fallbackCount } = await fallbackQuery
+            const cleanQuery = searchQuery.replace(/[!&|():*]/g, ' ').trim()
+            const terms = cleanQuery.split(/\s+/).filter(Boolean)
 
-            if (fallbackProducts && fallbackProducts.length > 0) {
-                return {
-                    products: (fallbackProducts as Product[]) || [],
-                    totalProducts: fallbackCount || 0
+            if (terms.length > 0) {
+                let fallbackQuery = supabaseAdmin
+                    .from('products')
+                    .select(`
+                        *,
+                        manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                        category:categories!products_category_id_fkey(name, slug),
+                        variations:products!parent_id(display_price, moq)
+                    `, { count: 'exact' })
+                    .eq('is_active', true)
+                    .is('parent_id', null)
+
+                // Add ILIKE for each term
+                terms.forEach(term => {
+                    const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '')
+                    const syns = SYNONYMS[clean] || []
+
+                    if (syns.length > 0) {
+                        // OR group for synonyms: (name ilike '%term%' OR name ilike '%syn%')
+                        // Supabase .or() is tricky to chain with ANDs. 
+                        // Simplest robust fallback: Just match the raw term first. 
+                        // If we want synonym support in fallback, we'd need raw SQL or complex filters.
+                        // Let's stick to the PRIMARY term for fallback robustness.
+                        fallbackQuery = fallbackQuery.ilike('name', `%${term}%`)
+                    } else {
+                        fallbackQuery = fallbackQuery.ilike('name', `%${term}%`)
+                    }
+                })
+
+                fallbackQuery = fallbackQuery
+                    .order('created_at', { ascending: false })
+                    .range(from, to)
+
+                const { data: fallbackProducts, count: fallbackCount } = await fallbackQuery
+
+                if (fallbackProducts && fallbackProducts.length > 0) {
+                    return {
+                        products: (fallbackProducts as Product[]) || [],
+                        totalProducts: fallbackCount || 0
+                    }
                 }
             }
         }

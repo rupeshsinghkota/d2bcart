@@ -47,11 +47,13 @@ export default function PhoneLogin() {
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (loading) return
         setLoading(true)
 
         const formattedPhone = formatPhone(phone)
 
         try {
+            // 1. Verify OTP
             const { data, error } = await supabase.auth.verifyOtp({
                 phone: formattedPhone,
                 token: otp,
@@ -60,44 +62,74 @@ export default function PhoneLogin() {
 
             if (error) throw error
 
-            if (data.user) {
-                // Check if user exists in our users table
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('user_type')
-                    .eq('id', data.user.id)
-                    .single() as { data: any } // Fix TS inference issue
+            // 2. OTP Verified - Session is Active from here
+            await handlePostLogin(data.user)
 
-                if (profile) {
-                    // Update global store logic here if needed
+        } catch (otpError: any) {
+            console.error('Verify Error:', otpError)
+
+            // 3. Fallback: Check if we are actually logged in (Race condition / Double submit)
+            // If the specific error is 'Token has expired or is invalid', it might mean it was just consumed.
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user) {
+                console.log('Session exists despite OTP error (likely double submit). Proceeding.')
+                await handlePostLogin(session.user)
+                return
+            }
+
+            toast.error(otpError.message || 'Invalid OTP. Please try again.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handlePostLogin = async (user: any) => {
+        try {
+            if (!user) return
+
+            // Check if user exists in our users table
+            const { data: profile } = await supabase
+                .from('users')
+                .select('user_type')
+                .eq('id', user.id)
+                .single() as { data: any }
+
+            if (profile) {
+                // Update global store logic here if needed
+                try {
                     const { useStore } = await import('@/lib/store')
                     useStore.getState().setUser(profile as any)
+                } catch (e) { }
 
-                    toast.success('Login successful!')
-                    if (profile.user_type === 'manufacturer') {
-                        router.push('/wholesaler')
-                    } else if (profile.user_type === 'admin') {
-                        router.push('/admin')
-                    } else {
-                        router.push('/products')
-                    }
+                toast.success('Login successful!')
+
+                // Smart Redirect
+                if (profile.user_type === 'manufacturer') {
+                    router.push('/wholesaler')
+                } else if (profile.user_type === 'admin') {
+                    router.push('/admin')
                 } else {
-                    // Profile not found by ID. Check for "Orphaned" profile via API
-                    try {
-                        const res = await fetch('/api/auth/link-account', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                userId: data.user.id,
-                                phone: formattedPhone
-                            })
+                    router.push('/products')
+                }
+                router.refresh()
+            } else {
+                // Profile not found by ID. Check for "Orphaned" profile via API
+                try {
+                    const res = await fetch('/api/auth/link-account', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: user.id,
+                            phone: formatPhone(phone) // Use state phone as fallback
                         })
-                        const linkData = await res.json()
+                    })
 
+                    if (res.ok) {
+                        const linkData = await res.json()
                         if (linkData.success && linkData.status === 'migrated') {
                             toast.success('Account successfully linked! Logging you in...')
+                            router.refresh()
 
-                            // Explicitly redirect based on returned user_type
                             const type = linkData.user_type
                             if (type === 'manufacturer') {
                                 router.push('/wholesaler')
@@ -106,25 +138,25 @@ export default function PhoneLogin() {
                             } else {
                                 router.push('/products')
                             }
-
-                            router.refresh()
                             return
                         }
-                    } catch (e) {
-                        console.error('Link check failed', e)
                     }
-
-                    // If still new, redirect to register
-                    toast.success('Welcome! Please complete your profile.')
-                    router.push('/register?step=2')
+                } catch (e) {
+                    console.error('Link check failed', e)
+                    // Continue to register...
                 }
-                router.refresh()
+
+                // If still new, redirect to register
+                toast.success('Welcome! Please complete your profile.')
+                router.push('/register?step=2')
             }
-        } catch (error: any) {
-            console.error('Verify Error:', error)
-            toast.error(error.message || 'Invalid OTP')
-        } finally {
-            setLoading(false)
+        } catch (postError) {
+            console.error('Post-Login Logic Error:', postError)
+            // Even if profile fetch fails, user is authenticated.
+            // Send them to homepage or register to let them sort it out
+            toast.success('Login verified. Redirecting...')
+            router.push('/products')
+            router.refresh()
         }
     }
 

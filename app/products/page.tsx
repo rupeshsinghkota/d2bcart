@@ -86,7 +86,19 @@ async function ProductsContent({ searchParams }: Props) {
         }
 
         // 3. Fetch Products
-        const { products, totalProducts } = await getShopProducts(currentCategory?.id, 1, 20, searchQuery)
+        let products: Product[] = []
+        let totalProducts = 0
+
+        // If category is selected but not found in active list, it means it's empty or invalid.
+        // In this case, we show 0 products instead of falling back to "All Products".
+        if (categorySlug && !currentCategory) {
+            products = []
+            totalProducts = 0
+        } else {
+            const result = await getShopProducts(currentCategory?.id, 1, 20, searchQuery)
+            products = result.products
+            totalProducts = result.totalProducts
+        }
 
         // Collection Page JSON-LD
         const jsonLd = {
