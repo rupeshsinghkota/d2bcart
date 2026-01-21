@@ -223,10 +223,21 @@ export default function EditProductPage() {
                     const varPrice = parseFloat(v.price) || basePrice
                     const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
 
+                    // Determine variation name: preserve AI-refined names for existing variations
+                    let varName = v.name
+                    if (!v.dbId) {
+                        // New variation being added - use the traditional format with parent name prefix
+                        varName = `${formData.name} - ${v.name}`
+                    }
+                    // For existing variations (v.dbId exists), keep the display name as-is
+                    // The display name is what was shown in the UI (may be extracted from AI name)
+                    // But we need to get the ACTUAL DB name, not the extracted display name
+                    // Since we're editing, we should preserve the existing DB name for AI-refined variations
+
                     const variationData = {
                         manufacturer_id: user.id,
                         category_id: formData.category_id,
-                        name: `${formData.name} - ${v.name}`,
+                        name: varName,
                         description: formData.description,
                         base_price: varPrice,
                         display_price: varDisplayPrice,
@@ -248,8 +259,9 @@ export default function EditProductPage() {
                     }
 
                     if (v.dbId) {
-                        // Update existing
-                        await (supabase.from('products') as any).update(variationData).eq('id', v.dbId)
+                        // Update existing - but DON'T update the name (preserve AI-refined name)
+                        const { name, ...dataWithoutName } = variationData
+                        await (supabase.from('products') as any).update(dataWithoutName).eq('id', v.dbId)
                     } else {
                         // Insert new
                         await (supabase.from('products') as any).insert(variationData)
