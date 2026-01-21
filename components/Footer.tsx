@@ -95,18 +95,18 @@ export default function Footer() {
     }
 
     return (
-        <footer className="bg-white border-t border-gray-200 pt-16 pb-8">
+        <footer className="bg-white border-t border-gray-200 pt-10 md:pt-16 pb-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-12">
                     {/* Brand Column */}
-                    <div className="space-y-4">
+                    <div className="space-y-4 col-span-2 lg:col-span-1">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white">
                                 <span className="font-bold text-lg">D</span>
                             </div>
                             <span className="font-bold text-xl text-gray-900">D2BCart</span>
                         </Link>
-                        <p className="text-gray-600 text-sm leading-relaxed">
+                        <p className="text-gray-600 text-sm leading-relaxed max-w-sm">
                             Your trusted B2B marketplace connecting retailers directly with top manufacturers. Shop with confidence and ease.
                         </p>
                         <div className="flex gap-4 pt-2">
@@ -135,7 +135,7 @@ export default function Footer() {
 
                     {/* Customer Support */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Customer Support</h3>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Support</h3>
                         <ul className="space-y-3">
                             {getSupportLinks().map((link) => (
                                 <li key={link.href}>
@@ -148,7 +148,7 @@ export default function Footer() {
                     </div>
 
                     {/* Contact Info */}
-                    <div>
+                    <div className="col-span-2 lg:col-span-1">
                         <h3 className="font-semibold text-gray-900 mb-4 text-sm tracking-wider uppercase">Contact Us</h3>
                         <ul className="space-y-4">
                             <li className="flex items-start gap-3">
@@ -173,7 +173,7 @@ export default function Footer() {
                         </ul>
 
                         {/* Trust Badge */}
-                        <div className="mt-6 flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <div className="mt-6 flex items-center gap-2 p-3 bg-emerald-50 rounded-lg border border-emerald-100 max-w-fit">
                             <ShieldCheck className="w-5 h-5 text-emerald-600" />
                             <div>
                                 <p className="text-xs font-semibold text-emerald-800">100% Secure Payments</p>
