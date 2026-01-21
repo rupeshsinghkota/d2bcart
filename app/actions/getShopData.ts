@@ -102,13 +102,15 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
             const terms = cleanQuery.split(/\s+/).filter(Boolean)
 
             if (terms.length > 0) {
-                // 1. Build TS Query with Synonyms
-                // "nord 5 cover" -> "(nord:* & 5:* & (cover | case | protection):*)"
+                // 1. Build TS Query with Synonyms  
+                // "nord 5 cover" -> "(nord:* & 5:* & (cover:* | case:* | protection:*))"
                 const tsParts = terms.map(term => {
                     const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '')
                     const syns = SYNONYMS[clean]
                     if (syns) {
-                        return `(${term} | ${syns.join(' | ')}):*`
+                        // Each term needs its own :* for prefix matching
+                        const allTerms = [term, ...syns].map(t => `${t}:*`).join(' | ')
+                        return `(${allTerms})`
                     }
                     return `${term}:*`
                 })
