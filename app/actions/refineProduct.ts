@@ -211,20 +211,27 @@ export async function refineProduct(productId: string) {
             const varResult = JSON.parse(varContent)
 
             if (varResult.variations && Array.isArray(varResult.variations)) {
-                for (const refinedVar of varResult.variations) {
-                    console.log(`Updating Variation: ${refinedVar.id} -> ${refinedVar.refined_name} (${refinedVar.variant_label})`)
+                // Try to match by ID first, then fallback to index matching
+                for (let i = 0; i < varResult.variations.length; i++) {
+                    const refinedVar = varResult.variations[i]
+                    // Use the AI-returned ID, or fallback to original variation at same index
+                    const targetId = refinedVar.id || (variations[i] ? variations[i].id : null)
+
+                    if (!targetId) continue
+
+                    console.log(`Updating Variation: ${targetId} -> ${refinedVar.refined_name}`)
                     await (supabase
                         .from('products') as any)
                         .update({
                             name: refinedVar.refined_name,
-                            smart_tags: refinedVar.smart_tags,
+                            smart_tags: refinedVar.smart_tags || [],
                             ai_metadata: {
                                 refined_by: 'openai_gpt_3.5_turbo_batch',
                                 parent_id: productId,
-                                variant_label: refinedVar.variant_label || ''
+                                variant_label: refinedVar.variant_label || refinedVar.refined_name || ''
                             }
                         })
-                        .eq('id', refinedVar.id)
+                        .eq('id', targetId)
                     variationUpdateCount++
                 }
             }
