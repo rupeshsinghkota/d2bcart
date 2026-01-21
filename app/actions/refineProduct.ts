@@ -165,11 +165,13 @@ export async function refineProduct(productId: string) {
             ${variations.map((v, i) => `${i + 1}. ID: ${v.id}, Current Name: "${v.name}"`).join('\n')}
 
             Instructions:
-            1. Generate a "refined_name" for EACH variation. It MUST be a standalone, search-friendly name.
-               - Example: If Parent is "iPhone 13 Case" and variant is "VIVO.Y17S", name it "Vivo Y17s iPhone 13 Style Case".
-               - Do NOT use the format "Parent Name - Variation". Make it natural.
-            2. Generate a SHORT "variant_label" that is ONLY the distinguishing part (e.g., "Vivo Y17s", "Samsung M06", "Red").
-               - This is for display in the admin UI.
+            1. Generate a "refined_name" for EACH variation:
+               - MUST be UNDER 50 CHARACTERS (important for SEO and display)
+               - Should be a standalone, search-friendly product name
+               - Example: "Vivo Y17s Butterfly Phone Case" (NOT "Premium Multicolor Butterfly Themed...")
+               - Keep it SHORT but include the key model/variant identifier
+            2. Generate a SHORT "variant_label" (max 15 chars) that is ONLY the distinguishing part:
+               - Examples: "Vivo Y17s", "Samsung M06", "Red"
             3. Generate 3-5 "smart_tags" specific to that variation.
             
             Return a JSON object with a "variations" array:
