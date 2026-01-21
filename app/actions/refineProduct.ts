@@ -172,23 +172,28 @@ export async function refineProduct(productId: string) {
             ${variations.map((v, i) => `${i + 1}. ID: ${v.id}, Current Name: "${v.name}"`).join('\n')}
 
             CRITICAL Instructions:
-            1. Generate a "refined_name" that is ONLY the model/device identifier:
-               - It should be JUST "Vivo X200" or "Samsung M06" - NOT a full product name
-               - The parent product already has the full title, so variation name = model only
+            1. Generate a "refined_name" that is ONLY the distinguishing variation attribute:
+               - Extract ONLY what makes this variation different from other variations
                - Max 25 characters
-               - Examples: "Vivo Y17s", "iPhone 15 Pro", "Realme 14 Pro+", "Samsung A06"
-               - BAD: "GTEL Vivo X200 Glass Protector" (too long, repeats parent info)
-               - GOOD: "Vivo X200"
-            2. "variant_label" should be the same as refined_name (the model identifier)
-            3. Generate 8-12 "smart_tags" per variation including:
-               - Model name variations (e.g., "vivo x200", "x200", "vivox200")
-               - Product type from parent (e.g., "screen protector", "tempered glass")
-               - Common misspellings
+               - The parent already has full product details, so variation = unique identifier only
+               
+               Examples by category:
+               - Mobile Cases: "Vivo X200", "iPhone 15 Pro", "Samsung A06"
+               - Clothing: "Red XL", "Blue Medium", "Black S"
+               - Chargers: "65W USB-C", "20W Lightning", "100W Dual"
+               - Screen Guards: "Realme 14 Pro", "Nothing 2a"
+               - Toys: "Age 3-5", "Deluxe Set", "Starter Pack"
+               
+               BAD: "GTEL Vivo X200 Glass Protector" (repeats parent info)
+               GOOD: "Vivo X200"
+               
+            2. "variant_label" = same as refined_name
+            3. Generate 8-12 "smart_tags" including variations, misspellings, related terms
             
-            Return a JSON object:
+            Return JSON:
             {
                "variations": [
-                  { "id": "...", "refined_name": "Vivo X200", "variant_label": "Vivo X200", "smart_tags": ["..."] }
+                  { "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": ["..."] }
                ]
             }
             `
