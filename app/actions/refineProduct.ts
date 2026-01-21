@@ -165,77 +165,62 @@ export async function refineProduct(productId: string) {
             const OpenAI = require("openai")
             const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-            const varPrompt = `
-            Parent Product: "${aiName}" (Full Product Name)
-            
-            Variations to Refine:
-            ${variations.map((v, i) => `${i + 1}. ID: ${v.id}, Current Name: "${v.name}"`).join('\n')}
+            // Process in chunks of 10 to avoid token limits
+            const CHUNK_SIZE = 10
+            for (let chunkStart = 0; chunkStart < variations.length; chunkStart += CHUNK_SIZE) {
+                const chunk = variations.slice(chunkStart, chunkStart + CHUNK_SIZE)
+                console.log(`Processing chunk ${Math.floor(chunkStart / CHUNK_SIZE) + 1}: ${chunk.length} variations`)
 
-            CRITICAL Instructions:
-            1. Generate a "refined_name" that is ONLY the distinguishing variation attribute:
-               - Extract ONLY what makes this variation different from other variations
-               - Max 25 characters
-               - The parent already has full product details, so variation = unique identifier only
-               
-               Examples by category:
-               - Mobile Cases: "Vivo X200", "iPhone 15 Pro", "Samsung A06"
-               - Clothing: "Red XL", "Blue Medium", "Black S"
-               - Chargers: "65W USB-C", "20W Lightning", "100W Dual"
-               - Screen Guards: "Realme 14 Pro", "Nothing 2a"
-               - Toys: "Age 3-5", "Deluxe Set", "Starter Pack"
-               
-               BAD: "GTEL Vivo X200 Glass Protector" (repeats parent info)
-               GOOD: "Vivo X200"
-               
-            2. "variant_label" = same as refined_name
-            3. Generate 8-12 "smart_tags" including variations, misspellings, related terms
-            
-            Return JSON:
-            {
-               "variations": [
-                  { "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": ["..."] }
-               ]
-            }
-            `
-            console.log('Sending Batch Prompt to OpenAI...')
+                const varPrompt = `
+                Parent Product: "${aiName}"
+                
+                Variations to Refine (${chunk.length} items):
+                ${chunk.map((v, i) => `${i + 1}. ID: ${v.id}, Name: "${v.name}"`).join('\n')}
 
-            const varCompletion = await openai.chat.completions.create({
-                messages: [{ role: "user", content: varPrompt }],
-                model: "gpt-3.5-turbo",
-                response_format: { type: "json_object" }
-            })
+                Instructions:
+                1. "refined_name": ONLY the distinguishing attribute (max 25 chars)
+                   - Mobile: "Vivo X200", "iPhone 15"
+                   - Clothing: "Red XL", "Black M"
+                   - Other: Just the unique part
+                2. "variant_label": Same as refined_name
+                3. "smart_tags": 8-12 search terms with variations/misspellings
+                
+                Return JSON with ALL ${chunk.length} variations:
+                { "variations": [{ "id": "...", "refined_name": "...", "variant_label": "...", "smart_tags": [...] }] }
+                `
 
-            const varContent = varCompletion.choices[0].message.content
-            console.log('Batch AI Response:', varContent)
+                const varCompletion = await openai.chat.completions.create({
+                    messages: [{ role: "user", content: varPrompt }],
+                    model: "gpt-3.5-turbo",
+                    response_format: { type: "json_object" }
+                })
 
-            const varResult = JSON.parse(varContent)
+                const varContent = varCompletion.choices[0].message.content
+                const varResult = JSON.parse(varContent)
 
-            if (varResult.variations && Array.isArray(varResult.variations)) {
-                // Try to match by ID first, then fallback to index matching
-                for (let i = 0; i < varResult.variations.length; i++) {
-                    const refinedVar = varResult.variations[i]
-                    // Use the AI-returned ID, or fallback to original variation at same index
-                    const targetId = refinedVar.id || (variations[i] ? variations[i].id : null)
+                if (varResult.variations && Array.isArray(varResult.variations)) {
+                    for (let i = 0; i < varResult.variations.length; i++) {
+                        const refinedVar = varResult.variations[i]
+                        const targetId = refinedVar.id || (chunk[i] ? chunk[i].id : null)
 
-                    if (!targetId) continue
+                        if (!targetId) continue
 
-                    console.log(`Updating Variation: ${targetId} -> ${refinedVar.refined_name}`)
-                    await (supabase
-                        .from('products') as any)
-                        .update({
-                            name: refinedVar.refined_name,
-                            smart_tags: refinedVar.smart_tags || [],
-                            ai_metadata: {
-                                refined_by: 'openai_gpt_3.5_turbo_batch',
-                                parent_id: productId,
-                                variant_label: refinedVar.variant_label || refinedVar.refined_name || ''
-                            }
-                        })
-                        .eq('id', targetId)
-                    variationUpdateCount++
+                        await (supabase.from('products') as any)
+                            .update({
+                                name: refinedVar.refined_name,
+                                smart_tags: refinedVar.smart_tags || [],
+                                ai_metadata: {
+                                    refined_by: 'openai_gpt_3.5_turbo_batch',
+                                    parent_id: productId,
+                                    variant_label: refinedVar.variant_label || refinedVar.refined_name || ''
+                                }
+                            })
+                            .eq('id', targetId)
+                        variationUpdateCount++
+                    }
                 }
             }
-            debugMessage = 'Batch Success'
+            debugMessage = `Batch Success: ${variationUpdateCount}/${variations.length}`
 
         } catch (error: any) {
             console.error('Variation AI Error:', error)
