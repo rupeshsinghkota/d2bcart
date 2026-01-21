@@ -59,27 +59,35 @@ export async function refineProduct(productId: string) {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
         const prompt = `
-        You are an E-commerce SEO Expert. Analyze this product title and existing description to generate a better version.
+        You are an E-commerce SEO Expert. Analyze this product title and existing description to generate a better version with COMPREHENSIVE search data.
         
         Input Title: "${product.name}"
         Input Description: "${product.description || ''}"
         
         Instructions:
         1. **Preserve Information**: Do NOT remove any technical details, specs, or unique info from the Input Description.
-        2. **Enhance**: Create a professional, LONG, HTML-formatted description.
-           - Use <h2> for section headers like "Key Features", "Specifications", "Why Buy This", "Product Overview".
+        2. **Enhance**: Create a professional, HTML-formatted description.
+           - Use <h2> for section headers like "Key Features", "Specifications", "Why Buy This".
            - Use <ul><li> for features and specs.
            - Use <p> for paragraphs.
-           - NO markdown code blocks (\`\`\`html). Return ONLY the raw HTML string for the description.
-        3. **SEO**: Optimize the refined_name and refined_description for better search visibility.
+           - NO markdown code blocks (\`\`\`html). Return ONLY the raw HTML string.
+        3. **SEO & Search**: Generate EXTENSIVE search terms for maximum findability.
         
         Return a JSON object with strictly these fields:
-        "refined_name" (string, SEO optimized, capitalized, professional),
-        "refined_description" (string, HTML content with <h2>, <p>, <ul>. DO NOT wrap in \`\`\`html),
+        "refined_name" (string, SEO optimized, under 60 chars, professional),
+        "refined_description" (string, HTML content),
         "brand" (string, guess if not explicit),
-        "model" (string),
-        "type" (string e.g. "Case", "Charger"),
-        "keywords" (array of 5 seo strings).
+        "model" (string, the model/variant identifier),
+        "type" (string e.g. "Case", "Charger", "Cover"),
+        "keywords" (array of 10-15 UNIQUE search terms including:
+           - Primary product type terms (e.g., "phone case", "mobile cover", "back cover")
+           - Brand/model names (e.g., "vivo", "samsung", "iphone")
+           - Material terms (e.g., "silicone", "plastic", "leather")
+           - Color/pattern terms (e.g., "butterfly", "printed", "designer")
+           - Common alternative spellings (e.g., "fone", "mobail", "cove")
+           - Hindi transliterations if applicable (e.g., "mobile case", "phone ka cover")
+           - Related search terms people might use
+        ).
         
         Return ONLY valid JSON.
         `
@@ -166,13 +174,17 @@ export async function refineProduct(productId: string) {
 
             Instructions:
             1. Generate a "refined_name" for EACH variation:
-               - MUST be UNDER 50 CHARACTERS (important for SEO and display)
-               - Should be a standalone, search-friendly product name
-               - Example: "Vivo Y17s Butterfly Phone Case" (NOT "Premium Multicolor Butterfly Themed...")
-               - Keep it SHORT but include the key model/variant identifier
-            2. Generate a SHORT "variant_label" (max 15 chars) that is ONLY the distinguishing part:
+               - MUST be UNDER 50 CHARACTERS (important for SEO)
+               - Standalone, search-friendly product name
+               - Example: "Vivo Y17s Butterfly Phone Case"
+            2. Generate a SHORT "variant_label" (max 15 chars):
                - Examples: "Vivo Y17s", "Samsung M06", "Red"
-            3. Generate 3-5 "smart_tags" specific to that variation.
+            3. Generate 8-12 "smart_tags" per variation including:
+               - Model name variations (e.g., "vivo y17s", "y17s", "vivoy17s")
+               - Product type (e.g., "case", "cover", "back cover")
+               - Pattern/design (e.g., "butterfly", "printed")
+               - Common misspellings (e.g., "vivo y17", "vevo")
+               - Related terms (e.g., "mobile case", "phone cover")
             
             Return a JSON object with a "variations" array:
             {
