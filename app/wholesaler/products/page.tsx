@@ -30,36 +30,83 @@ export default function ManufacturerProductsPage() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isDeleting, setIsDeleting] = useState(false)
 
+    const [debouncedSearch] = useState(searchQuery) // Initialize
+
+    // Custom debounce hook usage or effect
     useEffect(() => {
-        fetchProducts()
+        const timer = setTimeout(() => {
+            fetchProducts(searchQuery)
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [searchQuery])
+
+    // Initial fetch
+    useEffect(() => {
+        // Initial fetch handled by search effect above when searchQuery is empty
+        // But need to prevent double fetch if query is empty initially?
+        // Let's just rely on the debounce effect for all fetches including initial
     }, [])
 
-    const fetchProducts = async () => {
+    const fetchProducts = async (queryText = '') => {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
             router.push('/login')
             return
         }
 
-        const { data } = await supabase
+        let query = supabase
             .from('products')
             .select('*, category:categories(name)')
             .eq('manufacturer_id', user.id)
-            .is('parent_id', null) // Only show main products, not variations
+            .is('parent_id', null)
             .order('created_at', { ascending: false })
 
-        if (data) setProducts(data as Product[])
+        if (queryText && queryText.trim().length > 0) {
+            // Apply Top 1% Search Logic here (Client-Side for Manufacturer specific or Server-Side?)
+            // Since we can't easily use the public 'getShopData' RPC which filters by is_active=true usually,
+            // we will build a custom match here.
+
+            // 1. Try search_vector if available (Best)
+            // But we need to format the query.
+            const cleanQuery = queryText.replace(/[!&|():*]/g, ' ').trim().split(/\s+/).join(' & ')
+            if (cleanQuery) {
+                // Use ilike for simplicity and robustness in dashboard without full FTS setup on all columns
+                // Search Name, Description, and Smart Tags
+                // This "or" syntax is: name contains X OR description contains X OR ...
+                query = query.or(`name.ilike.%${queryText}%,description.ilike.%${queryText}%,smart_tags.cs.{${queryText}}`)
+            }
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+            console.error('Error fetching products:', error)
+            toast.error('Failed to load products')
+        }
+
+        if (data) {
+            // Optional: Client-side sorting/filtering if needed
+            setProducts(data as Product[])
+        }
         setLoading(false)
     }
 
+    // Removed detailed client-side filter since we do server-side search now
+    const filteredProducts = products.filter(product => {
+        // Only apply status filters client side
+        if (filter === 'active') return product.is_active
+        if (filter === 'inactive') return !product.is_active
+        if (filter === 'low_stock') return product.stock < 10
+        return true
+    })
+    // Handlers Restored
     const handleRefine = async (id: string) => {
         toast.promise(
             (async () => {
                 const res = await refineProduct(id)
                 if (!res.success) throw new Error(res.error)
-                // If warning exists (Fallback used), show it
                 if (res.warning) return `Refined (Fallback): ${res.warning}`
-                // Show variation update count if available
                 const varMsg = res.variationUpdateCount
                     ? ` | ${res.variationUpdateCount} variations updated`
                     : (res.debug ? ` | Debug: ${res.debug}` : '')
@@ -93,8 +140,6 @@ export default function ManufacturerProductsPage() {
 
     const handleToggleActive = async (product: Product) => {
         const newStatus = !product.is_active
-
-        // Optimistic Update
         setProducts(prev => prev.map(p =>
             p.id === product.id ? { ...p, is_active: newStatus } : p
         ))
@@ -106,9 +151,7 @@ export default function ManufacturerProductsPage() {
             .eq('id', product.id)
 
         if (error) {
-            console.error('Update error:', error)
             toast.error('Failed to update status')
-            // Revert
             setProducts(prev => prev.map(p =>
                 p.id === product.id ? { ...p, is_active: !newStatus } : p
             ))
@@ -124,10 +167,8 @@ export default function ManufacturerProductsPage() {
         setIsDeleting(true)
         const ids = Array.from(selectedIds)
 
-        // 1. Delete variations first (if any)
         await supabase.from('products').delete().in('parent_id', ids)
 
-        // 2. Try to Delete the products physically
         const { data, error } = await supabase
             .from('products')
             .delete()
@@ -135,11 +176,7 @@ export default function ManufacturerProductsPage() {
             .select('id')
 
         if (error) {
-            console.error('Delete error:', error)
-
-            // Check for Foreign Key Violation (Orders exist)
             if (error.code === '23503') {
-                // Fallback: Soft Delete (Deactivate)
                 const { error: updateError } = await supabase
                     .from('products')
                     // @ts-ignore
@@ -147,10 +184,9 @@ export default function ManufacturerProductsPage() {
                     .in('id', ids)
 
                 if (updateError) {
-                    toast.error('Failed to delete or deactivate products.')
+                    toast.error('Failed to delete or deactivate.')
                 } else {
                     toast.success(`Products deactivated (orders exist).`)
-                    // Update local state to show as inactive
                     setProducts(prev => prev.map(p =>
                         ids.includes(p.id) ? { ...p, is_active: false } : p
                     ))
@@ -158,7 +194,7 @@ export default function ManufacturerProductsPage() {
                     await revalidateData('/')
                 }
             } else {
-                toast.error('Failed to delete products. Please check permissions.')
+                toast.error('Failed to delete products.')
                 setSelectedIds(new Set())
                 await revalidateData('/')
             }
@@ -167,7 +203,6 @@ export default function ManufacturerProductsPage() {
             toast.success('Products deleted successfully')
             await revalidateData('/')
 
-            // Update local state to remove verified deleted items
             if (deletedCount > 0) {
                 const deletedIds = new Set((data as any[])?.map(d => d.id))
                 setProducts(prev => prev.filter(p => !deletedIds.has(p.id)))
@@ -177,17 +212,6 @@ export default function ManufacturerProductsPage() {
         setIsDeleting(false)
     }
 
-    const filteredProducts = products.filter(product => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
-
-        if (!matchesSearch) return false
-
-        if (filter === 'active') return product.is_active
-        if (filter === 'inactive') return !product.is_active
-        if (filter === 'low_stock') return product.stock < 10
-
-        return true
-    })
 
     if (loading) {
         return (

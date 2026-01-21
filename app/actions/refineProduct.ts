@@ -40,7 +40,15 @@ export async function refineProduct(productId: string) {
         return { success: false, error: 'Product not found' }
     }
 
-    // 2. AI Refinement (OpenAI)
+    // 2. Fetch Variations (Moved UP for Context)
+    const { data: variationsData } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('parent_id', productId)
+
+    const variations = variationsData as any[] || []
+
+    // 3. AI Refinement (OpenAI)
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
         return { success: false, error: 'OpenAI API Key not configured' }
@@ -58,38 +66,51 @@ export async function refineProduct(productId: string) {
         const OpenAI = require("openai")
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+        // Prepare context for AI
+        const variantNames = variations.map(v => v.name).slice(0, 50).join(', ') // send first 50 names
+        const totalVariants = variations.length
+        const price = product.display_price
+
         const prompt = `
-        You are an E-commerce SEO Expert. Analyze this product title and existing description to generate a better version with COMPREHENSIVE search data.
+        You are an E-commerce Content Expert. Generate an EXTREMELY EXTENSIVE, DEEP-DIVE HTML product description (Target: 2000-3000 words).
         
-        Input Title: "${product.name}"
+        Input Name: "${product.name}"
         Input Description: "${product.description || ''}"
+        Price: ₹${price}
+        Total Variations: ${totalVariants} (Examples: ${variantNames}...)
         
         Instructions:
-        1. **Preserve Information**: Do NOT remove any technical details, specs, or unique info from the Input Description.
-        2. **Enhance**: Create a professional, HTML-formatted description.
-           - Use <h2> for section headers like "Key Features", "Specifications", "Why Buy This".
-           - Use <ul><li> for features and specs.
-           - Use <p> for paragraphs.
-           - NO markdown code blocks (\`\`\`html). Return ONLY the raw HTML string.
-        3. **SEO & Search**: Generate EXTENSIVE search terms for maximum findability.
+        1. **MANDATORY**: You MUST preserve EVERY single technical detail, dimension, and spec from the Input Description.
         
-        Return a JSON object with strictly these fields:
-        "refined_name" (string, SEO optimized, under 60 chars, professional),
-        "refined_description" (string, HTML content),
-        "brand" (string, guess if not explicit),
-        "model" (string, the model/variant identifier),
-        "type" (string e.g. "Case", "Charger", "Cover"),
-        "keywords" (array of 10-15 UNIQUE search terms including:
-           - Primary product type terms (e.g., "phone case", "mobile cover", "back cover")
-           - Brand/model names (e.g., "vivo", "samsung", "iphone")
-           - Material terms (e.g., "silicone", "plastic", "leather")
-           - Color/pattern terms (e.g., "butterfly", "printed", "designer")
-           - Common alternative spellings (e.g., "fone", "mobail", "cove")
-           - Hindi transliterations if applicable (e.g., "mobile case", "phone ka cover")
-           - Related search terms people might use
-        ).
+        2. **Create a Massive, Encyclopedia-Style HTML Description**:
+           - Use <h2> for main sections and <h3> for subsections.
+           - **Introduction**: 3-4 paragraphs hooking the reader.
+           - **Detailed Feature Analysis**: dedicating a full paragraph to EACH feature.
+           - **Material & Durability Deep Dive**: Explain the science/quality of the material.
+           - **Usage & Lifestyle**: How this product improves daily life (3-4 paragraphs).
+           - **Installation / Usage Guide**: Step-by-step instructions.
+           - **Care & Maintenance**: How to clean/maintain it.
+           - **Comparison**: Why this is better than generic alternatives.
+           - **FAQ Section**: Generate 10+ common questions and detailed answers.
+           - **Compatibility**: Mention the extensive range (${totalVariants}+ models).
+           - **Why Buy**: A persuasive closing manifesto.
+           - **Compatibility Placeholder**: <div id="compatibility-placeholder"></div>
         
-        Return ONLY valid JSON.
+        3. **Style**: authoritative, trustworthy, and exhaustive. Write like a comprehensive review.
+        
+        4. **Refine Name**: Create a clean, SEO-friendly parent product name.
+        
+        5. **SEO Keywords**: Generate 30+ high-value keywords.
+
+        Return JSON:
+        {
+            "refined_name": "...", 
+            "refined_description": "<div class='product-desc'><h2>In-Depth Review</h2>...</div>",
+            "brand": "...",
+            "model": "...",
+            "type": "...",
+            "keywords": ["...", "..."]
+        }
         `
 
         const completion = await openai.chat.completions.create({
@@ -131,13 +152,31 @@ export async function refineProduct(productId: string) {
     }
 
     // 3. Update Product
+    // CRITICAL: Append the original description to ensure NO DATA LOSS
+    let finalDescription = aiDescription;
+    if (product.description && !isFallback && aiDescription) {
+        finalDescription = `
+            ${aiDescription}
+            <br><hr>
+            <div vocab="https://schema.org/" typeof="Product">
+                <h2>Original Specifications / Details</h2>
+                <div property="description">
+                    ${product.description.replace(/\n/g, '<br>')}
+                </div>
+            </div>
+        `;
+    }
+
     const updatePayload: any = {
         smart_tags: aiTags,
         ai_metadata: aiMetadata
     }
 
     if (aiName) updatePayload.name = aiName
-    if (aiDescription) updatePayload.description = aiDescription
+    if (finalDescription) updatePayload.description = finalDescription
+
+    // Fallback if AI description is missing/failed but we have name update
+    if (!finalDescription && aiDescription) updatePayload.description = aiDescription
 
     const { error: updateError } = await (supabase
         .from('products') as any)
@@ -149,13 +188,7 @@ export async function refineProduct(productId: string) {
     }
 
     // 4. Update Variations (Batch AI Processing)
-    const { data: variationsData } = await supabase
-        .from('products')
-        .select('id, name')
-        .eq('parent_id', productId)
-
-    const variations = variationsData as any[]
-
+    // Variations already fetched above
     if (variations && variations.length > 0 && !isFallback && apiKey) {
         console.log('--- Starting Batch Variation Refinement ---')
         console.log('Parent Name:', aiName)
@@ -181,11 +214,11 @@ export async function refineProduct(productId: string) {
 
                 Instructions:
                 1. "refined_name": The name people ACTUALLY search for (max 25 chars)
-                   - Use your knowledge of how people search on e-commerce sites
-                   - "1+13T" → "OnePlus 13T" (this is what people type)
-                   - "Sam.A06" → "Samsung A06" (expand brands)
-                   - "VIVO_Y17S" → "Vivo Y17s" (proper casing)
-                   - Keep it SHORT but recognizable
+                   - **CRITICAL**: Do NOT use abbreviations for brands. EXPAND them.
+                   - NO "1+13", NO "Ip 14", NO "Sam S23".
+                   - YES "OnePlus 13", YES "iPhone 14", YES "Samsung S23".
+                   - Capitalize properly (Vivo, Oppo, Realme).
+                   - Keep the model name prominent.
                 2. "variant_label": Same as refined_name
                 3. "smart_tags": 10-15 search terms people might use including:
                    - Full name ("oneplus 13t")

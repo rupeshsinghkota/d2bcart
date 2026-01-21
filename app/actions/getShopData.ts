@@ -18,6 +18,73 @@ const SYNONYMS: Record<string, string[]> = {
     'buds': ['earphone', 'headset', 'airpods'],
 };
 
+// New Instant Search Action for "Top 1%" Experience
+export async function getInstantSearchResults(query: string) {
+    try {
+        if (!query || query.trim().length < 2) return { products: [], categories: [], brands: [] }
+
+        // 1. Search Products (Standard Match)
+        // Fetch more items to allow for deduplication
+        const { data: rawProducts, error: prodError } = await supabaseAdmin
+            .from('products')
+            .select('id, name, slug, images, display_price, moq, parent_id')
+            .eq('is_active', true)
+            .ilike('name', `%${query}%`)
+            .limit(15) // Fetch more to filter duplicates
+            .order('display_price', { ascending: false });
+
+        // Deduplicate by Parent ID and Name Similarity
+        const uniqueProducts: any[] = [];
+        const seenKeys = new Set();
+
+        if (rawProducts) {
+            for (const p of rawProducts) {
+                // 1. Prefer grouping by Parent ID if available
+                if (p.parent_id) {
+                    if (seenKeys.has(p.parent_id)) continue;
+                    seenKeys.add(p.parent_id);
+                    uniqueProducts.push(p);
+                    continue;
+                }
+
+                // 2. If no parent, group by Name Similarity (first 30 chars)
+                // This prevents "Product X for S23", "Product X for S24" from clogging results
+                const nameKey = p.name.trim().toLowerCase().substring(0, 30);
+                if (seenKeys.has(nameKey)) continue;
+
+                seenKeys.add(nameKey);
+                uniqueProducts.push(p);
+
+                if (uniqueProducts.length >= 5) break;
+            }
+        }
+
+        // 2. Search Categories
+        const { data: categories, error: catError } = await supabaseAdmin
+            .from('categories')
+            .select('id, name, slug')
+            .ilike('name', `%${query}%`)
+            .limit(3)
+
+        // 3. Search Brands (Users)
+        const { data: brands, error: brandError } = await supabaseAdmin
+            .from('users')
+            .select('business_name')
+            .eq('user_type', 'manufacturer')
+            .ilike('business_name', `%${query}%`)
+            .limit(3)
+
+        return {
+            products: (uniqueProducts || []) as Product[],
+            categories: (categories || []) as Category[],
+            brands: (brands?.map(b => b.business_name) || []) as string[]
+        }
+    } catch (error) {
+        console.error('Instant Search Error:', error)
+        return { products: [], categories: [], brands: [] }
+    }
+}
+
 export const getShopCategories = unstable_cache(
     async () => {
         try {
@@ -308,8 +375,9 @@ export async function paginateShopProducts(
                 const clean = term.toLowerCase().replace(/[^a-z0-9]/g, '');
                 const syns = SYNONYMS[clean];
                 if (syns) {
-                    // (term | syn1 | syn2):*
-                    return `(${term} | ${syns.join(' | ')}):*`;
+                    // Fix: Apply :* to each term individually for correct prefix matching
+                    const allTerms = [term, ...syns].map(t => `${t}:*`).join(' | ')
+                    return `(${allTerms})`
                 }
                 return `${term}:*`;
             });
@@ -403,9 +471,78 @@ export async function paginateShopProducts(
 
         query = query.range(from, to)
 
-        const { data: products, error, count } = await query
+        const { data: initialProducts, error: initialError, count: initialCount } = await query
 
-        if (error) throw error
+        if (initialError) throw initialError
+
+        let products = initialProducts
+        let count = initialCount
+
+        // Fallback: If FTS returned no results, try aggressive Ranked Partial Search
+        // This exact logic mirrors getShopProducts to ensure consistency between first load and pagination
+        if ((!products || products.length === 0) && searchQuery) {
+            const cleanQuery = searchQuery.replace(/[!&|():*]/g, ' ').trim()
+            const terms = cleanQuery.split(/\s+/).filter(Boolean)
+
+            if (terms.length > 0) {
+                // Prepare Query: "term1 | term2 | ..." (Matches ANY)
+                const orQuery = terms.join(' | ')
+
+                const { data: rankedProducts, error: rpcError } = await supabaseAdmin
+                    .rpc('search_products_ranked', {
+                        search_query: orQuery,
+                        limit_count: limit,
+                        offset_count: from
+                    })
+
+                if (!rpcError && rankedProducts && rankedProducts.length > 0) {
+                    const ids = rankedProducts.map((p: any) => p.id)
+
+                    // Fetch full details with relations
+                    const { data: fullProducts } = await supabaseAdmin
+                        .from('products')
+                        .select(`
+                            *,
+                            manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                            category:categories!products_category_id_fkey(name, slug),
+                            variations:products!parent_id(display_price, moq)
+                        `)
+                        .in('id', ids)
+
+                    if (fullProducts) {
+                        // Restore Rank Order
+                        products = ids
+                            .map((id: string) => fullProducts.find(p => p.id === id))
+                            .filter(Boolean) as any[]
+
+                        count = 100 // Estimate
+                    }
+                }
+
+                // Ultimate fallback: Simple ilike search on name and description
+                if (!products || products.length === 0) {
+                    console.log('Using ilike fallback search for:', searchQuery)
+                    const { data: ilikeProducts, count: ilikeCount } = await supabaseAdmin
+                        .from('products')
+                        .select(`
+                            *,
+                            manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                            category:categories!products_category_id_fkey(name, slug),
+                            variations:products!parent_id(display_price, moq)
+                        `, { count: 'exact' })
+                        .eq('is_active', true)
+                        .is('parent_id', null)
+                        .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+                        .order('created_at', { ascending: false })
+                        .range(from, from + limit - 1)
+
+                    if (ilikeProducts && ilikeProducts.length > 0) {
+                        products = ilikeProducts
+                        count = ilikeCount || ilikeProducts.length
+                    }
+                }
+            }
+        }
 
         return {
             products: (products as Product[]) || [],

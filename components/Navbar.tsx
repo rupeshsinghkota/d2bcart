@@ -18,13 +18,13 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
 import { User as UserType } from '@/types'
 import CategoryStrip from './CategoryStrip'
+import InstantSearch from './InstantSearch'
 
 export default function Navbar() {
     const router = useRouter()
     // Use global store for user state to ensure instant updates
     const user = useStore((state) => state.user)
     const setUser = useStore((state) => state.setUser)
-    const [searchQuery, setSearchQuery] = useState('')
     const cart = useStore((state) => state.cart)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -59,12 +59,7 @@ export default function Navbar() {
         }
     }
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (searchQuery.trim()) {
-            router.push(`/products?search=${encodeURIComponent(searchQuery)}`)
-        }
-    }
+
 
     const getDashboardLink = () => {
         if (!user) return '/'
@@ -100,18 +95,9 @@ export default function Navbar() {
                 </div>
 
                 {/* 2. Search Bar - Visible on Mobile & Desktop */}
-                <form onSubmit={handleSearch} className="flex-1 min-w-0 max-w-xl mx-auto px-2">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            className="w-full pl-9 pr-3 py-2 bg-gray-50 hover:bg-gray-100 focus:bg-white border border-gray-200 focus:border-emerald-500 rounded-lg text-sm transition-all outline-none focus:ring-2 focus:ring-emerald-500/20"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    </div>
-                </form>
+                <div className="flex-1 min-w-0 max-w-xl mx-auto px-2">
+                    <InstantSearch />
+                </div>
 
                 {/* 3. Action Icons (Right Side) */}
                 <div className="flex items-center gap-2 md:gap-5 shrink-0">
