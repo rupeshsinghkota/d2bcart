@@ -39,6 +39,7 @@ export async function generateAndUploadCatalog(
         .select(`
             id,
             name,
+            slug,
             sku,
             base_price,
             display_price,
@@ -128,7 +129,7 @@ export async function generateAndUploadCatalog(
             }
 
             const waNumber = '917557777987'
-            const productLink = `${baseUrl}/products/${p.id}`
+            const productLink = `${baseUrl}/products/${p.slug || p.id}`
             const message = `Hi, I am interested in this product: ${p.name} (SKU: ${p.sku || 'N/A'}). Link: ${productLink}`
             const chatUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`
 

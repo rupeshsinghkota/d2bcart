@@ -285,7 +285,7 @@ export default function RetailerDashboard() {
                                 {buyAgainProducts.map((product) => (
                                     <Link
                                         key={product.id}
-                                        href={`/products/${product.id}`}
+                                        href={`/products/${product.slug || product.id}`}
                                         className="flex items-center gap-3 p-2 md:p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group w-full max-w-full"
                                     >
                                         <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">

@@ -2,19 +2,22 @@ import { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import ProductDetailClient from './ProductDetailClient'
 import { Product } from '@/types'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const supabase = supabaseAdmin
 
 interface Props {
-    params: Promise<{ id: string }>
+    params: Promise<{ slug: string }>
 }
 
 export const revalidate = 3600 // Revalidate every hour
 
-async function getProduct(id: string) {
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function getProduct(slug: string) {
+    // 1. Try fetching by slug
     const { data, error } = await supabase
         .from('products')
         .select(`
@@ -24,10 +27,27 @@ async function getProduct(id: string) {
       ),
       category:categories!products_category_id_fkey(name, slug)
     `)
-        .eq('id', id)
+        .eq('slug', slug)
         .single()
 
-    return data as Product | null
+    if (data) {
+        return { product: data as Product, redirect: null }
+    }
+
+    // 2. If not found, check if it's a UUID (legacy ID URL)
+    if (UUID_REGEX.test(slug)) {
+        const { data: dataById } = await supabase
+            .from('products')
+            .select('slug')
+            .eq('id', slug)
+            .single()
+
+        if (dataById && dataById.slug) {
+            return { product: null, redirect: dataById.slug }
+        }
+    }
+
+    return null
 }
 
 async function getVariations(product: Product) {
@@ -61,14 +81,20 @@ async function getManufacturerProducts(manufacturerId: string, currentProductId:
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const { id } = await params
-    const product = await getProduct(id)
+    const { slug } = await params
+    const result = await getProduct(slug)
 
-    if (!product) {
+    if (!result || result.redirect) {
+        // If redirect is needed, we don't return metadata here, the page component will redirect.
+        // Or if strictly not found.
         return {
             title: 'Product Not Found',
         }
     }
+
+    const { product } = result
+
+    if (!product) return { title: 'Product Not Found' }
 
     const description = product.description
         ? product.description.slice(0, 160)
@@ -92,10 +118,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
-    const { id } = await params
-    const product = await getProduct(id)
+    const { slug } = await params
+    const result = await getProduct(slug)
+
+    if (!result) {
+        notFound()
+    }
+
+    if (result.redirect) {
+        permanentRedirect(`/products/${result.redirect}`)
+    }
+
+    const { product } = result!
 
     if (!product) {
+        // Should not happen if result is not null and redirect is null
         notFound()
     }
 
@@ -123,7 +160,7 @@ export default async function ProductPage({ params }: Props) {
         description: product.description,
         sku: product.sku || product.id,
         mpn: product.sku || undefined,
-        url: `${baseUrl}/products/${product.id}`,
+        url: `${baseUrl}/products/${product.slug}`,
         brand: {
             '@type': 'Brand',
             name: product.manufacturer?.business_name || 'Generic'
@@ -133,7 +170,7 @@ export default async function ProductPage({ params }: Props) {
             price: packPrice, // IMPORTANT: Providing Pack Price to match Feed
             priceCurrency: 'INR',
             availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `${baseUrl}/products/${product.id}`,
+            url: `${baseUrl}/products/${product.slug}`,
             seller: {
                 '@type': 'Organization',
                 name: product.manufacturer?.business_name || 'D2BCart Seller'
@@ -162,7 +199,7 @@ export default async function ProductPage({ params }: Props) {
         jsonLd.hasVariant = variations.map(v => {
             const vMoq = v.moq || 1
             const vPackPrice = v.display_price * vMoq
-            let deepLink = `${baseUrl}/products/${product.id}?variant=${v.id}`
+            let deepLink = `${baseUrl}/products/${product.slug}?variant=${v.id}`
             // Fallback: If name contains differentiator like 'Red'
             if (v.name) deepLink += `&color=${encodeURIComponent(v.name)}`
 

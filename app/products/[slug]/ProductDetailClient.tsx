@@ -751,7 +751,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     {manufacturerProducts.map((item) => (
                                         <Link
                                             key={item.id}
-                                            href={`/products/${item.id}`}
+                                            href={`/products/${item.slug || item.id}`}
                                             className="flex-shrink-0 w-32 group"
                                         >
                                             <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 mb-2 border border-gray-100 group-hover:border-emerald-300 transition-colors">

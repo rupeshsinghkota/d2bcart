@@ -38,6 +38,7 @@ export interface Product {
     manufacturer_id: string
     category_id: string
     name: string
+    slug: string // Added for SEO URLs
     description?: string
     base_price: number
     display_price: number

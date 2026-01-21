@@ -12,6 +12,7 @@ export async function GET() {
             .from('products')
             .select(`
                 *,
+                slug,
                 manufacturer:users!products_manufacturer_id_fkey(business_name),
                 category:categories!products_category_id_fkey(name),
                 variations:products!parent_id(display_price, moq)
@@ -77,7 +78,7 @@ export async function GET() {
             const imageLink = product.images && product.images.length > 0 ? product.images[0] : ''
 
             // Link with Deep Linking params
-            let link = `${baseUrl}/products/${itemGroupId || product.id}`
+            let link = `${baseUrl}/products/${product.slug || product.id}`
             if (deepLinkParams.toString()) {
                 link += `?${deepLinkParams.toString()}`
             }

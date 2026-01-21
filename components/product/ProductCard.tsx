@@ -29,7 +29,7 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
 
     return (
         <div className="relative group bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full hover:-translate-y-1 ring-1 ring-gray-100 hover:ring-0">
-            <Link href={`/products/${product.id}`} className="block relative">
+            <Link href={`/products/${product.slug || product.id}`} className="block relative">
                 <div className="aspect-[4/5] bg-gray-50 relative overflow-hidden">
                     {product.images?.[0] ? (
                         <Image
@@ -81,7 +81,7 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
                 )}
 
                 {/* Product Name */}
-                <Link href={`/products/${product.id}`} className="block flex-1">
+                <Link href={`/products/${product.slug || product.id}`} className="block flex-1">
                     <h4 className="font-semibold text-gray-900 text-sm sm:text-[15px] leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors min-h-[2.5em]">
                         {product.name}
                     </h4>

@@ -110,7 +110,7 @@ export default function WishlistPage() {
                         {products.map(product => (
                             <div key={product.id} className="relative group">
                                 <Link
-                                    href={`/products/${product.id}`}
+                                    href={`/products/${product.slug || product.id}`}
                                     className="block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all"
                                 >
                                     {/* Image */}
