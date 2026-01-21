@@ -187,6 +187,29 @@ export const getShopProducts = async (categoryId?: string, page: number = 1, lim
                         }
                     }
                 }
+
+                // Ultimate fallback: Simple ilike search on name and description
+                console.log('Using ilike fallback search for:', searchQuery)
+                const { data: ilikeProducts, count: ilikeCount } = await supabaseAdmin
+                    .from('products')
+                    .select(`
+                        *,
+                        manufacturer:users!products_manufacturer_id_fkey(business_name, city, is_verified),
+                        category:categories!products_category_id_fkey(name, slug),
+                        variations:products!parent_id(display_price, moq)
+                    `, { count: 'exact' })
+                    .eq('is_active', true)
+                    .is('parent_id', null)
+                    .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+                    .order('created_at', { ascending: false })
+                    .range(from, from + limit - 1)
+
+                if (ilikeProducts && ilikeProducts.length > 0) {
+                    return {
+                        products: ilikeProducts as Product[],
+                        totalProducts: ilikeCount || ilikeProducts.length
+                    }
+                }
             }
         }
 
