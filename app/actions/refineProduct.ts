@@ -229,6 +229,41 @@ export async function refineProduct(productId: string) {
                     }
                 }
             }
+
+            // After processing all variations, aggregate their names to parent for searchability
+            if (variationUpdateCount > 0) {
+                // Fetch updated variation names
+                const { data: updatedVars } = await supabase
+                    .from('products')
+                    .select('name, ai_metadata')
+                    .eq('parent_id', productId)
+
+                if (updatedVars && updatedVars.length > 0) {
+                    const varNames = updatedVars.map((v: any) => v.name || v.ai_metadata?.variant_label).filter(Boolean)
+                    const uniqueVarNames = [...new Set(varNames)]
+
+                    // Create "Compatible Models" text for description
+                    const compatibleModelsHtml = `<h2>Compatible Models</h2><p>${uniqueVarNames.join(', ')}</p>`
+
+                    // Add variation names to parent's smart_tags for searchability
+                    const varTags = uniqueVarNames.flatMap((name: string) => {
+                        // Split model names into searchable parts
+                        return [name.toLowerCase(), ...name.toLowerCase().split(' ').filter((p: string) => p.length > 2)]
+                    })
+                    const mergedTags = [...new Set([...(aiTags || []), ...varTags])]
+
+                    // Update parent with enhanced description and tags
+                    await (supabase.from('products') as any)
+                        .update({
+                            description: (aiDescription || '') + compatibleModelsHtml,
+                            smart_tags: mergedTags.slice(0, 30) // Limit to 30 tags
+                        })
+                        .eq('id', productId)
+
+                    console.log(`Added ${uniqueVarNames.length} variation names to parent search`)
+                }
+            }
+
             debugMessage = `Batch Success: ${variationUpdateCount}/${variations.length}`
 
         } catch (error: any) {
