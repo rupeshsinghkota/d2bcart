@@ -109,10 +109,16 @@ export default function EditProductPage() {
                         if (v.ai_metadata?.variant_label) {
                             displayName = v.ai_metadata.variant_label
                         } else {
-                            // Priority 2: Extract suffix after " - " if present
+                            // Priority 2: Extract suffix after " - " if present (old format)
                             const dashIndex = v.name.lastIndexOf(' - ')
                             if (dashIndex !== -1 && dashIndex < v.name.length - 3) {
                                 displayName = v.name.substring(dashIndex + 3)
+                            } else if (v.smart_tags && v.smart_tags.length > 0) {
+                                // Priority 3: Use first smart_tag (usually the model name)
+                                displayName = v.smart_tags[0]
+                            } else if (displayName.length > 30) {
+                                // Priority 4: Truncate very long names
+                                displayName = '...' + displayName.slice(-25)
                             }
                         }
 
