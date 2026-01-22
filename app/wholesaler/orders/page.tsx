@@ -650,7 +650,11 @@ const OrdersContent = () => {
                                             {group.map((order, index) => (
                                                 <div key={order.id} className={`p-3 flex flex-row gap-3 items-start ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
                                                     <div className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
-                                                        <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`}>
+                                                        <Link
+                                                            href={`/products/${(order as any).product?.slug || (order as any).product_id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
                                                             {(order as any).product?.images?.[0] ? (
                                                                 <Image
                                                                     src={(order as any).product.images[0]}
@@ -666,7 +670,12 @@ const OrdersContent = () => {
 
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">
-                                                            <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`} className="hover:text-emerald-600 transition-colors">
+                                                            <Link
+                                                                href={`/products/${(order as any).product?.slug || (order as any).product_id}`}
+                                                                className="hover:text-emerald-600 transition-colors"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
                                                                 {(order as any).product?.name}
                                                             </Link>
                                                         </div>
