@@ -323,55 +323,104 @@ const OrdersContent = () => {
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-5xl mx-auto px-4 py-8">
                 {/* Header & Pending Earnings */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-16 md:pt-0">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4 pt-4 md:pt-0">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Orders</h1>
-                        <p className="text-gray-600 mt-1">Manage all your wholesale orders</p>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Orders</h1>
+                        <p className="text-xs text-gray-500">Manage all your wholesale orders</p>
                     </div>
 
-                    <div className="bg-emerald-600 text-white shadow-lg shadow-emerald-200 rounded-xl px-6 py-4 text-right w-full md:w-auto transform transition-transform hover:scale-105">
-                        <div className="text-xs font-medium text-emerald-100 uppercase tracking-wider mb-1">Pending Earnings</div>
-                        <div className="text-2xl font-bold flex items-center gap-2">
+                    <div className="bg-emerald-600 text-white shadow-lg shadow-emerald-200 rounded-lg px-4 py-2 text-right w-full md:w-auto transform transition-transform hover:scale-105">
+                        <div className="text-[10px] font-medium text-emerald-100 uppercase tracking-wider mb-0.5">Pending Earnings</div>
+                        <div className="text-xl font-bold flex items-center justify-end gap-1.5">
                             {formatCurrency(pendingEarnings)}
-                            <Clock className="w-5 h-5 text-emerald-200" />
+                            <Clock className="w-4 h-4 text-emerald-200" />
                         </div>
                     </div>
                 </div>
 
                 {/* Toolbar: Search, Filters, Sort */}
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-4">
-                    <div className="flex flex-col lg:flex-row gap-4">
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 mb-4 space-y-3">
+                    <div className="flex flex-col lg:flex-row gap-3">
                         {/* Search */}
                         <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search by Order ID, Retailer..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
                             />
                         </div>
 
-                        {/* Date Range */}
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        {/* Date Range & Quick Filters */}
+                        <div className="flex flex-col gap-1.5">
+                            {/* Quick Date Tokens */}
+                            <div className="flex gap-2 mb-0.5 overflow-x-auto no-scrollbar pb-1">
+                                {[
+                                    { label: 'Today', days: 0 },
+                                    { label: 'Yesterday', days: 1 },
+                                    { label: 'Last 7 Days', days: 7 },
+                                    { label: 'Last 30 Days', days: 30 },
+                                    { label: 'This Month', type: 'month' },
+                                    { label: 'All Time', type: 'all' }
+                                ].map((filter) => (
+                                    <button
+                                        key={filter.label}
+                                        onClick={() => {
+                                            const today = new Date()
+                                            let start = ''
+                                            let end = today.toISOString().split('T')[0]
+
+                                            if (filter.type === 'all') {
+                                                setStartDate('')
+                                                setEndDate('')
+                                                return
+                                            }
+
+                                            if (filter.type === 'month') {
+                                                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+                                                start = firstDay.toISOString().split('T')[0]
+                                            } else if (filter.label === 'Yesterday') {
+                                                const yest = new Date(today)
+                                                yest.setDate(yest.getDate() - 1)
+                                                start = yest.toISOString().split('T')[0]
+                                                end = yest.toISOString().split('T')[0]
+                                            } else {
+                                                const pastDate = new Date(today)
+                                                pastDate.setDate(pastDate.getDate() - (filter.days as number))
+                                                start = pastDate.toISOString().split('T')[0]
+                                            }
+
+                                            setStartDate(start)
+                                            setEndDate(end)
+                                        }}
+                                        className="px-2 py-0.5 text-[10px] font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full whitespace-nowrap transition-colors border border-gray-200"
+                                    >
+                                        {filter.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        className="pl-8 pr-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white w-32 sm:w-auto"
+                                    />
+                                </div>
+                                <span className="text-gray-400 text-xs">-</span>
                                 <input
                                     type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white w-36 sm:w-auto"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    min={startDate}
+                                    className="px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white w-32 sm:w-auto"
                                 />
                             </div>
-                            <span className="text-gray-400">-</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                min={startDate}
-                                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white w-36 sm:w-auto"
-                            />
                         </div>
                     </div>
 
@@ -479,9 +528,9 @@ const OrdersContent = () => {
                             return (
                                 <div key={orderNumber} className={`bg-white rounded-xl shadow-sm overflow-hidden border transition-all ${isSelected ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-gray-100 hover:shadow-md'}`}>
                                     {/* Unified Order Header */}
-                                    <div className="p-5 border-b border-gray-100 bg-white">
-                                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                                            <div className="flex gap-4">
+                                    <div className="p-3 border-b border-gray-100 bg-white">
+                                        <div className="flex flex-col md:flex-row justify-between gap-3">
+                                            <div className="flex gap-3">
 
                                                 {/* Left: Checkbox (Select Order) */}
                                                 <button
@@ -502,11 +551,11 @@ const OrdersContent = () => {
 
                                                 {/* Order Info */}
                                                 <div>
-                                                    <div className="flex flex-wrap items-center gap-3 mb-2">
-                                                        <span className="text-lg font-bold text-gray-900 tracking-tight">
+                                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                                        <span className="text-base font-bold text-gray-900 tracking-tight">
                                                             {orderNumber}
                                                         </span>
-                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadge(overallStatus)}`}>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${getStatusBadge(overallStatus)}`}>
                                                             {overallStatus.replace('_', ' ')}
                                                         </span>
                                                         {hasReadyItems && (
@@ -515,19 +564,19 @@ const OrdersContent = () => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-sm text-gray-500 flex items-center gap-2">
-                                                        <Clock className="w-3.5 h-3.5" />
+                                                    <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                                                        <Clock className="w-3 h-3" />
                                                         {new Date(firstOrder.created_at).toLocaleDateString('en-IN', {
                                                             day: 'numeric', month: 'short', year: 'numeric',
                                                             hour: '2-digit', minute: '2-digit'
                                                         })}
                                                     </div>
-                                                    <div className="mt-3 flex items-center gap-4 text-sm">
-                                                        <div className="font-medium text-gray-900 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
+                                                    <div className="mt-2 flex items-center gap-3 text-xs">
+                                                        <div className="font-medium text-gray-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                                                             Payout: <span className="text-emerald-700 font-bold">{formatCurrency(totalPayout)}</span>
                                                         </div>
                                                         {totalPending > 0 && (
-                                                            <div className="text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-100 font-medium">
+                                                            <div className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-medium">
                                                                 Pending COD: {formatCurrency(totalPending)}
                                                             </div>
                                                         )}
@@ -599,8 +648,8 @@ const OrdersContent = () => {
                                     {isExpanded && (
                                         <div className="bg-gray-50/30 border-t border-gray-100 animate-in fade-in slide-in-from-top-1">
                                             {group.map((order, index) => (
-                                                <div key={order.id} className={`p-4 flex flex-row gap-4 items-start ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                                                    <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
+                                                <div key={order.id} className={`p-3 flex flex-row gap-3 items-start ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                                    <div className="w-12 h-12 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
                                                         <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`}>
                                                             {(order as any).product?.images?.[0] ? (
                                                                 <Image
@@ -610,18 +659,18 @@ const OrdersContent = () => {
                                                                     className="object-cover"
                                                                 />
                                                             ) : (
-                                                                <Package className="w-5 h-5 text-gray-300 m-auto translate-y-4" />
+                                                                <Package className="w-4 h-4 text-gray-300 m-auto translate-y-3" />
                                                             )}
                                                         </Link>
                                                     </div>
 
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="font-medium text-gray-900 line-clamp-2 leading-tight">
+                                                        <div className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">
                                                             <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`} className="hover:text-emerald-600 transition-colors">
                                                                 {(order as any).product?.name}
                                                             </Link>
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                                        <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-2">
                                                             <span>{order.quantity} units</span>
                                                             <span>×</span>
                                                             <span>{formatCurrency(order.unit_price)}</span>
@@ -631,9 +680,9 @@ const OrdersContent = () => {
                                                     <div className="flex-shrink-0 self-center">
                                                         <Link
                                                             href={`/wholesaler/orders/${order.id}`}
-                                                            className="text-gray-400 hover:text-emerald-600 p-2 block"
+                                                            className="text-gray-400 hover:text-emerald-600 p-1 block"
                                                         >
-                                                            <ArrowLeft className="w-5 h-5 rotate-180" />
+                                                            <ArrowLeft className="w-4 h-4 rotate-180" />
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -642,12 +691,12 @@ const OrdersContent = () => {
                                     )}
 
                                     {/* Footer / Expansion Toggle */}
-                                    <div className="px-5 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400 uppercase tracking-wider font-semibold hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => toggleOrderExpansion(orderNumber)}>
+                                    <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-[10px] text-gray-400 uppercase tracking-wider font-semibold hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => toggleOrderExpansion(orderNumber)}>
                                         <div>{group.length} Product{group.length > 1 ? 's' : ''}</div>
                                         <div className="flex gap-4 items-center">
                                             <span>Pay: {group[0].payment_type === 'advance' ? 'COD (Shipping Paid)' : 'Full'}</span>
                                             <span className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700">
-                                                {isExpanded ? 'Hide Products' : 'View Products'}
+                                                {isExpanded ? 'Hide' : 'View'}
                                                 <ArrowLeft className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : '-rotate-90'}`} />
                                             </span>
                                         </div>
