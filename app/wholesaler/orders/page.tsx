@@ -599,7 +599,7 @@ const OrdersContent = () => {
                                     {isExpanded && (
                                         <div className="bg-gray-50/30 border-t border-gray-100 animate-in fade-in slide-in-from-top-1">
                                             {group.map((order, index) => (
-                                                <div key={order.id} className={`p-4 flex flex-col sm:flex-row gap-4 items-center ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                                <div key={order.id} className={`p-4 flex flex-row gap-4 items-start ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
                                                     <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
                                                         <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`}>
                                                             {(order as any).product?.images?.[0] ? (
@@ -615,25 +615,25 @@ const OrdersContent = () => {
                                                         </Link>
                                                     </div>
 
-                                                    <div className="flex-1 text-center sm:text-left min-w-0">
-                                                        <div className="font-medium text-gray-900 truncate">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-medium text-gray-900 line-clamp-2 leading-tight">
                                                             <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`} className="hover:text-emerald-600 transition-colors">
                                                                 {(order as any).product?.name}
                                                             </Link>
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-1 flex items-center justify-center sm:justify-start gap-2">
+                                                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                                                             <span>{order.quantity} units</span>
                                                             <span>×</span>
                                                             <span>{formatCurrency(order.unit_price)}</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
+                                                    <div className="flex-shrink-0 self-center">
                                                         <Link
                                                             href={`/wholesaler/orders/${order.id}`}
-                                                            className="text-gray-400 hover:text-gray-600 p-1.5"
+                                                            className="text-gray-400 hover:text-emerald-600 p-2 block"
                                                         >
-                                                            <ArrowLeft className="w-4 h-4 rotate-180" />
+                                                            <ArrowLeft className="w-5 h-5 rotate-180" />
                                                         </Link>
                                                     </div>
                                                 </div>
