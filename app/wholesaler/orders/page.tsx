@@ -67,7 +67,7 @@ const OrdersContent = () => {
             .from('orders')
             .select(`
         *,
-        product:products(name, images),
+        product:products(name, images, slug),
         retailer:users!orders_retailer_id_fkey(business_name, city, phone, address, state, pincode),
         manufacturer:users!orders_manufacturer_id_fkey(address, phone, pincode, city)
       `)
@@ -323,7 +323,7 @@ const OrdersContent = () => {
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-5xl mx-auto px-4 py-8">
                 {/* Header & Pending Earnings */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-16 md:pt-0">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Orders</h1>
                         <p className="text-gray-600 mt-1">Manage all your wholesale orders</p>
@@ -502,7 +502,7 @@ const OrdersContent = () => {
 
                                                 {/* Order Info */}
                                                 <div>
-                                                    <div className="flex items-center gap-3 mb-2">
+                                                    <div className="flex flex-wrap items-center gap-3 mb-2">
                                                         <span className="text-lg font-bold text-gray-900 tracking-tight">
                                                             {orderNumber}
                                                         </span>
@@ -601,20 +601,26 @@ const OrdersContent = () => {
                                             {group.map((order, index) => (
                                                 <div key={order.id} className={`p-4 flex flex-col sm:flex-row gap-4 items-center ${index !== group.length - 1 ? 'border-b border-gray-100' : ''}`}>
                                                     <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
-                                                        {(order as any).product?.images?.[0] ? (
-                                                            <Image
-                                                                src={(order as any).product.images[0]}
-                                                                alt=""
-                                                                fill
-                                                                className="object-cover"
-                                                            />
-                                                        ) : (
-                                                            <Package className="w-5 h-5 text-gray-300 m-auto translate-y-4" />
-                                                        )}
+                                                        <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`}>
+                                                            {(order as any).product?.images?.[0] ? (
+                                                                <Image
+                                                                    src={(order as any).product.images[0]}
+                                                                    alt=""
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                            ) : (
+                                                                <Package className="w-5 h-5 text-gray-300 m-auto translate-y-4" />
+                                                            )}
+                                                        </Link>
                                                     </div>
 
                                                     <div className="flex-1 text-center sm:text-left min-w-0">
-                                                        <div className="font-medium text-gray-900 truncate">{(order as any).product?.name}</div>
+                                                        <div className="font-medium text-gray-900 truncate">
+                                                            <Link href={`/products/${(order as any).product?.slug || (order as any).product_id}`} className="hover:text-emerald-600 transition-colors">
+                                                                {(order as any).product?.name}
+                                                            </Link>
+                                                        </div>
                                                         <div className="text-xs text-gray-500 mt-1 flex items-center justify-center sm:justify-start gap-2">
                                                             <span>{order.quantity} units</span>
                                                             <span>×</span>
