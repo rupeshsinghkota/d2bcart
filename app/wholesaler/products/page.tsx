@@ -425,12 +425,28 @@ export default function ManufacturerProductsPage() {
                                                     <Sparkles className="w-4 h-4" />
                                                     AI Refine
                                                 </button>
-                                                <Link
-                                                    href={`/wholesaler/products/${product.id}/edit`}
-                                                    className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
-                                                >
-                                                    Edit Product
-                                                </Link>
+
+                                                <div className="flex gap-2">
+                                                    <Link
+                                                        href={`/wholesaler/products/${product.id}/edit`}
+                                                        className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform"
+                                                    >
+                                                        Edit
+                                                    </Link>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault()
+                                                            e.stopPropagation()
+                                                            handleToggleActive(product)
+                                                        }}
+                                                        className={`px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform text-white ${product.is_active
+                                                                ? 'bg-red-500 hover:bg-red-600'
+                                                                : 'bg-emerald-500 hover:bg-emerald-600'
+                                                            }`}
+                                                    >
+                                                        {product.is_active ? 'Deactivate' : 'Activate'}
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
