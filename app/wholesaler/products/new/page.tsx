@@ -21,6 +21,16 @@ interface Variation {
     moq: string
 }
 
+const slugify = (text: string) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')     // Replace spaces with -
+        .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+        .replace(/\-\-+/g, '-')   // Replace multiple - with single -
+}
+
 export default function NewProductPage() {
     const router = useRouter()
     const [categories, setCategories] = useState<Category[]>([])
@@ -140,12 +150,14 @@ export default function NewProductPage() {
 
             // Generate SKU for parent
             const parentSku = `${formData.name.substring(0, 30).replace(/\s+/g, '-').toUpperCase()}-${Date.now()}`
+            const parentSlug = `${slugify(formData.name)}-${Date.now()}`
 
             // Create parent product
             const { data: parentProduct, error: parentError } = await (supabase.from('products') as any).insert({
                 manufacturer_id: userId,
                 category_id: formData.category_id,
                 name: formData.name,
+                slug: parentSlug,
                 description: formData.description,
                 base_price: basePrice,
                 display_price: displayPrice,
@@ -168,13 +180,16 @@ export default function NewProductPage() {
 
             // Create variations if variable product
             if (productType === 'variable' && variations.length > 0 && parentProduct) {
-                const variationInserts = variations.map(v => {
+                const variationInserts = variations.map((v, index) => {
                     const varPrice = parseFloat(v.price) || basePrice
                     const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
+                    const varName = `${formData.name} - ${v.name}`
+
                     return {
                         manufacturer_id: userId,
                         category_id: formData.category_id,
-                        name: `${formData.name} - ${v.name}`,
+                        name: varName,
+                        slug: `${slugify(varName)}-${Date.now()}-${index}`,
                         description: formData.description,
                         base_price: varPrice,
                         display_price: varDisplayPrice,
