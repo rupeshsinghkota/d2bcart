@@ -46,6 +46,9 @@ export default function VariationManager({
     const [bulkStockInput, setBulkStockInput] = useState('')
     const [bulkMoqInput, setBulkMoqInput] = useState('')
 
+    // Max price validation to prevent integer overflow
+    const MAX_PRICE = 999999999
+
     // Get the effective price for new variations
     const effectivePrice = parentPrice || defaultPrice || ''
 
@@ -122,7 +125,16 @@ export default function VariationManager({
             }
         })
 
-        onVariationsChange([...variations, ...newVariations])
+        // Filter out duplicates based on name
+        const existingNames = new Set(variations.map(v => v.name.toLowerCase()))
+        const uniqueNewVariations = newVariations.filter(v => !existingNames.has(v.name.toLowerCase()))
+        const duplicateCount = newVariations.length - uniqueNewVariations.length
+
+        if (duplicateCount > 0) {
+            alert(`Skipped ${duplicateCount} duplicate variation(s).`)
+        }
+
+        onVariationsChange([...variations, ...uniqueNewVariations])
     }
 
     const addVariation = () => {
@@ -138,6 +150,15 @@ export default function VariationManager({
     }
 
     const updateVariation = (id: string, field: keyof Variation, value: string) => {
+        // Validate price to prevent overflow
+        if (field === 'price') {
+            const numValue = parseFloat(value)
+            if (numValue > MAX_PRICE) {
+                alert(`Price cannot exceed ₹${MAX_PRICE.toLocaleString()}`)
+                return
+            }
+        }
+
         onVariationsChange(
             variations.map(v => {
                 if (v.id === id) {
@@ -159,7 +180,13 @@ export default function VariationManager({
     const bulkAddVariations = () => {
         if (!bulkNames.trim()) return
         const names = bulkNames.split('\n').map(n => n.trim()).filter(Boolean)
-        const newVariations: Variation[] = names.map(name => ({
+
+        // Filter out duplicates
+        const existingNames = new Set(variations.map(v => v.name.toLowerCase()))
+        const uniqueNames = names.filter(name => !existingNames.has(name.toLowerCase()))
+        const duplicateCount = names.length - uniqueNames.length
+
+        const newVariations: Variation[] = uniqueNames.map(name => ({
             id: Date.now().toString() + Math.random(),
             name,
             sku: `${parentName.substring(0, 20).replace(/\s+/g, '-').toUpperCase()}-${name.replace(/\s+/g, '-').toUpperCase()}`,
@@ -167,6 +194,11 @@ export default function VariationManager({
             stock: parentStock || '1000',
             moq: parentMoq || '1'
         }))
+
+        if (duplicateCount > 0) {
+            alert(`Skipped ${duplicateCount} duplicate variation(s).`)
+        }
+
         onVariationsChange([...variations, ...newVariations])
         setBulkNames('')
     }
@@ -351,16 +383,21 @@ export default function VariationManager({
                                     ))}
 
                                     {/* Generate Button */}
-                                    <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-purple-100 rounded-lg">
                                         <div>
                                             <span className="text-sm text-purple-800">
                                                 This will generate <strong>{totalCombinations}</strong> variations
                                             </span>
+                                            {totalCombinations > 50 && (
+                                                <p className="text-xs text-amber-700 mt-1 font-medium">
+                                                    ⚠️ Large number of variations may slow down the page
+                                                </p>
+                                            )}
                                         </div>
                                         <button
                                             type="button"
                                             onClick={generateVariationsFromAttributes}
-                                            className="px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 flex items-center gap-2"
+                                            className="w-full sm:w-auto px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 flex items-center justify-center gap-2"
                                         >
                                             <Sparkles className="w-4 h-4" />
                                             Generate Variations
@@ -494,50 +531,108 @@ export default function VariationManager({
 
                             <div className="space-y-2 max-h-96 overflow-y-auto">
                                 {variations.map((variation, index) => (
-                                    <div key={variation.id} className="flex gap-2 items-center p-2 bg-gray-50 rounded-lg text-sm">
-                                        <span className="text-gray-400 w-6">{index + 1}</span>
-                                        <input
-                                            type="text"
-                                            value={variation.name}
-                                            onChange={(e) => updateVariation(variation.id, 'name', e.target.value)}
-                                            placeholder="Name"
-                                            className="input text-sm flex-1"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={variation.sku}
-                                            onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
-                                            placeholder="SKU"
-                                            className="input text-sm w-40 font-mono text-xs"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={variation.price}
-                                            onChange={(e) => updateVariation(variation.id, 'price', e.target.value)}
-                                            placeholder="Price"
-                                            className="input text-sm w-24"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={variation.stock}
-                                            onChange={(e) => updateVariation(variation.id, 'stock', e.target.value)}
-                                            placeholder="Stock"
-                                            className="input text-sm w-20"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={variation.moq}
-                                            onChange={(e) => updateVariation(variation.id, 'moq', e.target.value)}
-                                            placeholder="MOQ"
-                                            className="input text-sm w-16"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeVariation(variation.id)}
-                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                    <div key={variation.id} className="p-3 bg-gray-50 rounded-lg">
+                                        {/* Mobile: Card Layout */}
+                                        <div className="md:hidden space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-400 text-sm font-medium">#{index + 1}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVariation(variation.id)}
+                                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={variation.name}
+                                                onChange={(e) => updateVariation(variation.id, 'name', e.target.value)}
+                                                placeholder="Variation Name"
+                                                className="input text-sm w-full"
+                                            />
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="text-xs text-gray-500">Price</label>
+                                                    <input
+                                                        type="number"
+                                                        value={variation.price}
+                                                        onChange={(e) => updateVariation(variation.id, 'price', e.target.value)}
+                                                        placeholder="Price"
+                                                        className="input text-sm w-full"
+                                                        max={MAX_PRICE}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-500">Stock</label>
+                                                    <input
+                                                        type="number"
+                                                        value={variation.stock}
+                                                        onChange={(e) => updateVariation(variation.id, 'stock', e.target.value)}
+                                                        placeholder="Stock"
+                                                        className="input text-sm w-full"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-500">MOQ</label>
+                                                    <input
+                                                        type="number"
+                                                        value={variation.moq}
+                                                        onChange={(e) => updateVariation(variation.id, 'moq', e.target.value)}
+                                                        placeholder="MOQ"
+                                                        className="input text-sm w-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Desktop: Row Layout */}
+                                        <div className="hidden md:flex gap-2 items-center text-sm">
+                                            <span className="text-gray-400 w-6">{index + 1}</span>
+                                            <input
+                                                type="text"
+                                                value={variation.name}
+                                                onChange={(e) => updateVariation(variation.id, 'name', e.target.value)}
+                                                placeholder="Name"
+                                                className="input text-sm flex-1"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={variation.sku}
+                                                onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
+                                                placeholder="SKU"
+                                                className="input text-sm w-40 font-mono text-xs"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={variation.price}
+                                                onChange={(e) => updateVariation(variation.id, 'price', e.target.value)}
+                                                placeholder="Price"
+                                                className="input text-sm w-24"
+                                                max={MAX_PRICE}
+                                            />
+                                            <input
+                                                type="number"
+                                                value={variation.stock}
+                                                onChange={(e) => updateVariation(variation.id, 'stock', e.target.value)}
+                                                placeholder="Stock"
+                                                className="input text-sm w-20"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={variation.moq}
+                                                onChange={(e) => updateVariation(variation.id, 'moq', e.target.value)}
+                                                placeholder="MOQ"
+                                                className="input text-sm w-16"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeVariation(variation.id)}
+                                                className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
