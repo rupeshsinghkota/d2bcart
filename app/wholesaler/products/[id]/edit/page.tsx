@@ -269,7 +269,16 @@ export default function EditProductPage() {
 
                 // Batch insert new variations (single call)
                 if (toInsert.length > 0) {
-                    promises.push((supabase.from('products') as any).insert(toInsert))
+                    const insertPromise = (supabase.from('products') as any)
+                        .insert(toInsert)
+                        .then((result: any) => {
+                            if (result.error) {
+                                console.error('Insert error:', result.error)
+                                throw new Error(result.error.message)
+                            }
+                            return result
+                        })
+                    promises.push(insertPromise)
                 }
 
                 // Batch update existing variations in chunks for speed
@@ -278,7 +287,16 @@ export default function EditProductPage() {
                     const chunk = toUpdate.slice(i, i + CHUNK_SIZE)
                     const updatePromises = chunk.map((item: any) => {
                         const { id: varId, ...data } = item
-                        return (supabase.from('products') as any).update(data).eq('id', varId)
+                        return (supabase.from('products') as any)
+                            .update(data)
+                            .eq('id', varId)
+                            .then((result: any) => {
+                                if (result.error) {
+                                    console.error('Update error:', result.error)
+                                    throw new Error(result.error.message)
+                                }
+                                return result
+                            })
                     })
                     promises.push(...updatePromises)
                 }
