@@ -388,9 +388,9 @@ export default function VariationManager({
                                             <span className="text-sm text-purple-800">
                                                 This will generate <strong>{totalCombinations}</strong> variations
                                             </span>
-                                            {totalCombinations > 50 && (
+                                            {totalCombinations > 200 && (
                                                 <p className="text-xs text-amber-700 mt-1 font-medium">
-                                                    ⚠️ Large number of variations may slow down the page
+                                                    ⚠️ Generating 200+ variations - this may take a moment
                                                 </p>
                                             )}
                                         </div>
@@ -529,7 +529,12 @@ export default function VariationManager({
                                 </div>
                             </div>
 
-                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                                {variations.length > 100 && (
+                                    <div className="sticky top-0 bg-amber-50 text-amber-800 text-xs p-2 rounded border border-amber-200 z-10">
+                                        Showing {variations.length} variations. Use bulk update above to quickly change all prices/stock.
+                                    </div>
+                                )}
                                 {variations.map((variation, index) => (
                                     <div key={variation.id} className="p-3 bg-gray-50 rounded-lg">
                                         {/* Mobile: Card Layout */}
