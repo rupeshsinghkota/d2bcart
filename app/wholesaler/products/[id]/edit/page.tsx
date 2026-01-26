@@ -212,27 +212,24 @@ export default function EditProductPage() {
                 const currentVariationIds = variations.filter(v => v.dbId).map(v => v.dbId)
                 const existingVariationIds = existingVariations.map(v => v.id)
 
-                // Delete removed variations
+                // Delete removed variations in one call
                 const toDelete = existingVariationIds.filter(id => !currentVariationIds.includes(id))
                 if (toDelete.length > 0) {
                     await supabase.from('products').delete().in('id', toDelete)
                 }
 
-                // Update existing & add new variations
+                // Prepare batch data for updates and inserts
+                const toUpdate: any[] = []
+                const toInsert: any[] = []
+
                 for (const v of variations) {
                     const varPrice = parseFloat(v.price) || basePrice
                     const varDisplayPrice = calculateDisplayPrice(varPrice, markupPercentage)
 
-                    // Determine variation name: preserve AI-refined names for existing variations
                     let varName = v.name
                     if (!v.dbId) {
-                        // New variation being added - use the traditional format with parent name prefix
                         varName = `${formData.name} - ${v.name}`
                     }
-                    // For existing variations (v.dbId exists), keep the display name as-is
-                    // The display name is what was shown in the UI (may be extracted from AI name)
-                    // But we need to get the ACTUAL DB name, not the extracted display name
-                    // Since we're editing, we should preserve the existing DB name for AI-refined variations
 
                     const variationData = {
                         manufacturer_id: user.id,
@@ -242,7 +239,6 @@ export default function EditProductPage() {
                         base_price: varPrice,
                         display_price: varDisplayPrice,
                         your_margin: varDisplayPrice - varPrice,
-
                         moq: parseInt(v.moq) || parseInt(formData.moq) || 1,
                         stock: parseInt(v.stock) || 0,
                         images: images,
@@ -259,14 +255,35 @@ export default function EditProductPage() {
                     }
 
                     if (v.dbId) {
-                        // Update existing - but DON'T update the name (preserve AI-refined name)
+                        // Prepare for batch update (exclude name to preserve AI-refined names)
                         const { name, ...dataWithoutName } = variationData
-                        await (supabase.from('products') as any).update(dataWithoutName).eq('id', v.dbId)
+                        toUpdate.push({ id: v.dbId, ...dataWithoutName })
                     } else {
-                        // Insert new
-                        await (supabase.from('products') as any).insert(variationData)
+                        // Prepare for batch insert
+                        toInsert.push(variationData)
                     }
                 }
+
+                // Execute batch operations in parallel
+                const promises: Promise<any>[] = []
+
+                // Batch insert new variations (single call)
+                if (toInsert.length > 0) {
+                    promises.push((supabase.from('products') as any).insert(toInsert))
+                }
+
+                // Batch update existing variations in chunks for speed
+                const CHUNK_SIZE = 10
+                for (let i = 0; i < toUpdate.length; i += CHUNK_SIZE) {
+                    const chunk = toUpdate.slice(i, i + CHUNK_SIZE)
+                    const updatePromises = chunk.map((item: any) => {
+                        const { id: varId, ...data } = item
+                        return (supabase.from('products') as any).update(data).eq('id', varId)
+                    })
+                    promises.push(...updatePromises)
+                }
+
+                await Promise.all(promises)
             }
 
             toast.success('Product updated successfully!')
