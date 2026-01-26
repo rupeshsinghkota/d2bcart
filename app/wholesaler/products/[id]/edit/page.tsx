@@ -235,6 +235,7 @@ export default function EditProductPage() {
                         manufacturer_id: user.id,
                         category_id: formData.category_id,
                         name: varName,
+                        slug: `${varName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}`,
                         description: formData.description,
                         base_price: varPrice,
                         display_price: varDisplayPrice,
