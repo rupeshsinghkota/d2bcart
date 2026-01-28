@@ -20,7 +20,17 @@ export async function POST(req: Request) {
             razorpay = new Razorpay({ key_id, key_secret })
         }
 
-        const { amount, currency = 'INR', receipt } = await req.json()
+        const body = await req.json()
+        const {
+            amount,
+            currency = 'INR',
+            receipt,
+            // Context data for webhook recovery
+            user_id,
+            cart_payload,
+            payment_breakdown,
+            shipping_address
+        } = body
 
         if (!amount) {
             return NextResponse.json({ error: 'Amount is required' }, { status: 400 })
@@ -33,6 +43,31 @@ export async function POST(req: Request) {
         }
 
         const order = await razorpay.orders.create(options)
+
+        // Save Attempt for Webhook Recovery
+        if (user_id && cart_payload) {
+            const { createClient } = await import('@supabase/supabase-js')
+            const supabaseAdmin = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            )
+
+            const { error: attemptError } = await supabaseAdmin
+                .from('payment_attempts')
+                .insert({
+                    razorpay_order_id: order.id,
+                    user_id,
+                    cart_payload,
+                    payment_breakdown,
+                    shipping_address,
+                    status: 'pending'
+                })
+
+            if (attemptError) {
+                console.error('Failed to save payment attempt:', attemptError)
+                // We don't block the user, but we log it. Webhook won't work for this order if DB fails.
+            }
+        }
 
         return NextResponse.json(order)
     } catch (error: any) {

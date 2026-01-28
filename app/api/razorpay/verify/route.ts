@@ -182,6 +182,19 @@ export async function POST(req: Request) {
             console.error('WhatsApp Notification Failed:', waError)
         }
 
+        // ... existing success logic ...
+
+        // Mark Attempt as Completed (to prevent Webhook from re-processing)
+        try {
+            await supabaseAdmin
+                .from('payment_attempts')
+                .update({ status: 'completed' })
+                .eq('razorpay_order_id', razorpay_order_id)
+        } catch (updateError) {
+            console.error('[Verify] Failed to update payment_attempt status:', updateError)
+            // Non-blocking
+        }
+
         return NextResponse.json({ success: true })
 
     } catch (error: any) {

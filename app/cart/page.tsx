@@ -502,23 +502,7 @@ export default function CartPage() {
                 ? Math.floor(totalProductAmount * ((100 - ADVANCE_PAYMENT_PERCENT) / 100))
                 : 0
 
-            // 2. Create Razorpay Order with payable amount
-            const orderRes = await fetch('/api/razorpay/order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: payableAmount })
-            })
-
-            if (!orderRes.ok) {
-                const error = await orderRes.json()
-                throw new Error(error.error || 'Failed to create payment order')
-            }
-
-            const razorpayOrder = await orderRes.json()
-
-
-            // 3. Prepare Cart Payload for Post-Payment Creation
-            // We do NOT create orders in DB yet. We wait for payment success.
+            // 2. Prepare Cart Payload (Moved BEFORE Order Creation)
             const processedManufacturers = new Set<string>()
             const cartPayload = cart.map(item => {
                 const mfId = item.product.manufacturer_id
@@ -544,6 +528,45 @@ export default function CartPage() {
                 }
             })
 
+            const paymentBreakdown = {
+                total_product_amount: totalProductAmount,
+                total_shipping_amount: totalShippingAmount,
+                payable_amount: payableAmount,
+                remaining_balance: remainingBalance
+            }
+
+            const userAddress = {
+                address: currentUser.address,
+                city: currentUser.city,
+                state: currentUser.state || '',
+                pincode: currentUser.pincode
+            }
+
+            // 3. Create Razorpay Order with Context
+            const orderRes = await fetch('/api/razorpay/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: payableAmount,
+                    // Pass Context for Recovery
+                    user_id: currentUser.id,
+                    cart_payload: cartPayload,
+                    payment_breakdown: paymentBreakdown,
+                    shipping_address: userAddress
+                })
+            })
+
+            if (!orderRes.ok) {
+                const error = await orderRes.json()
+                throw new Error(error.error || 'Failed to create payment order')
+            }
+
+            const razorpayOrder = await orderRes.json()
+
+
+            // Payload preparation (Moved up)
+
+
             // 4. Open Razorpay Checkout
             const options = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -565,19 +588,9 @@ export default function CartPage() {
                                 razorpay_signature: response.razorpay_signature,
                                 cart_payload: cartPayload, // Pass the cart data
                                 user_id: currentUser.id, // Use currentUser
-                                user_address: {
-                                    address: currentUser.address,
-                                    city: currentUser.city,
-                                    state: currentUser.state || '', // Handle potential missing state
-                                    pincode: currentUser.pincode
-                                },
+                                user_address: userAddress,
                                 payment_option: paymentOption,
-                                payment_breakdown: {
-                                    total_product_amount: totalProductAmount,
-                                    total_shipping_amount: totalShippingAmount,
-                                    payable_amount: payableAmount,
-                                    remaining_balance: remainingBalance
-                                },
+                                payment_breakdown: paymentBreakdown,
                                 attribution: (() => {
                                     try {
                                         const saved = localStorage.getItem('d2b_attribution')
