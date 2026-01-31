@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { revalidateData } from '@/app/actions/revalidate'
 import { ArrowLeft, Package, Info, Save, Trash2, Loader2, Sparkles, Image as ImageIcon, Plus } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
+import VideoUpload from '@/components/VideoUpload'
 import VariationManager from '@/components/product/VariationManager'
 
 interface Variation {
@@ -48,7 +49,8 @@ export default function EditProductPage() {
         height: '10',
         hsn_code: '',
         tax_rate: '18',
-        video_url: ''
+        video_url: '',
+        video_mode: 'url'
     })
 
     useEffect(() => {
@@ -87,7 +89,8 @@ export default function EditProductPage() {
                 height: product.height?.toString() || '10',
                 hsn_code: product.hsn_code || '',
                 tax_rate: product.tax_rate?.toString() || '18',
-                video_url: product.video_url || ''
+                video_url: product.video_url || '',
+                video_mode: product.video_url?.includes('storage.googleapis.com') ? 'upload' : 'url'
             })
             setImages(product.images || [])
             setProductType(product.type || 'simple')
@@ -425,7 +428,33 @@ export default function EditProductPage() {
                                     placeholder="Enter HSN Code (optional)"
                                 />
                             </div>
+                        </div>
+                    </div>
 
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="font-semibold text-lg">Product Video</h2>
+                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                                <button
+                                    type="button"
+                                    onClick={() => updateForm('video_mode', 'upload')}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${formData.video_mode !== 'url' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500'
+                                        }`}
+                                >
+                                    Upload
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateForm('video_mode', 'url')}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${formData.video_mode === 'url' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500'
+                                        }`}
+                                >
+                                    URL
+                                </button>
+                            </div>
+                        </div>
+
+                        {formData.video_mode === 'url' ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Product Video URL
@@ -441,7 +470,15 @@ export default function EditProductPage() {
                                     Optionally add a video link to showcase your product.
                                 </p>
                             </div>
-                        </div>
+                        ) : (
+                            <VideoUpload
+                                videoUrl={formData.video_url}
+                                onVideoChange={(url) => updateForm('video_url', url)}
+                            />
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-3 italic">
+                            * Video will be shown as a play button on the product image
+                        </p>
                     </div>
 
                     {/* Pricing */}

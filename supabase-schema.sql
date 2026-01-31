@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS products (
   moq INTEGER DEFAULT 1,
   stock INTEGER DEFAULT 0,
   images TEXT[],
+  video_url TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
