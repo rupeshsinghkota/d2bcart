@@ -58,7 +58,6 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [requested, setRequested] = useState(false)
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
-    const [videoOpen, setVideoOpen] = useState(false)
 
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -71,7 +70,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
         const playVideo = searchParams.get('playVideo')
 
         if (playVideo === 'true' && currentProduct.video_url) {
-            setVideoOpen(true)
+            setActiveImageIndex(0)
         }
 
         if (variantId && variations.length > 0) {
@@ -218,7 +217,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
     const totalDisplayPrice = getTotalPrice()
 
-    const VideoPlayer = ({ url }: { url: string }) => {
+    const VideoPlayer = ({ url, autoPlay = false }: { url: string, autoPlay?: boolean }) => {
         const isYouTube = url.includes('youtube.com') || url.includes('youtu.be')
         const isVimeo = url.includes('vimeo.com')
 
@@ -228,8 +227,8 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                 : url.split('/').pop()
             return (
                 <iframe
-                    className="w-full aspect-video rounded-xl"
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                    className="w-full h-full aspect-[4/3] md:aspect-square"
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=${autoPlay ? 1 : 0}&mute=1`}
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                 />
@@ -240,8 +239,8 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
             const videoId = url.split('/').pop()
             return (
                 <iframe
-                    className="w-full aspect-video rounded-xl"
-                    src={`https://player.vimeo.com/video/${videoId}?autoplay=1`}
+                    className="w-full h-full aspect-[4/3] md:aspect-square"
+                    src={`https://player.vimeo.com/video/${videoId}?autoplay=${autoPlay ? 1 : 0}&muted=1`}
                     allow="autoplay; fullscreen"
                     allowFullScreen
                 />
@@ -250,13 +249,18 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
         return (
             <video
-                className="w-full aspect-video rounded-xl"
+                className="w-full h-full aspect-[4/3] md:aspect-square object-contain bg-black"
                 controls
-                autoPlay
+                autoPlay={autoPlay}
+                muted={autoPlay}
                 src={url}
             />
         )
     }
+
+    const allMedia = currentProduct.video_url
+        ? [{ type: 'video', url: currentProduct.video_url }, ...(currentProduct.images || []).map(img => ({ type: 'image', url: img }))]
+        : (currentProduct.images || []).map(img => ({ type: 'image', url: img }))
 
     return (
         <div className="min-h-screen bg-gray-50 pb-32 md:pb-8">
@@ -381,51 +385,40 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     setActiveImageIndex(index);
                                 }}
                             >
-                                {(currentProduct.images?.length ? currentProduct.images : ['']).map((img, idx) => (
+                                {allMedia.length > 0 ? allMedia.map((media, idx) => (
                                     <div
                                         key={idx}
                                         className="w-full flex-shrink-0 snap-center relative h-full flex items-center justify-center bg-white"
-                                        onClick={() => setLightboxOpen(true)}
                                     >
-                                        {img ? (
-                                            <Image
-                                                src={img}
-                                                alt={`${currentProduct.name} - ${idx + 1}`}
-                                                fill
-                                                priority={idx === 0}
-                                                className="object-contain"
-                                            />
+                                        {media.type === 'video' ? (
+                                            <div className="w-full h-full">
+                                                <VideoPlayer url={media.url} autoPlay={searchParams.get('playVideo') === 'true'} />
+                                            </div>
+                                        ) : media.url ? (
+                                            <div className="w-full h-full relative" onClick={() => setLightboxOpen(true)}>
+                                                <Image
+                                                    src={media.url}
+                                                    alt={`${currentProduct.name} - ${idx + 1}`}
+                                                    fill
+                                                    priority={idx === 0}
+                                                    className="object-contain"
+                                                />
+                                            </div>
                                         ) : (
                                             <Package className="w-12 h-12 text-gray-200" />
                                         )}
-
-                                        {/* Play button overlay for the first image */}
-                                        {idx === 0 && currentProduct.video_url && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <div className="bg-black/20 backdrop-blur-sm p-4 rounded-full border border-white/30 shadow-2xl">
-                                                    <Play className="w-8 h-8 text-white fill-current" />
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="w-full flex-shrink-0 snap-center relative h-full flex items-center justify-center bg-white">
+                                        <Package className="w-12 h-12 text-gray-200" />
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Mobile Watch Video Button */}
-                            {currentProduct.video_url && (
-                                <button
-                                    onClick={() => setVideoOpen(true)}
-                                    className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 z-10 border border-white/20 active:scale-95 transition-all"
-                                >
-                                    <Play className="w-3.5 h-3.5 fill-current" />
-                                    Watch Video
-                                </button>
-                            )}
-
                             {/* Mobile Pagination Dots */}
-                            {currentProduct.images && currentProduct.images.length > 1 && (
+                            {allMedia.length > 1 && (
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                                    {currentProduct.images.map((_, idx) => (
+                                    {allMedia.map((_, idx) => (
                                         <div
                                             key={idx}
                                             className={`rounded-full transition-all shadow-sm ${activeImageIndex === idx ? 'w-2 h-2 bg-emerald-600' : 'w-2 h-2 bg-gray-300/80'
@@ -441,65 +434,52 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                         {/* Desktop: Standard Gallery (Hidden on Mobile) */}
                         <div className="hidden md:block space-y-4">
                             <div className="relative aspect-square w-full max-w-[500px] mx-auto bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
-                                <button
-                                    onClick={() => currentProduct.images?.length && setLightboxOpen(true)}
-                                    className="absolute inset-0 w-full h-full flex items-center justify-center p-4 cursor-zoom-in"
-                                >
-                                    {currentProduct.images?.[activeImageIndex] ? (
-                                        <>
+                                {allMedia[activeImageIndex]?.type === 'video' ? (
+                                    <VideoPlayer url={allMedia[activeImageIndex].url} autoPlay={searchParams.get('playVideo') === 'true'} />
+                                ) : (
+                                    <button
+                                        onClick={() => allMedia[activeImageIndex]?.url && setLightboxOpen(true)}
+                                        className="absolute inset-0 w-full h-full flex items-center justify-center p-4 cursor-zoom-in"
+                                    >
+                                        {allMedia[activeImageIndex]?.url ? (
                                             <Image
-                                                src={currentProduct.images[activeImageIndex]}
+                                                src={allMedia[activeImageIndex].url}
                                                 alt={currentProduct.name}
                                                 fill
                                                 priority
                                                 className="object-contain transition-opacity duration-300"
                                             />
-                                            {/* Play button overlay for the first image */}
-                                            {activeImageIndex === 0 && currentProduct.video_url && (
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:bg-black/5 transition-colors">
-                                                    <div className="bg-black/20 backdrop-blur-sm p-6 rounded-full border border-white/30 shadow-2xl transform group-hover:scale-110 transition-transform duration-500">
-                                                        <Play className="w-12 h-12 text-white fill-current" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <Package className="w-24 h-24 text-gray-300" />
-                                    )}
-                                </button>
-
-                                {/* Desktop Watch Video Button Overlay */}
-                                {currentProduct.video_url && (
-                                    <div className="absolute inset-x-0 bottom-6 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => setVideoOpen(true)}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-full font-bold shadow-xl flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform"
-                                        >
-                                            <Play className="w-5 h-5 fill-current transition-transform" />
-                                            Watch Product Video
-                                        </button>
-                                    </div>
+                                        ) : (
+                                            <Package className="w-24 h-24 text-gray-300" />
+                                        )}
+                                    </button>
                                 )}
                             </div>
 
                             {/* Desktop Thumbnails */}
-                            {currentProduct.images && currentProduct.images.length > 1 && (
+                            {allMedia.length > 1 && (
                                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar justify-center">
-                                    {currentProduct.images.map((img, idx) => {
-                                        if (!img) return null
+                                    {allMedia.map((media, idx) => {
+                                        if (!media.url) return null
                                         return (
                                             <button
                                                 key={idx}
                                                 onClick={() => setActiveImageIndex(idx)}
                                                 className={`relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
                                             >
-                                                <Image
-                                                    src={img}
-                                                    alt={`Thumbnail ${idx + 1}`}
-                                                    fill
-                                                    sizes="64px"
-                                                    className="object-cover"
-                                                />
+                                                {media.type === 'video' ? (
+                                                    <div className="w-full h-full flex items-center justify-center bg-black/5">
+                                                        <Play className="w-6 h-6 text-emerald-600 fill-current" />
+                                                    </div>
+                                                ) : (
+                                                    <Image
+                                                        src={media.url}
+                                                        alt={`Thumbnail ${idx + 1}`}
+                                                        fill
+                                                        sizes="64px"
+                                                        className="object-cover"
+                                                    />
+                                                )}
                                             </button>
                                         )
                                     })}
@@ -966,28 +946,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                 )
             }
 
-            {/* Video Player Modal */}
-            {videoOpen && currentProduct.video_url && (
-                <div
-                    className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
-                    onClick={() => setVideoOpen(false)}
-                >
-                    <div
-                        className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            onClick={() => setVideoOpen(false)}
-                            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors p-2 z-10 bg-black/50 rounded-full"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-                        <div className="p-1">
-                            <VideoPlayer url={currentProduct.video_url} />
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Video Player Modal Removed - Native Integration */}
         </div >
     )
 }
