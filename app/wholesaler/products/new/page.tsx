@@ -52,7 +52,8 @@ export default function NewProductPage() {
         breadth: '10',
         height: '10',
         hsn_code: '',
-        tax_rate: '18'
+        tax_rate: '18',
+        video_url: ''
     })
 
     useEffect(() => {
@@ -173,7 +174,8 @@ export default function NewProductPage() {
                 breadth: parseFloat(formData.breadth) || 10,
                 height: parseFloat(formData.height) || 10,
                 hsn_code: formData.hsn_code,
-                tax_rate: parseFloat(formData.tax_rate) || 0
+                tax_rate: parseFloat(formData.tax_rate) || 0,
+                video_url: formData.video_url
             }).select().single()
 
             if (parentError) throw parentError
@@ -206,7 +208,8 @@ export default function NewProductPage() {
                         breadth: parseFloat(formData.breadth) || 10,
                         height: parseFloat(formData.height) || 10,
                         hsn_code: formData.hsn_code,
-                        tax_rate: parseFloat(formData.tax_rate) || 0
+                        tax_rate: parseFloat(formData.tax_rate) || 0,
+                        video_url: formData.video_url
                     }
                 })
 
@@ -368,6 +371,22 @@ export default function NewProductPage() {
                                     className="input"
                                     placeholder="Enter HSN Code (optional)"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Product Video URL
+                                </label>
+                                <input
+                                    type="url"
+                                    value={formData.video_url}
+                                    onChange={(e) => updateForm('video_url', e.target.value)}
+                                    className="input"
+                                    placeholder="Enter YouTube, Vimeo, or MP4 URL"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Optionally add a video link to showcase your product.
+                                </p>
                             </div>
                         </div>
                     </div>

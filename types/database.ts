@@ -59,6 +59,7 @@ export interface Product {
     search_vector?: any // Full Text Search Vector
     smart_tags?: string[] // AI Generated Tags
     ai_metadata?: any // AI Generated Metadata (JSONB)
+    video_url?: string // Added for product video
     // Joined fields
     manufacturer?: User
     category?: Category

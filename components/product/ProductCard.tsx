@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Package, MapPin, Heart } from 'lucide-react'
+import { Package, MapPin, Heart, Play } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 
@@ -54,6 +54,14 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
                             <span>{minMoq}</span>
                         </div>
                     </div>
+
+                    {product.video_url && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:bg-black/10 transition-colors">
+                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/30 transform group-hover:scale-110 transition-all duration-300 shadow-lg">
+                                <Play className="w-8 h-8 text-white fill-current" />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Category Tag - Bottom Left */}
                     {product.category && (

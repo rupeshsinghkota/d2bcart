@@ -27,7 +27,8 @@ import {
     ChevronRight,
     ZoomIn,
     ShieldCheck,
-    Menu
+    Menu,
+    Play
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import DeliveryChecker from '@/components/product/DeliveryChecker'
@@ -57,6 +58,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [requested, setRequested] = useState(false)
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
+    const [videoOpen, setVideoOpen] = useState(false)
 
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -210,6 +212,46 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
     const totalDisplayPrice = getTotalPrice()
 
+    const VideoPlayer = ({ url }: { url: string }) => {
+        const isYouTube = url.includes('youtube.com') || url.includes('youtu.be')
+        const isVimeo = url.includes('vimeo.com')
+
+        if (isYouTube) {
+            const videoId = url.includes('watch?v=')
+                ? url.split('watch?v=')[1]?.split('&')[0]
+                : url.split('/').pop()
+            return (
+                <iframe
+                    className="w-full aspect-video rounded-xl"
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                />
+            )
+        }
+
+        if (isVimeo) {
+            const videoId = url.split('/').pop()
+            return (
+                <iframe
+                    className="w-full aspect-video rounded-xl"
+                    src={`https://player.vimeo.com/video/${videoId}?autoplay=1`}
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                />
+            )
+        }
+
+        return (
+            <video
+                className="w-full aspect-video rounded-xl"
+                controls
+                autoPlay
+                src={url}
+            />
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 pb-32 md:pb-8">
             {/* Mobile Header (App Bar Style) */}
@@ -354,6 +396,17 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                 ))}
                             </div>
 
+                            {/* Mobile Watch Video Button */}
+                            {currentProduct.video_url && (
+                                <button
+                                    onClick={() => setVideoOpen(true)}
+                                    className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 z-10 border border-white/20 active:scale-95 transition-all"
+                                >
+                                    <Play className="w-3.5 h-3.5 fill-current" />
+                                    Watch Video
+                                </button>
+                            )}
+
                             {/* Mobile Pagination Dots */}
                             {currentProduct.images && currentProduct.images.length > 1 && (
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
@@ -389,6 +442,19 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         <Package className="w-24 h-24 text-gray-300" />
                                     )}
                                 </button>
+
+                                {/* Desktop Watch Video Button Overlay */}
+                                {currentProduct.video_url && (
+                                    <div className="absolute inset-x-0 bottom-6 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => setVideoOpen(true)}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-full font-bold shadow-xl flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform"
+                                        >
+                                            <Play className="w-5 h-5 fill-current transition-transform" />
+                                            Watch Product Video
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Desktop Thumbnails */}
@@ -874,6 +940,29 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                     </div>
                 )
             }
+
+            {/* Video Player Modal */}
+            {videoOpen && currentProduct.video_url && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
+                    onClick={() => setVideoOpen(false)}
+                >
+                    <div
+                        className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setVideoOpen(false)}
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors p-2 z-10 bg-black/50 rounded-full"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                        <div className="p-1">
+                            <VideoPlayer url={currentProduct.video_url} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     )
 }
