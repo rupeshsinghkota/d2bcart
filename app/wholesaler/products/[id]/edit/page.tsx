@@ -241,7 +241,7 @@ export default function EditProductPage() {
                         manufacturer_id: user.id,
                         category_id: formData.category_id,
                         name: varName,
-                        slug: `${varName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}`,
+                        slug: `${varName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now()}-${variations.indexOf(v)}`,
                         description: formData.description,
                         base_price: varPrice,
                         display_price: varDisplayPrice,
@@ -263,9 +263,9 @@ export default function EditProductPage() {
                     }
 
                     if (v.dbId) {
-                        // Prepare for batch update (exclude name to preserve AI-refined names)
-                        const { name, ...dataWithoutName } = variationData
-                        toUpdate.push({ id: v.dbId, ...dataWithoutName })
+                        // Prepare for batch update (exclude name and slug to preserve AI-refined labels and SEO URLs)
+                        const { name, slug, ...dataToUpdate } = variationData
+                        toUpdate.push({ id: v.dbId, ...dataToUpdate })
                     } else {
                         // Prepare for batch insert
                         toInsert.push(variationData)
