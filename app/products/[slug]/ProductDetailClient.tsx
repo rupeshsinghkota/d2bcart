@@ -68,6 +68,12 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     // Handle Deep Linking from Google Shopping
     useEffect(() => {
         const variantId = searchParams.get('variant')
+        const playVideo = searchParams.get('playVideo')
+
+        if (playVideo === 'true' && currentProduct.video_url) {
+            setVideoOpen(true)
+        }
+
         if (variantId && variations.length > 0) {
             const targetVariant = variations.find(v => v.id === variantId)
             if (targetVariant) {
@@ -80,7 +86,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                 toast.success('Variant pre-selected from link')
             }
         }
-    }, [searchParams, variations])
+    }, [searchParams, variations, currentProduct.video_url])
 
     useEffect(() => {
         if (currentProduct?.id) {
@@ -392,6 +398,15 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         ) : (
                                             <Package className="w-12 h-12 text-gray-200" />
                                         )}
+
+                                        {/* Play button overlay for the first image */}
+                                        {idx === 0 && currentProduct.video_url && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <div className="bg-black/20 backdrop-blur-sm p-4 rounded-full border border-white/30 shadow-2xl">
+                                                    <Play className="w-8 h-8 text-white fill-current" />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -431,13 +446,23 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                     className="absolute inset-0 w-full h-full flex items-center justify-center p-4 cursor-zoom-in"
                                 >
                                     {currentProduct.images?.[activeImageIndex] ? (
-                                        <Image
-                                            src={currentProduct.images[activeImageIndex]}
-                                            alt={currentProduct.name}
-                                            fill
-                                            priority
-                                            className="object-contain transition-opacity duration-300"
-                                        />
+                                        <>
+                                            <Image
+                                                src={currentProduct.images[activeImageIndex]}
+                                                alt={currentProduct.name}
+                                                fill
+                                                priority
+                                                className="object-contain transition-opacity duration-300"
+                                            />
+                                            {/* Play button overlay for the first image */}
+                                            {activeImageIndex === 0 && currentProduct.video_url && (
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:bg-black/5 transition-colors">
+                                                    <div className="bg-black/20 backdrop-blur-sm p-6 rounded-full border border-white/30 shadow-2xl transform group-hover:scale-110 transition-transform duration-500">
+                                                        <Play className="w-12 h-12 text-white fill-current" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
                                     ) : (
                                         <Package className="w-24 h-24 text-gray-300" />
                                     )}

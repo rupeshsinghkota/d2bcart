@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Package, MapPin, Heart, Play } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
@@ -16,6 +17,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, wishlist = [], onToggleWishlist, priority = false }: ProductCardProps) {
+    const router = useRouter();
     const hasVariations = product.type === 'variable' && product.variations?.length > 0;
     const minPrice = hasVariations
         ? Math.min(...product.variations.map((v: any) => v.display_price))
@@ -56,10 +58,17 @@ export function ProductCard({ product, wishlist = [], onToggleWishlist, priority
                     </div>
 
                     {product.video_url && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:bg-black/10 transition-colors">
-                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/30 transform group-hover:scale-110 transition-all duration-300 shadow-lg">
+                        <div className="absolute inset-0 flex items-center justify-center group-hover:bg-black/10 transition-colors z-10">
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    router.push(`/products/${product.slug || product.id}?playVideo=true`);
+                                }}
+                                className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/30 transform group-hover:scale-110 transition-all duration-300 shadow-lg pointer-events-auto cursor-pointer flex items-center justify-center"
+                            >
                                 <Play className="w-8 h-8 text-white fill-current" />
-                            </div>
+                            </button>
                         </div>
                     )}
 
