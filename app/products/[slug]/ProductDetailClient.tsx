@@ -59,6 +59,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
     const [activeImageIndex, setActiveImageIndex] = useState(0)
     const [lightboxOpen, setLightboxOpen] = useState(false)
 
+    const [isPlaying, setIsPlaying] = useState(false)
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -71,6 +72,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
 
         if (playVideo === 'true' && currentProduct.video_url) {
             setActiveImageIndex(0)
+            setIsPlaying(true)
         }
 
         if (variantId && variations.length > 0) {
@@ -391,8 +393,29 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         className="w-full flex-shrink-0 snap-center relative h-full flex items-center justify-center bg-white"
                                     >
                                         {media.type === 'video' ? (
-                                            <div className="w-full h-full">
-                                                <VideoPlayer url={media.url} autoPlay={searchParams.get('playVideo') === 'true'} />
+                                            <div className="w-full h-full relative">
+                                                {isPlaying ? (
+                                                    <VideoPlayer url={media.url} autoPlay={true} />
+                                                ) : (
+                                                    <div className="w-full h-full relative" onClick={() => setIsPlaying(true)}>
+                                                        {currentProduct.images?.[0] ? (
+                                                            <Image
+                                                                src={currentProduct.images[0]}
+                                                                alt={currentProduct.name}
+                                                                fill
+                                                                priority
+                                                                className="object-contain"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-black flex items-center justify-center" />
+                                                        )}
+                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                            <div className="bg-black/40 backdrop-blur-md p-5 rounded-full border border-white/30 shadow-2xl scale-110 active:scale-95 transition-transform">
+                                                                <Play className="w-10 h-10 text-white fill-current" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : media.url ? (
                                             <div className="w-full h-full relative" onClick={() => setLightboxOpen(true)}>
@@ -435,7 +458,30 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                         <div className="hidden md:block space-y-4">
                             <div className="relative aspect-square w-full max-w-[500px] mx-auto bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
                                 {allMedia[activeImageIndex]?.type === 'video' ? (
-                                    <VideoPlayer url={allMedia[activeImageIndex].url} autoPlay={searchParams.get('playVideo') === 'true'} />
+                                    <div className="w-full h-full relative">
+                                        {isPlaying ? (
+                                            <VideoPlayer url={allMedia[activeImageIndex].url} autoPlay={true} />
+                                        ) : (
+                                            <div className="w-full h-full relative cursor-pointer group/video" onClick={() => setIsPlaying(true)}>
+                                                {currentProduct.images?.[0] ? (
+                                                    <Image
+                                                        src={currentProduct.images[0]}
+                                                        alt={currentProduct.name}
+                                                        fill
+                                                        priority
+                                                        className="object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-black" />
+                                                )}
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/5 group-hover/video:bg-black/10 transition-colors">
+                                                    <div className="bg-black/40 backdrop-blur-md p-6 rounded-full border border-white/30 shadow-2xl scale-110 group-hover/video:scale-125 transition-transform duration-300">
+                                                        <Play className="w-12 h-12 text-white fill-current" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <button
                                         onClick={() => allMedia[activeImageIndex]?.url && setLightboxOpen(true)}
@@ -464,7 +510,10 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={() => setActiveImageIndex(idx)}
+                                                onClick={() => {
+                                                    setActiveImageIndex(idx);
+                                                    if (media.type === 'video') setIsPlaying(true);
+                                                }}
                                                 className={`relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border-2 transition-all cursor-pointer ${activeImageIndex === idx ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-transparent hover:border-emerald-300'}`}
                                             >
                                                 {media.type === 'video' ? (
