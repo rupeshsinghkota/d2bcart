@@ -49,6 +49,9 @@ export async function GET() {
 
         const products = allProducts
 
+        // Create Map for fast parent lookup
+        const productMap = new Map(products.map(p => [p.id, p]))
+
         const xmlItems = (products || []).map((product) => {
             // B2B Logic: Total Pack Price
             // B2B Logic: Total Pack Price
@@ -79,6 +82,12 @@ export async function GET() {
             // Variants handling: Group by Item Group ID
             const itemGroupId = product.parent_id || (product.type === 'variable' ? product.id : '')
 
+            // Parent Lookup/Image Inheritance
+            const parent = product.parent_id ? productMap.get(product.parent_id) : null
+            const validImages = (product.images && product.images.length > 0)
+                ? product.images
+                : (parent?.images || [])
+
             // Attribute Parsing (Color/Material) from Name
             let deepLinkParams = new URLSearchParams()
 
@@ -99,7 +108,7 @@ export async function GET() {
             const description = product.description || `Wholesale ${product.name} available in bulk from ${brand}.`
 
             // Image
-            const imageLink = product.images && product.images.length > 0 ? product.images[0] : ''
+            const imageLink = validImages.length > 0 ? validImages[0] : ''
 
             // Link with Deep Linking params (Prefer Slug)
             let link = `${baseUrl}/products/${product.slug || product.id}`
