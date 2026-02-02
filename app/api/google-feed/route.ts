@@ -9,22 +9,44 @@ export async function GET() {
 
         // Fetch all active products with manufacturer and category details
         // We use supabaseAdmin to bypass RLS and get all products
-        const { data: products, error } = await supabaseAdmin
-            .from('products')
-            .select(`
+        let allProducts: any[] = []
+        let page = 0
+        const pageSize = 1000
+        let hasMore = true
+
+        while (hasMore) {
+            const from = page * pageSize
+            const to = from + pageSize - 1
+
+            const { data: products, error } = await supabaseAdmin
+                .from('products')
+                .select(`
                 *,
                 slug,
                 manufacturer:users!products_manufacturer_id_fkey(business_name),
                 category:categories!products_category_id_fkey(name),
                 variations:products!parent_id(display_price, moq)
             `)
-            .eq('is_active', true)
-            .range(0, 9999)
+                .eq('is_active', true)
+                .range(from, to)
 
-        if (error) {
-            console.error('Error fetching products for feed:', error)
-            return new NextResponse('Error generating feed', { status: 500 })
+            if (error) {
+                console.error('Error fetching products for feed:', error)
+                return new NextResponse(`Error generating feed: ${JSON.stringify(error)}`, { status: 500 })
+            }
+
+            if (products && products.length > 0) {
+                allProducts = [...allProducts, ...products]
+                if (products.length < pageSize) {
+                    hasMore = false
+                }
+            } else {
+                hasMore = false
+            }
+            page++
         }
+
+        const products = allProducts
 
         const xmlItems = (products || []).map((product) => {
             // B2B Logic: Total Pack Price
