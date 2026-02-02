@@ -105,15 +105,7 @@ export async function GET() {
 
             // Title optimization: Name + Bulk Pack info
             const brand = product.manufacturer?.business_name || 'Generic'
-
-            let displayName = product.name
-            if (product.parent_id && parent && parent.name) {
-                if (!product.name.includes(parent.name)) {
-                    displayName = `${parent.name} - ${product.name}`
-                }
-            }
-
-            const title = cleanCdata(`${displayName} - Wholesale Bulk Pack (${moq} Units)`)
+            const title = cleanCdata(`${product.name} - Wholesale Bulk Pack (${moq} Units)`)
 
             // Description
             const description = cleanCdata(product.description || `Wholesale ${product.name} available in bulk from ${brand}.`)
@@ -131,7 +123,8 @@ export async function GET() {
             // XML Safety: CDATA handles ampersands, so we use raw links
             const safeLink = link
             const safeImageLink = imageLink
-            const videoLink = product.video_url ? `<g:video_link><![CDATA[${product.video_url}]]></g:video_link>` : ''
+            const videoUrl = product.video_url || parent?.video_url || ''
+            const videoLink = videoUrl ? `<g:video_link><![CDATA[${videoUrl}]]></g:video_link>` : ''
 
             return `
         <item>
