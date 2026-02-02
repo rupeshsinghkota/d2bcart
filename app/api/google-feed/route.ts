@@ -67,6 +67,7 @@ export async function GET() {
             // XML Safety: CDATA handles ampersands, so we use raw links
             const safeLink = link
             const safeImageLink = imageLink
+            const videoLink = product.video_url ? `<g:video_link><![CDATA[${product.video_url}]]></g:video_link>` : ''
 
             return `
         <item>
@@ -75,6 +76,7 @@ export async function GET() {
             <g:description><![CDATA[${description}]]></g:description>
             <g:link><![CDATA[${safeLink}]]></g:link>
             <g:image_link><![CDATA[${safeImageLink}]]></g:image_link>
+            ${videoLink}
             <g:brand><![CDATA[${brand}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>

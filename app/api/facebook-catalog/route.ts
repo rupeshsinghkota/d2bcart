@@ -83,6 +83,8 @@ export async function GET() {
                 link += `?${deepLinkParams.toString()}`
             }
 
+            const videoLink = product.video_url ? `<g:video_link><![CDATA[${product.video_url}]]></g:video_link>` : ''
+
             // XML Safety: CDATA handles ampersands, so we use raw links
             // Facebook specific condition: new
             // Facebook specific availability: in stock
@@ -94,6 +96,7 @@ export async function GET() {
             <g:description><![CDATA[${description}]]></g:description>
             <g:link><![CDATA[${link}]]></g:link>
             <g:image_link><![CDATA[${imageLink}]]></g:image_link>
+            ${videoLink}
             ${product.images?.slice(1, 11).map((img: string) => `<g:additional_image_link><![CDATA[${img}]]></g:additional_image_link>`).join('')}
             <g:brand><![CDATA[${brand}]]></g:brand>
             <g:condition>new</g:condition>
