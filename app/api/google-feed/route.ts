@@ -105,7 +105,15 @@ export async function GET() {
 
             // Title optimization: Name + Bulk Pack info
             const brand = product.manufacturer?.business_name || 'Generic'
-            const title = cleanCdata(`${product.name} - Wholesale Bulk Pack (${moq} Units)`)
+
+            let displayName = product.name
+            if (product.parent_id && parent && parent.name) {
+                if (!product.name.includes(parent.name)) {
+                    displayName = `${parent.name} - ${product.name}`
+                }
+            }
+
+            const title = cleanCdata(`${displayName} - Wholesale Bulk Pack (${moq} Units)`)
 
             // Description
             const description = cleanCdata(product.description || `Wholesale ${product.name} available in bulk from ${brand}.`)
