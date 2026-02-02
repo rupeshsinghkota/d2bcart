@@ -15,10 +15,11 @@ export async function GET() {
                 *,
                 slug,
                 manufacturer:users!products_manufacturer_id_fkey(business_name),
-                category:categories!products_category_id_fkey(name)
+                category:categories!products_category_id_fkey(name),
+                variations:products!parent_id(display_price, moq)
             `)
             .eq('is_active', true)
-            .not('display_price', 'is', null)
+            .range(0, 9999)
 
         if (error) {
             console.error('Error fetching products for feed:', error)
@@ -27,10 +28,29 @@ export async function GET() {
 
         const xmlItems = (products || []).map((product) => {
             // B2B Logic: Total Pack Price
+            // B2B Logic: Total Pack Price
             // Feed Price = Unit Price * MOQ
-            // This ensures the price shown in ads matches the minimum amount a user must pay
-            const unitPrice = product.display_price || 0
-            const moq = product.moq || 1
+            let unitPrice = product.display_price
+
+            if ((!unitPrice || unitPrice === 0) && product.variations && product.variations.length > 0) {
+                // Sort variations by price and take the lowest
+                const validVariations = product.variations.filter((v: any) => v.display_price > 0)
+                if (validVariations.length > 0) {
+                    unitPrice = Math.min(...validVariations.map((v: any) => v.display_price))
+                }
+            }
+
+            // If still no price, skip this product
+            if (!unitPrice || unitPrice <= 0) return ''
+
+            let moq = product.moq || 1
+            if (moq === 1 && product.variations && product.variations.length > 0) {
+                const validVariations = product.variations.filter((v: any) => v.moq > 0)
+                if (validVariations.length > 0) {
+                    moq = Math.min(...validVariations.map((v: any) => v.moq))
+                }
+            }
+
             const packPrice = unitPrice * moq
 
             // Variants handling: Group by Item Group ID

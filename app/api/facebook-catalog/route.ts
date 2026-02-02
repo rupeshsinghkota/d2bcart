@@ -18,6 +18,7 @@ export async function GET() {
                 variations:products!parent_id(display_price, moq)
             `)
             .eq('is_active', true)
+            .range(0, 9999)
         // Removed strict display_price filter to allow parents with derived prices
 
         if (error) {
