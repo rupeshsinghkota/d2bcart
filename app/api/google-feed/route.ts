@@ -16,7 +16,7 @@ export async function GET() {
                 slug,
                 manufacturer:users!products_manufacturer_id_fkey(business_name),
                 category:categories!products_category_id_fkey(name),
-                variations:products!parent_id(display_price, moq)
+                variations:products!products_parent_id_fkey(display_price, moq)
             `)
             .eq('is_active', true)
             .range(0, 9999)
