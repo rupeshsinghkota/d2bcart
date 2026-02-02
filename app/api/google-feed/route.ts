@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+    const cleanCdata = (str: string) => {
+        return str.replace(/]]>/g, ']]]]><![CDATA[>')
+    }
+
     try {
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
 
@@ -100,20 +104,20 @@ export async function GET() {
             }
 
             // Title optimization: Name + Bulk Pack info
-            // Ensure unique titles for variants
             const brand = product.manufacturer?.business_name || 'Generic'
-            const title = `${product.name} - Wholesale Bulk Pack (${moq} Units)`
+            const title = cleanCdata(`${product.name} - Wholesale Bulk Pack (${moq} Units)`)
 
             // Description
-            const description = product.description || `Wholesale ${product.name} available in bulk from ${brand}.`
+            const description = cleanCdata(product.description || `Wholesale ${product.name} available in bulk from ${brand}.`)
 
             // Image
             const imageLink = validImages.length > 0 ? validImages[0] : ''
 
             // Link with Deep Linking params (Prefer Slug)
+            // Use &amp; for query params
             let link = `${baseUrl}/products/${product.slug || product.id}`
             if (deepLinkParams.toString()) {
-                link += `?${deepLinkParams.toString()}`
+                link += `?${deepLinkParams.toString().replace(/&/g, '&amp;')}`
             }
 
             // XML Safety: CDATA handles ampersands, so we use raw links
@@ -129,7 +133,7 @@ export async function GET() {
             <g:link><![CDATA[${safeLink}]]></g:link>
             <g:image_link><![CDATA[${safeImageLink}]]></g:image_link>
             ${videoLink}
-            <g:brand><![CDATA[${brand}]]></g:brand>
+            <g:brand><![CDATA[${cleanCdata(brand)}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
             <g:price>${packPrice.toFixed(2)} INR</g:price>

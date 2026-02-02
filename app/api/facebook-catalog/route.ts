@@ -4,6 +4,22 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+    const escapeXml = (unsafe: string) => {
+        return unsafe.replace(/[<>&'"]/g, (c) => {
+            switch (c) {
+                case '<': return '&lt;'
+                case '>': return '&gt;'
+                case '&': return '&amp;'
+                case '\'': return '&apos;'
+                case '"': return '&quot;'
+            }
+            return c
+        })
+    }
+    const cleanCdata = (str: string) => {
+        return str.replace(/]]>/g, ']]]]><![CDATA[>') // Escape CDATA closing sequence
+    }
+
     try {
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
 
@@ -102,38 +118,37 @@ export async function GET() {
             }
 
             // Title optimization: Name + Bulk Pack info
-            // Ensure unique titles for variants
             const brand = product.manufacturer?.business_name || 'Generic'
-            const title = `${product.name} - Wholesale Bulk Pack (${moq} Units)`
+            const title = cleanCdata(`${product.name} - Wholesale Bulk Pack (${moq} Units)`)
 
             // Description
-            const description = product.description || `Wholesale ${product.name} available in bulk from ${brand}.`
+            const description = cleanCdata(product.description || `Wholesale ${product.name} available in bulk from ${brand}.`)
 
             // Image
             const imageLink = validImages.length > 0 ? validImages[0] : ''
 
-            // Link with Deep Linking params
+            // Link with Deep Linking params (Prefer Slug)
+            // Use &amp; for query params to be super safe even in CDATA
             let link = `${baseUrl}/products/${product.slug || product.id}`
             if (deepLinkParams.toString()) {
-                link += `?${deepLinkParams.toString()}`
+                link += `?${deepLinkParams.toString().replace(/&/g, '&amp;')}`
             }
 
-            const videoLink = product.video_url ? `<g:video_link><![CDATA[${product.video_url}]]></g:video_link>` : ''
-
             // XML Safety: CDATA handles ampersands, so we use raw links
-            // Facebook specific condition: new
-            // Facebook specific availability: in stock
+            const safeLink = link
+            const safeImageLink = imageLink
+            const videoLink = product.video_url ? `<g:video_link><![CDATA[${product.video_url}]]></g:video_link>` : ''
 
             return `
         <item>
             <g:id>${product.id}</g:id>
             <g:title><![CDATA[${title}]]></g:title>
             <g:description><![CDATA[${description}]]></g:description>
-            <g:link><![CDATA[${link}]]></g:link>
-            <g:image_link><![CDATA[${imageLink}]]></g:image_link>
+            <g:link><![CDATA[${safeLink}]]></g:link>
+            <g:image_link><![CDATA[${safeImageLink}]]></g:image_link>
             ${videoLink}
             ${validImages.slice(1, 11).map((img: string) => `<g:additional_image_link><![CDATA[${img}]]></g:additional_image_link>`).join('')}
-            <g:brand><![CDATA[${brand}]]></g:brand>
+            <g:brand><![CDATA[${cleanCdata(brand)}]]></g:brand>
             <g:condition>new</g:condition>
             <g:availability>${product.stock > 0 ? 'in_stock' : 'out_of_stock'}</g:availability>
             <g:price>${packPrice.toFixed(2)} INR</g:price>
