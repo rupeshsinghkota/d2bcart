@@ -9,16 +9,22 @@ export async function GET() {
 
         // Fetch all active products with manufacturer and category details
         // We use supabaseAdmin to bypass RLS and get all products
-        let allProducts: any[] = []
-        let page = 0
-        const pageSize = 1000
-        let hasMore = true
+        // 1. Get total count to determine concurrency
+        const { count } = await supabaseAdmin
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true)
 
-        while (hasMore) {
-            const from = page * pageSize
+        const totalProducts = count || 0
+        const pageSize = 1000
+        const totalPages = Math.ceil(totalProducts / pageSize)
+
+        // 2. Fetch all pages in parallel
+        const pagePromises = Array.from({ length: totalPages }, (_, i) => {
+            const from = i * pageSize
             const to = from + pageSize - 1
 
-            const { data: products, error } = await supabaseAdmin
+            return supabaseAdmin
                 .from('products')
                 .select(`
                 *,
@@ -29,22 +35,17 @@ export async function GET() {
             `)
                 .eq('is_active', true)
                 .range(from, to)
+        })
 
-            if (error) {
-                console.error('Error fetching products for feed:', error)
-                return new NextResponse(`Error generating feed: ${JSON.stringify(error)}`, { status: 500 })
-            }
+        const results = await Promise.all(pagePromises)
 
-            if (products && products.length > 0) {
-                allProducts = [...allProducts, ...products]
-                if (products.length < pageSize) {
-                    hasMore = false
-                }
-            } else {
-                hasMore = false
+        // 3. Flatten results
+        let allProducts: any[] = []
+        results.forEach(result => {
+            if (result.data) {
+                allProducts = [...allProducts, ...result.data]
             }
-            page++
-        }
+        })
 
         const products = allProducts
 
@@ -151,7 +152,7 @@ export async function GET() {
         return new NextResponse(rss, {
             headers: {
                 'Content-Type': 'application/xml',
-                'Cache-Control': 'no-store, max-age=0',
+                'Cache-Control': 's-maxage=3600, stale-while-revalidate',
             },
         })
     } catch (e) {
