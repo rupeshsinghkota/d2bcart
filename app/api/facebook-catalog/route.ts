@@ -8,23 +8,46 @@ export async function GET() {
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
 
         // Fetch all active products with manufacturer, category, and variations (for price fallback)
-        const { data: products, error } = await supabaseAdmin
-            .from('products')
-            .select(`
-                *,
-                slug,
-                manufacturer:users!products_manufacturer_id_fkey(business_name),
-                category:categories!products_category_id_fkey(name),
-                variations:products!parent_id(display_price, moq)
-            `)
-            .eq('is_active', true)
-            .range(0, 9999)
-        // Removed strict display_price filter to allow parents with derived prices
+        let allProducts: any[] = []
+        let page = 0
+        const pageSize = 1000
+        let hasMore = true
 
-        if (error) {
-            console.error('Error fetching products for feed:', error)
-            return new NextResponse('Error generating feed', { status: 500 })
+        while (hasMore) {
+            const from = page * pageSize
+            const to = from + pageSize - 1
+
+            const { data: products, error } = await supabaseAdmin
+                .from('products')
+                .select(`
+                    *,
+                    slug,
+                    manufacturer:users!products_manufacturer_id_fkey(business_name),
+                    category:categories!products_category_id_fkey(name),
+                    variations:products!parent_id(display_price, moq)
+                `)
+                .eq('is_active', true)
+                .range(from, to)
+
+            if (error) {
+                console.error('Error fetching products for feed:', error)
+                return new NextResponse(`Error generating feed: ${JSON.stringify(error)}`, { status: 500 })
+            }
+
+            if (products && products.length > 0) {
+                allProducts = [...allProducts, ...products]
+                if (products.length < pageSize) {
+                    hasMore = false
+                }
+            } else {
+                hasMore = false
+            }
+            page++
         }
+
+        // Use cached products just in case mapped
+        const products = allProducts
+        // Removed strict display_price filter to allow parents with derived prices
 
         const xmlItems = (products || []).map((product) => {
             // Price Logic: Use self price, or fallback to lowest variation price
