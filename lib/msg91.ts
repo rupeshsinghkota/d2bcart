@@ -61,6 +61,46 @@ export async function sendWhatsAppMessage({
         }
     }
 
+    return await executeMsg91Call(payload)
+}
+
+/**
+ * Sends a FREE-FORM text message (Session Message).
+ * Only works if the customer has messaged you in the last 24 hours.
+ */
+export async function sendWhatsAppSessionMessage(params: { mobile: string, message: string }) {
+    const { mobile, message } = params
+    let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
+
+    // Auto-fix for India: If 10 digits, add '91'
+    if (cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone
+    }
+
+    const namespace = process.env.MSG91_NAMESPACE
+    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER
+
+    const payload = {
+        integrated_number: integratedNumber,
+        content_type: "text",
+        payload: {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: "text",
+            text: {
+                body: message
+            }
+        }
+    }
+
+    return await executeMsg91Call(payload)
+}
+
+async function executeMsg91Call(payload: any) {
+    const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
+    if (!MSG91_AUTH_KEY) return { success: false, error: 'MSG91_AUTH_KEY missing' }
+
     try {
         const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
             method: 'POST',
