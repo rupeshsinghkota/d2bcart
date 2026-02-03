@@ -83,7 +83,7 @@ async function searchProducts(query: string) {
         try {
             const { data } = await getSupabase()
                 .from('products')
-                .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
+                .select('id, parent_id, name, slug, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
                 .is('parent_id', null)
@@ -198,7 +198,7 @@ export async function getSalesAssistantResponse(params: {
 
     const productContext = matchingProducts.length > 0
         ? matchingProducts.map(p =>
-            `• ${p.name} | Retail: ₹${p.display_price} | Wholesale: ₹${p.base_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | Image: ${p.images?.[0] || 'none'} | URL: https://d2bcart.com/products/${p.slug}`
+            `• ${p.name} | Price: ₹${p.display_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | Image: ${p.images?.[0] || 'none'} | URL: https://d2bcart.com/products/${p.slug}`
         ).join('\n')
         : '';
 
@@ -248,7 +248,7 @@ You must respond in a JSON object with a reasoning field and a messages array:
   "reasoning": "Analyze the user's intent, available context (products, orders), and decide the best response strategy.",
   "messages": [
     {"type": "text", "text": "Your greeting or general message"},
-    {"type": "image", "text": "Product Name - Retail ₹X, Wholesale ₹Y (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
+    {"type": "image", "text": "Product Name - ₹X (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
     {"type": "text", "text": "Browse more: category_url"}
   ]
 }
