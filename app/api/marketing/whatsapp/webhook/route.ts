@@ -14,10 +14,13 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         console.log('[WhatsApp Webhook] Received:', JSON.stringify(body))
 
-        // MSG91 Inbound Structure (usually nested in 'data' or root)
-        // Adjust these based on MSG91's actual payload format for incoming messages
-        const messageText = body.message || body.data?.message || body.text || ""
-        const mobile = body.mobile || body.data?.mobile || ""
+        // MSG91 Inbound Structure based on their webhook payload format
+        // They send: customerNumber, content, eventName, etc.
+        const messageText = body.content || body.message || body.data?.message || body.text || ""
+        const mobile = body.customerNumber || body.mobile || body.data?.mobile || ""
+        const eventName = body.eventName || ""
+
+        console.log(`[WhatsApp Webhook] Event: ${eventName}, Mobile: ${mobile}, Message: ${messageText}`)
 
         if (!mobile || !messageText) {
             return NextResponse.json({ status: 'ignored', reason: 'No mobile or message' })
