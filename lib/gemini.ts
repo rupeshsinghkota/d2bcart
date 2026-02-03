@@ -232,7 +232,9 @@ RULES:
 4. For "image" type: MUST include 'imageUrl' and 'productName'.
 5. For "text" type: You can include Links. Links in text messages will generate previews.
 6. Maximum 3-4 messages total.
-7. CRITICAL: IF "MATCHING PRODUCTS" is found, ONLY use those. If "NO EXACT MATCH", say so, and optionally offer "TOP PRODUCTS" as generic suggestions. DO NOT lie and say a Top Product is the specific product the user asked for.
+7. CRITICAL: IF "MATCHING PRODUCTS" is found, ONLY use those. If "NO EXACT MATCH", say so, and optionally offer "TOP PRODUCTS" as generic suggestions.
+8. QUANTITY: Show MAXIMUM 3 best matching products as images. Do not spam. If more matches exist, mention "Browse all matches here: [Link]" in the final text message.
+9. INTELLIGENCE: Only send images if they clearly match the user's intent. If user asks "Do you have S24?", answer "Yes/No" text first, then show images if Yes.
 
 EXAMPLES:
 
@@ -244,10 +246,11 @@ Response: {
 
 Query: "Show me cases"
 Response: {
-  "reasoning": "User wants cases. I found matching products. I will show 2 structured image messages and a category link.",
+  "reasoning": "Found 10 matches. Showing top 2 and category link to avoid spam.",
   "messages": [
-    {"type": "image", "text": "X-LEVEL LEATHER CASE - Redmi Mi A3 - Retail ₹46, Wholesale ₹35 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...product-image.jpg", "productName": "X-LEVEL LEATHER CASE"},
-    {"type": "text", "text": "Browse more cases: https://d2bcart.com/products?category=cases-covers"}
+    {"type": "image", "text": "X-LEVEL LEATHER CASE...", "imageUrl": "...", "productName": "..."},
+    {"type": "image", "text": "Another Case...", "imageUrl": "...", "productName": "..."},
+    {"type": "text", "text": "We have 8 more cases available. Browse all: https://d2bcart.com/products?category=cases-covers"}
   ]
 }
 
