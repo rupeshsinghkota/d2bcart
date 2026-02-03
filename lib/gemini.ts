@@ -159,39 +159,43 @@ ${topProductContext}
 ${customerContext}
 
 RESPONSE FORMAT (CRITICAL):
-You must respond in JSON format. Return an array of message objects:
+You must respond in a JSON object with a reasoning field and a messages array:
 
-[
-  {"type": "text", "text": "Your greeting or general message"},
-  {"type": "image", "text": "Product Name - Retail ₹X, Wholesale ₹Y (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
-  {"type": "text", "text": "Browse more: category_url"}
-]
+{
+  "reasoning": "Analyze the user's intent, available context (products, orders), and decide the best response strategy.",
+  "messages": [
+    {"type": "text", "text": "Your greeting or general message"},
+    {"type": "image", "text": "Product Name - Retail ₹X, Wholesale ₹Y (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
+    {"type": "text", "text": "Browse more: category_url"}
+  ]
+}
 
 RULES:
-1. Use "type": "image" ONLY when recommending specific products from MATCHING PRODUCTS or TOP PRODUCTS
-2. Use "type": "text" for greetings, order status, general answers, category links
-3. For product messages, include the EXACT imageUrl from the product data above
-4. Keep text under 300 chars
-5. For orders, show status from ORDERS above (use "type": "text")
-6. For greetings like "Hi", "Hello" - respond with "type": "text" only
-7. Maximum 3-4 messages total
+1. "reasoning": Briefly explain your plan (e.g., "User asked for cases. Found 5 matches. Showing top 2 and category link.")
+2. Use "type": "image" ONLY when recommending specific products where you have an imageUrl.
+3. Use "type": "text" for greetings, order status, general answers.
+4. Keep text under 300 chars.
+5. For greetings like "Hi", "Hello" - respond with text only.
+6. Maximum 3-4 messages total.
 
 EXAMPLES:
 
 Query: "Hi"
-Response: [{"type": "text", "text": "Welcome to D2BCart! How can I help you find mobile accessories today?"}]
+Response: {
+  "reasoning": "User is greeting. I should greet back and offer help.",
+  "messages": [{"type": "text", "text": "Welcome to D2BCart! How can I help you find mobile accessories today?"}]
+}
 
 Query: "Show me cases"
-Response: [
-  {"type": "image", "text": "X-LEVEL LEATHER CASE - Redmi Mi A3 - Retail ₹46, Wholesale ₹35 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...product-image.jpg", "productName": "X-LEVEL LEATHER CASE"},
-  {"type": "image", "text": "MAGSAFE LEATHER - Redmi 9A - Retail ₹49, Wholesale ₹38 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...image.jpg", "productName": "MAGSAFE LEATHER"},
-  {"type": "text", "text": "Browse more cases: https://d2bcart.com/products?category=cases-covers"}
-]
+Response: {
+  "reasoning": "User wants cases. I found matching products. I will show 2 structured image messages and a category link.",
+  "messages": [
+    {"type": "image", "text": "X-LEVEL LEATHER CASE - Redmi Mi A3 - Retail ₹46, Wholesale ₹35 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...product-image.jpg", "productName": "X-LEVEL LEATHER CASE"},
+    {"type": "text", "text": "Browse more cases: https://d2bcart.com/products?category=cases-covers"}
+  ]
+}
 
-Query: "Where is my order?"
-Response: [{"type": "text", "text": "Your order #12345 is Shipped. Track it here: tracking_link. Need help? Contact 917557777987"}]
-
-IMPORTANT: Return ONLY valid JSON array. No markdown, no explanation.`
+IMPORTANT: Return ONLY valid JSON object. No markdown.`
             },
             { role: "user", content: message }
         ]
@@ -201,10 +205,13 @@ IMPORTANT: Return ONLY valid JSON array. No markdown, no explanation.`
 
     try {
         // Parse JSON response
-        const parsed = JSON.parse(fullResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+        const cleanJson = fullResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
 
-        if (Array.isArray(parsed)) {
-            return parsed.map(msg => ({
+        console.log('[AI Thinking]:', parsed.reasoning); // Log the thinking
+
+        if (parsed.messages && Array.isArray(parsed.messages)) {
+            return parsed.messages.map((msg: any) => ({
                 type: msg.type || 'text',
                 text: msg.text || '',
                 imageUrl: msg.imageUrl,
