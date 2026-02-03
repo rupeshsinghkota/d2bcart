@@ -114,10 +114,10 @@ export async function POST(request: NextRequest) {
             const alertText = `SUPPORT REQ: From ${mobile}. Msg: ${messageText.slice(0, 100)}`;
 
             // Send Alert to Admin using a TEMPLATE (Template delivers even if no session)
-            // Using d2b_abandoned_cart as it is verified working in CRON
+            // Using d2b_ai_response as requested
             const alertResult = await sendWhatsAppMessage({
                 mobile: adminMobile,
-                templateName: 'd2b_abandoned_cart',
+                templateName: 'd2b_ai_response',
                 components: {
                     body_1: { type: 'text', value: alertText }
                 }
