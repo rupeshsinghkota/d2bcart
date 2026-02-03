@@ -83,11 +83,12 @@ async function searchProducts(query: string) {
         try {
             const { data } = await getSupabase()
                 .from('products')
-                .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images')
+                .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
-                .gt('stock', 0) // Ensure in stock
-                .limit(20); // Fetch more candidates
+                .gt('stock', 0)
+                .eq('manufacturer.is_verified', true) // Filter unverified sellers
+                .limit(20);
 
             if (data) {
                 for (const p of data) {
@@ -155,9 +156,10 @@ async function getCategories() {
 async function getTopProducts() {
     const { data } = await getSupabase()
         .from('products')
-        .select('name, slug, display_price, images')
+        .select('name, slug, display_price, images, manufacturer:manufacturer_id!inner(is_verified)')
         .eq('is_active', true)
-        .gt('stock', 0) // Ensure in stock
+        .gt('stock', 0)
+        .eq('manufacturer.is_verified', true)
         .order('created_at', { ascending: false })
         .limit(10);
     return data || [];
