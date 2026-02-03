@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getSalesAssistantResponse } from '@/lib/gemini'
+import { getSalesAssistantResponse, AIMessage } from '@/lib/gemini'
 import { sendWhatsAppSessionMessage } from '@/lib/msg91'
 
 const supabaseAdmin = createClient(
@@ -14,8 +14,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         console.log('[WhatsApp Webhook] Received:', JSON.stringify(body))
 
-        // MSG91 Inbound Structure based on their webhook payload format
-        // They send: customerNumber, content, eventName, etc.
+        // MSG91 Inbound Structure
         const messageText = body.content || body.message || body.data?.message || body.text || ""
         const mobile = body.customerNumber || body.mobile || body.data?.mobile || ""
         const eventName = body.eventName || ""
@@ -26,16 +25,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'ignored', reason: 'No mobile or message' })
         }
 
-        // 1. Identify User (Optional: Fetch context from DB)
-        const { data: user } = await supabaseAdmin
-            .from('users')
-            .select('business_name')
-            .eq('phone', mobile)
-            .single()
-
-        const userName = user?.business_name || 'Retailer'
-
-        // 2. Get AI Response with customer context (returns array of messages)
+        // Get AI Response (returns array of structured messages)
         const aiMessages = await getSalesAssistantResponse({
             message: messageText,
             phone: mobile
@@ -43,16 +33,30 @@ export async function POST(request: NextRequest) {
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 
-        // 3. Send each message via MSG91 Session Message (allows link previews!)
-        // Session messages work within 24h of customer's last message
+        // Send each message based on type
         const results = []
         for (const msg of aiMessages) {
-            const cleanMsg = msg.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-            const result = await sendWhatsAppSessionMessage({
-                mobile: mobile,
-                message: cleanMsg
-            })
-            results.push(result)
+            let result;
+            const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+
+            if (msg.type === 'image' && msg.imageUrl) {
+                // Send image with caption
+                console.log(`[WhatsApp Webhook] Sending IMAGE to ${mobile}:`, msg.imageUrl)
+                result = await sendWhatsAppImageMessage({
+                    mobile: mobile,
+                    imageUrl: msg.imageUrl,
+                    caption: cleanText
+                })
+            } else {
+                // Send text message
+                console.log(`[WhatsApp Webhook] Sending TEXT to ${mobile}:`, cleanText.slice(0, 50))
+                result = await sendWhatsAppSessionMessage({
+                    mobile: mobile,
+                    message: cleanText
+                })
+            }
+
+            results.push({ type: msg.type, result })
             // Small delay between messages
             await new Promise(r => setTimeout(r, 500))
         }
@@ -69,9 +73,6 @@ export async function POST(request: NextRequest) {
     }
 }
 
-/**
- * Handle GET for verification if MSG91 requires it (like Meta does)
- */
 export async function GET(request: NextRequest) {
     return NextResponse.json({ status: 'Webhook Active' })
 }

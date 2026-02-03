@@ -23,12 +23,19 @@ function getSupabase() {
     return supabase;
 }
 
+// Response type for AI messages
+export interface AIMessage {
+    type: 'text' | 'image';
+    text: string;
+    imageUrl?: string;
+    productName?: string;
+}
+
 // Get customer details by phone
 async function getCustomer(phone: string) {
     const cleanPhone = phone.replace('+', '').replace(/\s/g, '');
     const last10 = cleanPhone.slice(-10);
 
-    // Try multiple phone formats
     const { data } = await getSupabase()
         .from('users')
         .select('id, business_name, phone, user_type, created_at')
@@ -48,7 +55,7 @@ async function getCustomerOrders(userId: string) {
     return data || [];
 }
 
-// Search products
+// Search products with images
 async function searchProducts(query: string) {
     const keywords = query.toLowerCase().split(' ').filter(w => w.length > 2);
     let products: any[] = [];
@@ -56,18 +63,17 @@ async function searchProducts(query: string) {
     for (const keyword of keywords) {
         const { data } = await getSupabase()
             .from('products')
-            .select('id, name, slug, base_price, display_price, moq, stock')
+            .select('id, name, slug, base_price, display_price, moq, stock, images')
             .ilike('name', `%${keyword}%`)
             .eq('is_active', true)
             .limit(5);
         if (data && data.length > 0) products.push(...data);
     }
 
-    // If no matches, get some recent products as suggestions
     if (products.length === 0) {
         const { data } = await getSupabase()
             .from('products')
-            .select('id, name, slug, base_price, display_price, moq, stock')
+            .select('id, name, slug, base_price, display_price, moq, stock, images')
             .eq('is_active', true)
             .order('created_at', { ascending: false })
             .limit(5);
@@ -84,11 +90,11 @@ async function getCategories() {
     return data || [];
 }
 
-// Get top products
+// Get top products with images
 async function getTopProducts() {
     const { data } = await getSupabase()
         .from('products')
-        .select('name, slug, retail_price')
+        .select('name, slug, display_price, images')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -98,7 +104,7 @@ async function getTopProducts() {
 export async function getSalesAssistantResponse(params: {
     message: string,
     phone: string,
-}): Promise<string[]> {
+}): Promise<AIMessage[]> {
     const { message, phone } = params;
 
     const customer = await getCustomer(phone);
@@ -113,12 +119,12 @@ export async function getSalesAssistantResponse(params: {
 
     const productContext = matchingProducts.length > 0
         ? matchingProducts.map(p =>
-            `• ${p.name} | Retail: ₹${p.display_price} | Wholesale: ₹${p.base_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | URL: https://d2bcart.com/products/${p.slug}`
+            `• ${p.name} | Retail: ₹${p.display_price} | Wholesale: ₹${p.base_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | Image: ${p.images?.[0] || 'none'} | URL: https://d2bcart.com/products/${p.slug}`
         ).join('\n')
         : '';
 
     const topProductContext = topProducts.map(p =>
-        `• ${p.name} - ₹${p.retail_price}: https://d2bcart.com/products/${p.slug}`
+        `• ${p.name} - ₹${p.display_price} | Image: ${p.images?.[0] || 'none'}: https://d2bcart.com/products/${p.slug}`
     ).join('\n');
 
     let customerContext = "NEW VISITOR";
@@ -133,7 +139,7 @@ export async function getSalesAssistantResponse(params: {
 
     const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
-        max_tokens: 400,
+        max_tokens: 600,
         messages: [
             {
                 role: "system",
@@ -152,20 +158,63 @@ ${topProductContext}
 
 ${customerContext}
 
-RULES (CRITICAL - FOLLOW EXACTLY):
-1. ALWAYS use product URLs from MATCHING PRODUCTS or TOP PRODUCTS above
-2. Show: "[Product Name] - Retail ₹[display_price], Wholesale ₹[base_price] (Pack of [moq]): [URL]"
-3. Send 2-3 products, each in a SEPARATE message using ---SPLIT---
-4. At END, add category link: "Browse more: [category URL]"
-5. Keep each message under 300 chars, plain text, no newlines
-6. For orders, show status from ORDERS above
-7. Be helpful and concise`
+RESPONSE FORMAT (CRITICAL):
+You must respond in JSON format. Return an array of message objects:
+
+[
+  {"type": "text", "text": "Your greeting or general message"},
+  {"type": "image", "text": "Product Name - Retail ₹X, Wholesale ₹Y (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
+  {"type": "text", "text": "Browse more: category_url"}
+]
+
+RULES:
+1. Use "type": "image" ONLY when recommending specific products from MATCHING PRODUCTS or TOP PRODUCTS
+2. Use "type": "text" for greetings, order status, general answers, category links
+3. For product messages, include the EXACT imageUrl from the product data above
+4. Keep text under 300 chars
+5. For orders, show status from ORDERS above (use "type": "text")
+6. For greetings like "Hi", "Hello" - respond with "type": "text" only
+7. Maximum 3-4 messages total
+
+EXAMPLES:
+
+Query: "Hi"
+Response: [{"type": "text", "text": "Welcome to D2BCart! How can I help you find mobile accessories today?"}]
+
+Query: "Show me cases"
+Response: [
+  {"type": "image", "text": "X-LEVEL LEATHER CASE - Redmi Mi A3 - Retail ₹46, Wholesale ₹35 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...product-image.jpg", "productName": "X-LEVEL LEATHER CASE"},
+  {"type": "image", "text": "MAGSAFE LEATHER - Redmi 9A - Retail ₹49, Wholesale ₹38 (Pack of 10): https://d2bcart.com/products/...", "imageUrl": "https://...image.jpg", "productName": "MAGSAFE LEATHER"},
+  {"type": "text", "text": "Browse more cases: https://d2bcart.com/products?category=cases-covers"}
+]
+
+Query: "Where is my order?"
+Response: [{"type": "text", "text": "Your order #12345 is Shipped. Track it here: tracking_link. Need help? Contact 917557777987"}]
+
+IMPORTANT: Return ONLY valid JSON array. No markdown, no explanation.`
             },
             { role: "user", content: message }
         ]
     });
 
-    const fullResponse = response.choices[0].message.content || "Sorry, please try again.";
-    const messages = fullResponse.split('---SPLIT---').map(m => m.trim()).filter(m => m.length > 0);
-    return messages.length > 0 ? messages : [fullResponse];
+    const fullResponse = response.choices[0].message.content || "[]";
+
+    try {
+        // Parse JSON response
+        const parsed = JSON.parse(fullResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+
+        if (Array.isArray(parsed)) {
+            return parsed.map(msg => ({
+                type: msg.type || 'text',
+                text: msg.text || '',
+                imageUrl: msg.imageUrl,
+                productName: msg.productName
+            }));
+        }
+    } catch (e) {
+        console.error('[AI] Failed to parse JSON response:', fullResponse);
+    }
+
+    // Fallback to text-only
+    return [{ type: 'text', text: fullResponse.slice(0, 300) }];
 }

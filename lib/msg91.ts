@@ -97,6 +97,42 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
     return await executeMsg91Call(payload)
 }
 
+/**
+ * Sends a FREE-FORM image message (Session Message with Image).
+ * Only works if the customer has messaged you in the last 24 hours.
+ */
+export async function sendWhatsAppImageMessage(params: {
+    mobile: string,
+    imageUrl: string,
+    caption?: string
+}) {
+    const { mobile, imageUrl, caption } = params
+    let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
+
+    if (cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone
+    }
+
+    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER
+
+    const payload = {
+        integrated_number: integratedNumber,
+        content_type: "image",
+        payload: {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: "image",
+            image: {
+                link: imageUrl,
+                caption: caption || ''
+            }
+        }
+    }
+
+    return await executeMsg91Call(payload)
+}
+
 async function executeMsg91Call(payload: any) {
     const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
     if (!MSG91_AUTH_KEY) return { success: false, error: 'MSG91_AUTH_KEY missing' }
