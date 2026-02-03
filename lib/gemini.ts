@@ -86,13 +86,15 @@ async function searchProducts(query: string) {
                 .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
-                .is('parent_id', null) // Match Website: Parents Only
+                .is('parent_id', null)
                 .gt('stock', 0)
-                .eq('manufacturer.is_verified', true) // Filter unverified sellers
+                .not('images', 'is', null) // Must have images
+                .eq('manufacturer.is_verified', true)
                 .limit(20);
 
             if (data) {
                 for (const p of data) {
+                    if (!p.images || p.images.length === 0) continue; // Safety skip
                     counts.set(p.id, (counts.get(p.id) || 0) + 1);
                     productMap.set(p.id, p);
                 }
@@ -267,6 +269,10 @@ RULES:
 13. EMERGENCY: If user asks for "Human", "Support", "Emergency" or "Call me", set "escalate": true. Tell the user "I have notified Chandan/Support team. They will contact you shortly." 
     - CRITICAL: DO NOT share the Admin/Support phone number with the user. Keep it private.
     - Ask for their concern if not stated so Chandan knows the context.
+14. DEACTIVATED PRODUCTS: Your MATCHING PRODUCTS and TOP PRODUCTS lists are the ONLY live sources. 
+    - If a product appears in CHAT HISTORY but is NOT in the current MATCHING/TOP lists, IT IS DEACTIVATED. 
+    - DO NOT recommend, link, or mention it. Act as if it doesn't exist.
+    - NEVER "invent" or "hallucinate" product URLs or details. Only use provided data.
 
 EXAMPLES:
 

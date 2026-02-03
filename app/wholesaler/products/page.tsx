@@ -144,11 +144,21 @@ export default function ManufacturerProductsPage() {
             p.id === product.id ? { ...p, is_active: newStatus } : p
         ))
 
+        // Update Parent
         const { error } = await supabase
             .from('products')
             // @ts-ignore
             .update({ is_active: newStatus })
             .eq('id', product.id)
+
+        // Update Children (Variations)
+        if (!error) {
+            await supabase
+                .from('products')
+                // @ts-ignore
+                .update({ is_active: newStatus })
+                .eq('parent_id', product.id)
+        }
 
         if (error) {
             toast.error('Failed to update status')
@@ -156,7 +166,7 @@ export default function ManufacturerProductsPage() {
                 p.id === product.id ? { ...p, is_active: !newStatus } : p
             ))
         } else {
-            toast.success(`Product ${newStatus ? 'activated' : 'deactivated'}`)
+            toast.success(`Product and all variations ${newStatus ? 'activated' : 'deactivated'}`)
         }
     }
 
@@ -440,8 +450,8 @@ export default function ManufacturerProductsPage() {
                                                             handleToggleActive(product)
                                                         }}
                                                         className={`px-4 py-2 rounded-lg font-medium transform hover:scale-105 transition-transform text-white ${product.is_active
-                                                                ? 'bg-red-500 hover:bg-red-600'
-                                                                : 'bg-emerald-500 hover:bg-emerald-600'
+                                                            ? 'bg-red-500 hover:bg-red-600'
+                                                            : 'bg-emerald-500 hover:bg-emerald-600'
                                                             }`}
                                                     >
                                                         {product.is_active ? 'Deactivate' : 'Activate'}
