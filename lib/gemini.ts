@@ -56,32 +56,57 @@ async function getCustomerOrders(userId: string) {
 }
 
 // Search products with images
+// Search products with images (Scored by relevance)
 async function searchProducts(query: string) {
-    const keywords = query.toLowerCase().split(' ').filter(w => w.length > 2);
-    let products: any[] = [];
+    // Filter out common stop words to avoid "Cover" matching 1000 random things
+    const stopWords = new Set(['the', 'for', 'in', 'of', 'with', 'cover', 'case', 'back', 'mobile', 'phone']);
+    let keywords = query.toLowerCase().split(' ')
+        .map(w => w.replace(/[^a-z0-9]/g, '')) // clean punctuation
+        .filter(w => w.length > 1);
+
+    // If we have specific keywords, ignore generic ones. If ONLY generic, keep them.
+    const specificKeywords = keywords.filter(w => !stopWords.has(w));
+    if (specificKeywords.length > 0) {
+        keywords = specificKeywords;
+    }
+
+    const counts = new Map<string, number>();
+    const productMap = new Map<string, any>();
 
     for (const keyword of keywords) {
-        const { data } = await getSupabase()
-            .from('products')
-            .select('id, name, slug, base_price, display_price, moq, stock, images')
-            .ilike('name', `%${keyword}%`)
-            .eq('is_active', true)
-            .limit(5);
-        if (data && data.length > 0) products.push(...data);
+        try {
+            const { data } = await getSupabase()
+                .from('products')
+                .select('id, name, slug, base_price, display_price, moq, stock, images')
+                .ilike('name', `%${keyword}%`)
+                .eq('is_active', true)
+                .limit(20); // Fetch more candidates
+
+            if (data) {
+                for (const p of data) {
+                    counts.set(p.id, (counts.get(p.id) || 0) + 1);
+                    productMap.set(p.id, p);
+                }
+            }
+        } catch (e) { }
     }
 
-    if (products.length === 0) {
-        const { data } = await getSupabase()
-            .from('products')
-            .select('id, name, slug, base_price, display_price, moq, stock, images')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(5);
-        if (data) products = data;
+    if (productMap.size === 0) {
+        // Fallback: Newest products if totally empty? Or strict empty?
+        // Let's return empty so AI knows "No Match".
+        // AI will fall back to "Top Products" context.
+        return [];
     }
 
-    const unique = [...new Map(products.map(p => [p.id, p])).values()];
-    return unique.slice(0, 10);
+    // Sort by relevance (count desc) -> then newest
+    const sorted = [...productMap.values()].sort((a, b) => {
+        const scoreA = counts.get(a.id) || 0;
+        const scoreB = counts.get(b.id) || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return 0; // maintain order or sort by date?
+    });
+
+    return sorted.slice(0, 10);
 }
 
 // Get all categories
