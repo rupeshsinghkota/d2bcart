@@ -56,7 +56,7 @@ async function searchProducts(query: string) {
     for (const keyword of keywords) {
         const { data } = await getSupabase()
             .from('products')
-            .select('id, name, slug, retail_price, wholesale_price')
+            .select('id, name, slug, base_price, display_price, moq, stock')
             .ilike('name', `%${keyword}%`)
             .eq('is_active', true)
             .limit(5);
@@ -67,7 +67,7 @@ async function searchProducts(query: string) {
     if (products.length === 0) {
         const { data } = await getSupabase()
             .from('products')
-            .select('id, name, slug, retail_price, wholesale_price')
+            .select('id, name, slug, base_price, display_price, moq, stock')
             .eq('is_active', true)
             .order('created_at', { ascending: false })
             .limit(5);
@@ -113,7 +113,7 @@ export async function getSalesAssistantResponse(params: {
 
     const productContext = matchingProducts.length > 0
         ? matchingProducts.map(p =>
-            `• ${p.name} - ₹${p.retail_price}: https://d2bcart.com/products/${p.slug}`
+            `• ${p.name} | Retail: ₹${p.display_price} | Wholesale: ₹${p.base_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | URL: https://d2bcart.com/products/${p.slug}`
         ).join('\n')
         : '';
 
@@ -154,12 +154,12 @@ ${customerContext}
 
 RULES (CRITICAL - FOLLOW EXACTLY):
 1. ALWAYS use product URLs from MATCHING PRODUCTS or TOP PRODUCTS above
-2. Format: "Check out [Product Name] - ₹[Price]: https://d2bcart.com/products/[slug]"
-3. NEVER send category URLs - always send specific product URLs
-4. Keep under 300 chars, plain text, no newlines
-5. Use ---SPLIT--- for multiple messages
+2. Show: "[Product Name] - Retail ₹[display_price], Wholesale ₹[base_price] (Pack of [moq]): [URL]"
+3. Send 2-3 products, each in a SEPARATE message using ---SPLIT---
+4. At END, add category link: "Browse more: [category URL]"
+5. Keep each message under 300 chars, plain text, no newlines
 6. For orders, show status from ORDERS above
-6. Be helpful and concise`
+7. Be helpful and concise`
             },
             { role: "user", content: message }
         ]
