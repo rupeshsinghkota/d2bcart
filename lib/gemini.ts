@@ -178,11 +178,12 @@ You must respond in a JSON object with a reasoning field and a messages array:
 
 RULES:
 1. "reasoning": Briefly explain your plan (e.g., "User asked for cases. Found 5 matches. Showing top 2 and category link.")
-2. Use "type": "image" ONLY when recommending specific products where you have an imageUrl.
-3. Use "type": "text" for greetings, order status, general answers.
-4. Keep text under 300 chars.
-5. For greetings like "Hi", "Hello" - respond with text only.
+2. "messages": Array of response objects.
+3. "type": "image" PREFERRED for products. "text" for general info.
+4. For "image" type: MUST include 'imageUrl' and 'productName'.
+5. For "text" type: You can include Links. Links in text messages will generate previews.
 6. Maximum 3-4 messages total.
+7. CRITICAL: IF "MATCHING PRODUCTS" is found, ONLY use those. If "NO EXACT MATCH", say so, and optionally offer "TOP PRODUCTS" as generic suggestions. DO NOT lie and say a Top Product is the specific product the user asked for.
 
 EXAMPLES:
 
