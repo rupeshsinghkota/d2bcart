@@ -78,7 +78,7 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
     }
 
     const namespace = process.env.MSG91_NAMESPACE
-    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER
+    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
 
     const payload = {
         integrated_number: integratedNumber,
