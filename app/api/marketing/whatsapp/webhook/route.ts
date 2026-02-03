@@ -47,52 +47,17 @@ export async function POST(request: NextRequest) {
         }
 
         // Get AI Response (returns array of structured messages)
-        const aiMessages = await getSalesAssistantResponse({
-            message: messageText,
-            phone: mobile
+        // ECHO TESTING
+        console.log(`[WhatsApp Webhook] Echo Mode - Replying to ${mobile}`)
+        const result = await sendWhatsAppSessionMessage({
+            mobile: mobile,
+            message: `Echo Test: ${messageText}`
         })
-
-        console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
-
-        // Send each message based on type
-        const results = []
-        for (const msg of aiMessages) {
-            const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-            console.log(`[WhatsApp Webhook] Sending to ${mobile} [${msg.type}]:`, cleanText.slice(0, 50))
-
-            let result;
-            if (msg.type === 'image' && msg.imageUrl) {
-                // Use IMAGE TEMPLATE
-                try {
-                    result = await sendWhatsAppImageTemplate({
-                        mobile: mobile,
-                        imageUrl: msg.imageUrl,
-                        caption: cleanText
-                    })
-                    if (!result.success) throw new Error(JSON.stringify(result.error))
-                } catch (err) {
-                    console.log('Image template failed, falling back to text', err)
-                    result = await sendWhatsAppSessionMessage({
-                        mobile: mobile,
-                        message: cleanText
-                    })
-                }
-            } else {
-                // Use TEXT SESSION MESSAGE
-                result = await sendWhatsAppSessionMessage({
-                    mobile: mobile,
-                    message: cleanText
-                })
-            }
-            results.push({ type: msg.type, result })
-            await new Promise(r => setTimeout(r, 500))
-        }
-
 
         return NextResponse.json({
             success: true,
-            ai_responses: aiMessages,
-            msg91_results: results
+            echo: true,
+            msg91_result: result
         })
 
     } catch (error: any) {
