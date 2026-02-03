@@ -333,14 +333,15 @@ export async function GET(request: Request) {
 
                         if ((recentOrders || 0) === 0) {
                             try {
-                                // Fetch Category Name for proper personalization
+                                // Fetch Category Name AND Slug for proper personalization
                                 const { data: catData } = await supabaseAdmin
                                     .from('categories')
-                                    .select('name')
+                                    .select('name, slug')
                                     .eq('id', topCategoryId)
                                     .single()
 
                                 const categoryName = catData?.name || 'Popular'
+                                const categorySlug = catData?.slug || ''
 
                                 console.log(`[Remarketing] Sending to User: ${userId}, Category: ${categoryName} (${topCategoryId})`);
 
@@ -351,7 +352,7 @@ export async function GET(request: Request) {
                                         // Body: "Hi {{1}}, explored our {{2}} collection yet? New arrivals are waiting for you here: {{3}}"
                                         body_1: { type: 'text', value: userDetails[userId].name },
                                         body_2: { type: 'text', value: categoryName },
-                                        body_3: { type: 'text', value: `https://d2bcart.com/products?category=${topCategoryId}` }
+                                        body_3: { type: 'text', value: `https://d2bcart.com/products?category=${categorySlug}` }
                                     }
                                 })
 
