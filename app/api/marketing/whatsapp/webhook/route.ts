@@ -42,11 +42,20 @@ export async function POST(request: NextRequest) {
             let result;
             if (msg.type === 'image' && msg.imageUrl) {
                 // Use IMAGE TEMPLATE
-                result = await sendWhatsAppImageTemplate({
-                    mobile: mobile,
-                    imageUrl: msg.imageUrl,
-                    caption: cleanText
-                })
+                try {
+                    result = await sendWhatsAppImageTemplate({
+                        mobile: mobile,
+                        imageUrl: msg.imageUrl,
+                        caption: cleanText
+                    })
+                    if (!result.success) throw new Error(JSON.stringify(result.error))
+                } catch (err) {
+                    console.log('Image template failed, falling back to text', err)
+                    result = await sendWhatsAppSessionMessage({
+                        mobile: mobile,
+                        message: cleanText
+                    })
+                }
             } else {
                 // Use TEXT SESSION MESSAGE
                 result = await sendWhatsAppSessionMessage({
