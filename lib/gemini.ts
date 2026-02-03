@@ -1,16 +1,16 @@
 
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Lazy initialization to avoid build-time errors
-let openai: OpenAI | null = null;
+let genAI: GoogleGenerativeAI | null = null;
 let supabase: SupabaseClient | null = null;
 
-function getOpenAI() {
-    if (!openai) {
-        openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getGemini() {
+    if (!genAI) {
+        genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     }
-    return openai;
+    return genAI;
 }
 
 function getSupabase() {
@@ -130,13 +130,7 @@ Member Since: ${new Date(customer.created_at).toLocaleDateString()}`;
         }
     }
 
-    const response = await getOpenAI().chat.completions.create({
-        model: "gpt-4o-mini",
-        max_tokens: 500,
-        messages: [
-            {
-                role: "system",
-                content: `You are "D2B Assistant" - the official AI Sales Assistant for D2BCart, India's B2B wholesale marketplace for mobile accessories.
+    const systemPrompt = `You are "D2B Assistant" - the official AI Sales Assistant for D2BCart, India's B2B wholesale marketplace for mobile accessories.
 
 ══════════════════════════════════════
 ABOUT D2BCART
@@ -191,71 +185,35 @@ RESPONSE RULES (CRITICAL)
    - Format: "Check out [Product Name] - ₹[Price]: https://d2bcart.com/products/[slug]"
    - ONLY use category URLs if NO products are found in MATCHING PRODUCTS
    - Send each product as a separate message using ---SPLIT---
-   - Example: "Samsung S22 Ultra MagSafe Case - ₹299: https://d2bcart.com/products/samsung-s22-ultra-magsafe-case"
 
 3. ORDER QUERIES:
    - If customer asks "where is my order", show their order status from ORDER HISTORY above
    - Include order number, status, and tracking number if available
-   - If no orders found, say "You don't have any orders yet. Browse products at https://d2bcart.com/products"
 
 4. GREETING:
    - Use customer's business name if known: "Hi [Business Name]!"
    - For new visitors: "Welcome to D2BCart!"
 
-5. PRICING QUERIES:
-   - Always mention both retail and wholesale prices when available
-   - Encourage bulk orders for better rates
-
-6. REGISTRATION/LOGIN:
-   - Direct to https://d2bcart.com/login
-   - Mention benefits: "Register to get wholesale prices and track orders"
-
-7. COMPLAINTS/ISSUES:
-   - Apologize sincerely
-   - Ask for order number
-   - Offer to connect with support: "Our team will help. WhatsApp us at 917557777987"
-
-8. OUT OF STOCK / NOT FOUND:
-   - Suggest similar category
-   - Offer to notify when available
-   - Share top products as alternatives
-
-9. TONE:
+5. TONE:
    - Professional but friendly
    - Helpful and solution-oriented
-   - Never argue, always accommodate
-   - Use emojis sparingly (max 1 per message)
+   - Use emojis sparingly (max 1 per message)`;
 
-10. ESCALATION:
-    - For complex issues, pricing negotiations, or complaints: "Let me connect you with our team. Please WhatsApp 917557777987"
+    try {
+        const model = getGemini().getGenerativeModel({
+            model: "gemini-1.5-flash",
+            systemInstruction: systemPrompt
+        });
 
-══════════════════════════════════════
-EXAMPLE RESPONSES
-══════════════════════════════════════
+        const result = await model.generateContent(message);
+        const fullResponse = result.response.text() || "Sorry, please try again.";
 
-Query: "iPhone 15 case"
-Response: "Hi! Check out iPhone 15 cases here: https://d2bcart.com/products?category=cases-covers - We have premium cases starting ₹99!"
+        // Split into multiple messages if needed
+        const messages = fullResponse.split('---SPLIT---').map(m => m.trim()).filter(m => m.length > 0);
 
-Query: "Where is my order?"
-Response: "Hi [Name]! Your order #12345 is currently Shipped. Track it here: [tracking link] ---SPLIT--- Need help? WhatsApp us at 917557777987"
-
-Query: "Do you deliver to Delhi?"
-Response: "Yes! We deliver all across India including Delhi. Orders are shipped within 24-48 hours. Browse products: https://d2bcart.com/products"
-
-Query: "Price of charger"
-Response: "We have chargers starting from ₹49 (wholesale). Check our full range: https://d2bcart.com/products?category=chargers"`
-            },
-            {
-                role: "user",
-                content: message
-            }
-        ]
-    });
-
-    const fullResponse = response.choices[0].message.content || "Sorry, please try again.";
-
-    // Split into multiple messages if needed
-    const messages = fullResponse.split('---SPLIT---').map(m => m.trim()).filter(m => m.length > 0);
-
-    return messages.length > 0 ? messages : [fullResponse];
+        return messages.length > 0 ? messages : [fullResponse];
+    } catch (error: any) {
+        console.error('[Gemini AI] Error:', error);
+        return ["Sorry, I'm having trouble right now. Please WhatsApp us at 917557777987 for assistance."];
+    }
 }
