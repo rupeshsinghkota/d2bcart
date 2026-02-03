@@ -73,8 +73,13 @@ export async function sendWhatsAppMessage({
 
         const data = await response.json()
         if (response.ok && !data.error) return { success: true, data }
+
+        console.error('[MSG91] Error Response:', JSON.stringify(data))
+        console.error('[MSG91] Failed Payload:', JSON.stringify(payload))
+
         return { success: false, error: data }
     } catch (e) {
+        console.error('[MSG91] Network/System Exception:', e)
         return { success: false, error: e }
     }
 }
@@ -111,6 +116,9 @@ function transformComponents(simpleComponents: any): any[] {
     // 2. Body (Variables)
     // Supports body_1, body_2, ... body_10 securely in order
     const bodyParams: any[] = []
+
+    // DEBUG:
+    // console.log("Transforming Components Input:", JSON.stringify(simpleComponents))
 
     // Explicitly check for body_1, body_2, etc. to ensure order and existence
     for (let i = 1; i <= 10; i++) {
