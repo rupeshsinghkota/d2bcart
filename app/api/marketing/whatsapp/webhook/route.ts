@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSalesAssistantResponse, AIMessage } from '@/lib/gemini'
-import { sendWhatsAppSessionMessage } from '@/lib/msg91'
+import { sendWhatsAppSessionMessage, sendWhatsAppMessage } from '@/lib/msg91'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -111,18 +111,21 @@ export async function POST(request: NextRequest) {
             const adminMobile = "919155149597"; // Chandan
             console.log(`[WhatsApp Webhook] Escalating ${mobile} to Admin ${adminMobile}`);
 
-            const alertText = `🚨 ALERT: User ${mobile} needs urgent help/human support.`;
+            const alertText = `SUPPORT REQ: From ${mobile}. Msg: ${messageText.slice(0, 100)}`;
 
-            // Send Alert to Admin
-            const alertResult = await sendWhatsAppSessionMessage({
+            // Send Alert to Admin using a TEMPLATE (Template delivers even if no session)
+            const alertResult = await sendWhatsAppMessage({
                 mobile: adminMobile,
-                message: alertText
+                templateName: 'd2b_new_order_admin',
+                components: {
+                    body_1: { type: 'text', value: alertText }
+                }
             }).catch(e => {
                 console.error("Escalation failed", e);
                 return { success: false, error: e };
             });
 
-            // Log the alert to DB so it shows up in dashboard even if WhatsApp fails
+            // Log the alert to DB so it shows up in dashboard
             try {
                 await supabaseAdmin.from('whatsapp_chats').insert({
                     mobile: adminMobile,
