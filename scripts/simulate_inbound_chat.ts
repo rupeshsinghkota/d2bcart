@@ -14,7 +14,7 @@ async function simulateInbound(mobile: string, message: string) {
 
     console.log("1. Generating AI Response...")
     try {
-        const aiResponse = await getSalesAssistantResponse({ message });
+        const aiResponse = await getSalesAssistantResponse({ message, phone: mobile });
         console.log("AI Response:", aiResponse);
 
         console.log("2. Sending Reply via Template...");
@@ -35,7 +35,7 @@ async function simulateInbound(mobile: string, message: string) {
 
 // Test Run
 const testMobile = "918000421913"
-const testQuery = "Do you have mobile cases for Realme 12 Pro?"
+const testQuery = "Where is my order?"
 
 simulateInbound(testMobile, testQuery).then(() => {
     console.log("Simulation Finished.");

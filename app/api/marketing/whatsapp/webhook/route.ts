@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
 
         const userName = user?.business_name || 'Retailer'
 
-        // 2. Get AI Response
+        // 2. Get AI Response with customer context
         const aiResponse = await getSalesAssistantResponse({
             message: messageText,
-            context: `User Name: ${userName}. They are messaging from WhatsApp.`
+            phone: mobile
         })
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}: ${aiResponse}`)
