@@ -54,7 +54,7 @@ export async function sendWhatsAppMessage({
                 to_and_components: [
                     {
                         to: [cleanPhone],
-                        components: components
+                        components: transformComponents(components)
                     }
                 ]
             }
@@ -77,4 +77,72 @@ export async function sendWhatsAppMessage({
     } catch (e) {
         return { success: false, error: e }
     }
+}
+
+// Helper: Transform simplified "body_1: value" to MSG91 V5 structure
+function transformComponents(simpleComponents: any): any[] {
+    const components: any[] = []
+
+    // 1. Header
+    if (simpleComponents.header) {
+        const h = simpleComponents.header
+        if (h.type === 'document') {
+            components.push({
+                type: 'header',
+                parameters: [{
+                    type: 'document',
+                    document: {
+                        link: h.document.link,
+                        filename: h.document.filename
+                    }
+                }]
+            })
+        } else if (h.type === 'image') {
+            components.push({
+                type: 'header',
+                parameters: [{
+                    type: 'image',
+                    image: { link: h.image.link }
+                }]
+            })
+        }
+    }
+
+    // 2. Body (Variables)
+    // Supports body_1, body_2, ... body_10 securely in order
+    const bodyParams: any[] = []
+
+    // Explicitly check for body_1, body_2, etc. to ensure order and existence
+    for (let i = 1; i <= 10; i++) {
+        const key = `body_${i}`
+        if (simpleComponents[key] && simpleComponents[key].type === 'text') {
+            bodyParams.push({
+                type: 'text',
+                text: simpleComponents[key].value
+            })
+        }
+    }
+
+    if (bodyParams.length > 0) {
+        components.push({
+            type: 'body',
+            parameters: bodyParams
+        })
+    }
+
+    // 3. Buttons (Dynamic URL)
+    // Supports button_1
+    if (simpleComponents.button_1 && simpleComponents.button_1.subtype === 'url') {
+        components.push({
+            type: 'button',
+            sub_type: 'url',
+            index: '0', // First button
+            parameters: [{
+                type: 'text',
+                text: simpleComponents.button_1.value // The variable part of the URL
+            }]
+        })
+    }
+
+    return components
 }

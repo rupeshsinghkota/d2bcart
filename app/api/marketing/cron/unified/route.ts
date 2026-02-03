@@ -88,7 +88,11 @@ export async function GET(request: Request) {
             for (const d of downloads) {
                 const u = d.users as any
                 if (!u?.phone) continue
-                const { data: orders } = await supabaseAdmin.from('orders').select('id').eq('retailer_id', d.user_id).gt('created_at', d.created_at).limit(1)
+                let orders;
+                try {
+                    const { data } = await supabaseAdmin.from('orders').select('id').eq('retailer_id', d.user_id).gt('created_at', d.created_at).limit(1)
+                    orders = data;
+                } catch (e) { console.error('[Followup] Order check failed', e); continue; }
 
                 // Fix TS Error: Ensure orders is defined before checking length
                 if (orders && orders.length > 0) {
@@ -124,8 +128,14 @@ export async function GET(request: Request) {
 
         if (inactiveUsers) {
             for (const u of inactiveUsers) {
-                if (!u.phone) continue
-                const { data: lo } = await supabaseAdmin.from('orders').select('created_at').eq('retailer_id', u.id).order('created_at', { ascending: false }).limit(1).single()
+                if (!u.phone || !u.id) continue
+                let lo;
+                try {
+                    const { data } = await supabaseAdmin.from('orders').select('created_at').eq('retailer_id', u.id).order('created_at', { ascending: false }).limit(1).single()
+                    lo = data;
+                } catch (e) {
+                    // Single returns error if no rows found, which is fine here
+                }
                 const lod = lo ? new Date(lo.created_at) : new Date(u.created_at)
                 if (lod < thirtyDaysAgo) {
                     try {
@@ -229,9 +239,128 @@ export async function GET(request: Request) {
             }
         }
 
-        return NextResponse.json({ success: true, report })
+        // ---------------------------------------------------------
+        // 4. DAILY REMARKETING: RECENT BROWSES (The Reminder)
+        // ---------------------------------------------------------
+        const twentyFourHoursAgoForBrowse = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        // 1. Get recent interactions
+        const { data: interactions } = await supabaseAdmin
+            .from('user_interactions')
+            .select(`
+                user_id,
+                product_id,
+                interaction_type,
+                products (
+                    category_id,
+                    name
+                ),
+                users (
+                    phone,
+                    business_name
+                )
+            `)
+            .gt('created_at', twentyFourHoursAgoForBrowse)
+            .not('user_id', 'is', null)
+
+        if (interactions && interactions.length > 0) {
+            // Group by User -> Category
+            const userCategoryCounts: Record<string, Record<string, number>> = {}
+            const userDetails: Record<string, { phone: string, name: string }> = {}
+
+            for (const interaction of interactions) {
+                const userId = interaction.user_id
+                const product = (interaction.products as any)
+                const user = (interaction.users as any)
+
+                if (!userId || !product?.category_id || !user?.phone) continue
+
+                if (!userCategoryCounts[userId]) {
+                    userCategoryCounts[userId] = {}
+                    userDetails[userId] = {
+                        phone: user.phone,
+                        name: user.business_name || 'Partner'
+                    }
+                }
+
+                if (!userCategoryCounts[userId][product.category_id]) {
+                    userCategoryCounts[userId][product.category_id] = 0
+                }
+
+                // Weight: View = 1, Time Spent = (val > 10 ? 2 : 1) - simplistic
+                userCategoryCounts[userId][product.category_id]++
+            }
+
+            // Process each user
+            for (const userId in userCategoryCounts) {
+                // Find winning category
+                let topCategoryId = ''
+                let maxCount = 0
+                for (const catId in userCategoryCounts[userId]) {
+                    if (userCategoryCounts[userId][catId] > maxCount) {
+                        maxCount = userCategoryCounts[userId][catId]
+                        topCategoryId = catId
+                    }
+                }
+
+                if (topCategoryId) {
+                    // Check if we already sent a message recently to this user (Global Cooldown or Category Cooldown)
+                    // For now, let's rely on the fact this runs daily. 
+                    // To be safe, we check if we sent ANY auto message in last 20 hours to avoid spamming
+                    let recentSent = 0;
+                    try {
+                        const { count } = await supabaseAdmin
+                            .from('catalog_downloads')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('user_id', userId)
+                            .gt('created_at', new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString())
+                        recentSent = count || 0;
+                    } catch (err) {
+                        console.error('[Remarketing] Recent check failed:', err);
+                    }
+
+                    if ((recentSent || 0) === 0) {
+                        try {
+                            console.log(`[Remarketing] Sending to User: ${userId}, Category: ${topCategoryId}`);
+
+                            await sendWhatsAppMessage({
+                                mobile: userDetails[userId].phone,
+                                templateName: 'd2b_daily_remarketing_simplest', // Static Body, Document Header
+                                components: {
+                                    header: {
+                                        type: 'document',
+                                        document: {
+                                            link: `https://research.google.com/pubs/archive/44678.pdf`,
+                                            filename: 'Catalog.pdf'
+                                        }
+                                    }
+                                    // No body variables to avoid type errors
+                                }
+                            })
+
+                            // Validate UUID before insert to prevent "invalid input syntax for uuid"
+                            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                            if (!uuidRegex.test(userId) || !uuidRegex.test(topCategoryId)) {
+                                console.error(`[Remarketing] Invalid UUID: User=${userId}, Cat=${topCategoryId}`);
+                            } else {
+                                // Log it
+                                const { error: insertError } = await supabaseAdmin.from('catalog_downloads').insert({
+                                    user_id: userId,
+                                    category_id: topCategoryId,
+                                    source_page: 'auto_daily_remarketing'
+                                })
+                                if (insertError) console.error('[Remarketing] DB Insert Error:', insertError);
+                            }
+                        } catch (e: any) {
+                            console.error('[Remarketing] Exception:', e.message || e)
+                        }
+                    }
+                }
+            }
+
+            return NextResponse.json({ success: true, report })
+
+        } catch (error: any) {
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
     }
-}
