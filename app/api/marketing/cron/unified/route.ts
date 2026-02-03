@@ -244,36 +244,52 @@ export async function GET(request: Request) {
         // ---------------------------------------------------------
         const twentyFourHoursAgoForBrowse = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-        // 1. Get recent interactions
+        // 1. Get recent interactions (FETCH 1)
         const { data: interactions } = await supabaseAdmin
             .from('user_interactions')
-            .select(`
-                user_id,
-                product_id,
-                interaction_type,
-                products (
-                    category_id,
-                    name
-                ),
-                users (
-                    phone,
-                    business_name
-                )
-            `)
+            .select(`user_id, product_id, interaction_type, created_at`)
             .gt('created_at', twentyFourHoursAgoForBrowse)
             .not('user_id', 'is', null)
 
         if (interactions && interactions.length > 0) {
+            // Collect IDs
+            const userIds = [...new Set(interactions.map(i => i.user_id))] as string[]
+            const productIds = [...new Set(interactions.map(i => i.product_id))] as string[]
+
+            // FETCH 2: Users
+            const { data: users } = await supabaseAdmin
+                .from('users')
+                .select('id, phone, business_name')
+                .in('id', userIds)
+
+            const userMap = (users || []).reduce((acc: any, u: any) => {
+                acc[u.id] = u
+                return acc
+            }, {})
+
+            // FETCH 3: Products -> Categories
+            const { data: products } = await supabaseAdmin
+                .from('products')
+                .select('id, category_id, name')
+                .in('id', productIds)
+
+            const productMap = (products || []).reduce((acc: any, p: any) => {
+                acc[p.id] = p
+                return acc
+            }, {})
+
             // Group by User -> Category
             const userCategoryCounts: Record<string, Record<string, number>> = {}
             const userDetails: Record<string, { phone: string, name: string }> = {}
 
             for (const interaction of interactions) {
                 const userId = interaction.user_id
-                const product = (interaction.products as any)
-                const user = (interaction.users as any)
+                const productId = interaction.product_id
 
-                if (!userId || !product?.category_id || !user?.phone) continue
+                const user = userMap[userId]
+                const product = productMap[productId]
+
+                if (!userId || !user || !product || !product.category_id || !user.phone) continue
 
                 if (!userCategoryCounts[userId]) {
                     userCategoryCounts[userId] = {}
