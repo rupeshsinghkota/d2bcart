@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
         // structure can be complex: entry[0].changes[0].value.messages[0] (Meta style) or direct fields (MSG91 style)
 
         let messageText = body.content || body.message || body.data?.message || body.text || ""
-        let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || ""
+        let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || body.from || body.waId || ""
         const eventName = body.eventName || ""
 
-        // Deep check for Meta/WhatsApp Cloud API structure (sometimes MSG91 passes this through)
+        // Deep check for Meta/WhatsApp Cloud API structure
         if (!messageText && body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
             const msg = body.entry[0].changes[0].value.messages[0]
             if (msg.type === 'text') {
@@ -41,17 +41,20 @@ export async function POST(request: NextRequest) {
 
         console.log(`[WhatsApp Webhook] Parsed - Event: ${eventName}, Mobile: ${mobile}, Message: ${messageText}`)
 
-        if (!mobile || !messageText) {
-            console.warn('[WhatsApp Webhook] Missing mobile or message, ignoring.')
-            return NextResponse.json({ status: 'ignored', reason: 'No mobile or message found in payload' })
+        if (!mobile) {
+            console.warn('[WhatsApp Webhook] Missing mobile. Payload keys:', Object.keys(body))
+            return NextResponse.json({ status: 'ignored', reason: 'No mobile found' })
         }
+
+        // Treat checking for message as optional for now - if empty, assume greeting
+        if (!messageText) messageText = "Hi (Empty Message Recvd)"
 
         // Get AI Response (returns array of structured messages)
         // ECHO TESTING
         console.log(`[WhatsApp Webhook] Echo Mode - Replying to ${mobile}`)
         const result = await sendWhatsAppSessionMessage({
             mobile: mobile,
-            message: `Echo Test: ${messageText}`
+            message: `Debug: Mobile=${mobile}, Msg=${messageText.slice(0, 20)}`
         })
 
         return NextResponse.json({
