@@ -11,18 +11,39 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
-        console.log('[WhatsApp Webhook] Received:', JSON.stringify(body))
 
-        // MSG91 Inbound Structure
-        const messageText = body.content || body.message || body.data?.message || body.text || ""
-        const mobile = body.customerNumber || body.mobile || body.data?.mobile || ""
+        const rawBody = await request.text()
+        console.log('[WhatsApp Webhook] Raw Body:', rawBody)
+
+        let body: any = {}
+        try {
+            body = JSON.parse(rawBody)
+        } catch (e) {
+            console.error('[WhatsApp Webhook] Failed to parse JSON body, trying query params logic or text')
+            // Fallback for url-encoded or text
+        }
+
+        // Expanded MSG91 Inbound Structure Support
+        // structure can be complex: entry[0].changes[0].value.messages[0] (Meta style) or direct fields (MSG91 style)
+
+        let messageText = body.content || body.message || body.data?.message || body.text || ""
+        let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || ""
         const eventName = body.eventName || ""
 
-        console.log(`[WhatsApp Webhook] Event: ${eventName}, Mobile: ${mobile}, Message: ${messageText}`)
+        // Deep check for Meta/WhatsApp Cloud API structure (sometimes MSG91 passes this through)
+        if (!messageText && body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
+            const msg = body.entry[0].changes[0].value.messages[0]
+            if (msg.type === 'text') {
+                messageText = msg.text.body
+            }
+            mobile = msg.from
+        }
+
+        console.log(`[WhatsApp Webhook] Parsed - Event: ${eventName}, Mobile: ${mobile}, Message: ${messageText}`)
 
         if (!mobile || !messageText) {
-            return NextResponse.json({ status: 'ignored', reason: 'No mobile or message' })
+            console.warn('[WhatsApp Webhook] Missing mobile or message, ignoring.')
+            return NextResponse.json({ status: 'ignored', reason: 'No mobile or message found in payload' })
         }
 
         // Get AI Response (returns array of structured messages)
