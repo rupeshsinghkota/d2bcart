@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSalesAssistantResponse } from '@/lib/gemini'
-import { sendWhatsAppMessage } from '@/lib/msg91'
+import { sendWhatsAppSessionMessage } from '@/lib/msg91'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,16 +43,14 @@ export async function POST(request: NextRequest) {
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 
-        // 3. Send each message via MSG91 (strip newlines for compatibility)
+        // 3. Send each message via MSG91 Session Message (allows link previews!)
+        // Session messages work within 24h of customer's last message
         const results = []
         for (const msg of aiMessages) {
             const cleanMsg = msg.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-            const result = await sendWhatsAppMessage({
+            const result = await sendWhatsAppSessionMessage({
                 mobile: mobile,
-                templateName: 'd2b_ai_response',
-                components: {
-                    body_1: { type: 'text', value: cleanMsg }
-                }
+                message: cleanMsg
             })
             results.push(result)
             // Small delay between messages
