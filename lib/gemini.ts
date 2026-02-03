@@ -26,10 +26,13 @@ function getSupabase() {
 // Get customer details by phone
 async function getCustomer(phone: string) {
     const cleanPhone = phone.replace('+', '').replace(/\s/g, '');
+    const last10 = cleanPhone.slice(-10);
+
+    // Try multiple phone formats
     const { data } = await getSupabase()
         .from('users')
         .select('id, business_name, phone, user_type, created_at')
-        .or(`phone.eq.${cleanPhone},phone.eq.91${cleanPhone.slice(-10)}`)
+        .or(`phone.eq.${cleanPhone},phone.eq.+${cleanPhone},phone.eq.91${last10},phone.eq.+91${last10}`)
         .single();
     return data;
 }
