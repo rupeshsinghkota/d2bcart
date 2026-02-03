@@ -82,16 +82,9 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
 
     const payload = {
         integrated_number: integratedNumber,
+        recipient_number: cleanPhone,
         content_type: "text",
-        payload: {
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: cleanPhone,
-            type: "text",
-            text: {
-                body: message
-            }
-        }
+        text: message
     }
 
     return await executeMsg91Call(payload)
@@ -138,7 +131,7 @@ async function executeMsg91Call(payload: any) {
     if (!MSG91_AUTH_KEY) return { success: false, error: 'MSG91_AUTH_KEY missing' }
 
     try {
-        const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+        const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
             method: 'POST',
             headers: {
                 'authkey': MSG91_AUTH_KEY,

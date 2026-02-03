@@ -219,7 +219,7 @@ IMPORTANT: Return ONLY valid JSON object. No markdown.`
             }));
         }
     } catch (e) {
-        console.error('[AI] Failed to parse JSON response:', fullResponse);
+        console.error('[AI] Failed to parse JSON response. raw:', fullResponse, 'error:', e);
     }
 
     // Fallback to text-only
