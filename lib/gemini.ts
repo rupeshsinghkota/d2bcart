@@ -60,7 +60,18 @@ async function searchProducts(query: string) {
             .ilike('name', `%${keyword}%`)
             .eq('is_active', true)
             .limit(5);
-        if (data) products.push(...data);
+        if (data && data.length > 0) products.push(...data);
+    }
+
+    // If no matches, get some recent products as suggestions
+    if (products.length === 0) {
+        const { data } = await getSupabase()
+            .from('products')
+            .select('id, name, slug, retail_price, wholesale_price')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(5);
+        if (data) products = data;
     }
 
     const unique = [...new Map(products.map(p => [p.id, p])).values()];
@@ -141,12 +152,13 @@ ${topProductContext}
 
 ${customerContext}
 
-RULES:
-1. NO newlines - plain text only
-2. Keep under 300 chars per message
-3. Use ---SPLIT--- for multiple messages
-4. Include full product URLs when mentioning products
-5. For orders, show status from ORDERS above
+RULES (CRITICAL - FOLLOW EXACTLY):
+1. ALWAYS use product URLs from MATCHING PRODUCTS or TOP PRODUCTS above
+2. Format: "Check out [Product Name] - ₹[Price]: https://d2bcart.com/products/[slug]"
+3. NEVER send category URLs - always send specific product URLs
+4. Keep under 300 chars, plain text, no newlines
+5. Use ---SPLIT--- for multiple messages
+6. For orders, show status from ORDERS above
 6. Be helpful and concise`
             },
             { role: "user", content: message }
