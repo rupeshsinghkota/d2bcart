@@ -1,16 +1,16 @@
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Lazy initialization to avoid build-time errors
-let genAI: GoogleGenerativeAI | null = null;
+let openai: OpenAI | null = null;
 let supabase: SupabaseClient | null = null;
 
-function getGemini() {
-    if (!genAI) {
-        genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+function getOpenAI() {
+    if (!openai) {
+        openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     }
-    return genAI;
+    return openai;
 }
 
 function getSupabase() {
@@ -34,7 +34,7 @@ async function getCustomer(phone: string) {
     return data;
 }
 
-// Get customer's recent orders with items
+// Get customer's recent orders
 async function getCustomerOrders(userId: string) {
     const { data } = await getSupabase()
         .from('orders')
@@ -45,7 +45,7 @@ async function getCustomerOrders(userId: string) {
     return data || [];
 }
 
-// Search products - return full details with URLs
+// Search products
 async function searchProducts(query: string) {
     const keywords = query.toLowerCase().split(' ').filter(w => w.length > 2);
     let products: any[] = [];
@@ -53,14 +53,13 @@ async function searchProducts(query: string) {
     for (const keyword of keywords) {
         const { data } = await getSupabase()
             .from('products')
-            .select('id, name, slug, retail_price, wholesale_price, categories(name, slug)')
+            .select('id, name, slug, retail_price, wholesale_price')
             .ilike('name', `%${keyword}%`)
             .eq('is_active', true)
             .limit(5);
         if (data) products.push(...data);
     }
 
-    // Remove duplicates
     const unique = [...new Map(products.map(p => [p.id, p])).values()];
     return unique.slice(0, 10);
 }
@@ -71,7 +70,7 @@ async function getCategories() {
     return data || [];
 }
 
-// Get top selling products
+// Get top products
 async function getTopProducts() {
     const { data } = await getSupabase()
         .from('products')
@@ -85,135 +84,73 @@ async function getTopProducts() {
 export async function getSalesAssistantResponse(params: {
     message: string,
     phone: string,
-    history?: any[]
 }): Promise<string[]> {
     const { message, phone } = params;
 
-    // Fetch ALL context
     const customer = await getCustomer(phone);
     const orders = customer ? await getCustomerOrders(customer.id) : [];
     const categories = await getCategories();
     const matchingProducts = await searchProducts(message);
     const topProducts = await getTopProducts();
 
-    // Build category context
     const categoryContext = categories.map(c =>
         `• ${c.name}: https://d2bcart.com/products?category=${c.slug}`
     ).join('\n');
 
-    // Build matching products context with FULL URLs
     const productContext = matchingProducts.length > 0
         ? matchingProducts.map(p =>
-            `• ${p.name} - ₹${p.retail_price} (Wholesale: ₹${p.wholesale_price}) URL: https://d2bcart.com/products/${p.slug}`
+            `• ${p.name} - ₹${p.retail_price}: https://d2bcart.com/products/${p.slug}`
         ).join('\n')
         : '';
 
-    // Build top products context
     const topProductContext = topProducts.map(p =>
         `• ${p.name} - ₹${p.retail_price}: https://d2bcart.com/products/${p.slug}`
     ).join('\n');
 
-    // Customer context
-    let customerContext = "NEW VISITOR (Not registered yet)";
+    let customerContext = "NEW VISITOR";
     if (customer) {
-        customerContext = `REGISTERED CUSTOMER:
-Name: ${customer.business_name || 'Retailer'}
-Type: ${customer.user_type}
-Member Since: ${new Date(customer.created_at).toLocaleDateString()}`;
+        customerContext = `CUSTOMER: ${customer.business_name || 'Retailer'}, Member since ${new Date(customer.created_at).toLocaleDateString()}`;
         if (orders.length > 0) {
-            customerContext += `\n\nORDER HISTORY:`;
-            orders.forEach(o => {
-                customerContext += `\n• Order #${o.order_number}: ₹${o.total_amount} - Status: ${o.status}${o.tracking_number ? ` - Tracking: ${o.tracking_number}` : ''}`;
-            });
-        } else {
-            customerContext += `\nNo orders yet.`;
+            customerContext += `\nORDERS:\n` + orders.map(o =>
+                `#${o.order_number}: ₹${o.total_amount} - ${o.status}${o.tracking_number ? ` - Track: ${o.tracking_number}` : ''}`
+            ).join('\n');
         }
     }
 
-    const systemPrompt = `You are "D2B Assistant" - the official AI Sales Assistant for D2BCart, India's B2B wholesale marketplace for mobile accessories.
+    const response = await getOpenAI().chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 400,
+        messages: [
+            {
+                role: "system",
+                content: `You are D2BCart AI Sales Assistant for B2B mobile accessories wholesale.
 
-══════════════════════════════════════
-ABOUT D2BCART
-══════════════════════════════════════
-• D2BCart is a B2B wholesale platform where Retailers buy directly from Wholesalers
-• Products: Mobile Cases, Covers, Screen Guards, Tempered Glass, Chargers, Cables, Earphones, Power Banks, Mobile Holders, Accessories
-• Minimum order: No minimum, but wholesale prices for bulk orders
-• Delivery: All over India via courier partners
-• Payment: Online (Razorpay) - UPI, Cards, Net Banking
-• Returns: Contact support within 7 days for damaged items
+WEBSITE: https://d2bcart.com
+SUPPORT: WhatsApp 917557777987
 
-══════════════════════════════════════
-WEBSITE PAGES
-══════════════════════════════════════
-• Home: https://d2bcart.com
-• All Products: https://d2bcart.com/products
-• Cart: https://d2bcart.com/cart
-• My Orders: https://d2bcart.com/orders
-• Login/Register: https://d2bcart.com/login
-• Contact Support: WhatsApp 917557777987
-
-══════════════════════════════════════
-ALL CATEGORIES
-══════════════════════════════════════
+CATEGORIES:
 ${categoryContext}
 
-══════════════════════════════════════
-${productContext ? `MATCHING PRODUCTS (Based on query)\n${productContext}` : 'NO EXACT PRODUCT MATCH - Suggest categories or top products'}
+${productContext ? `MATCHING PRODUCTS:\n${productContext}` : 'NO EXACT MATCH'}
 
-══════════════════════════════════════
-TOP/NEW ARRIVALS
-══════════════════════════════════════
+TOP PRODUCTS:
 ${topProductContext}
 
-══════════════════════════════════════
-CUSTOMER CONTEXT
-══════════════════════════════════════
 ${customerContext}
 
-══════════════════════════════════════
-RESPONSE RULES (CRITICAL)
-══════════════════════════════════════
+RULES:
+1. NO newlines - plain text only
+2. Keep under 300 chars per message
+3. Use ---SPLIT--- for multiple messages
+4. Include full product URLs when mentioning products
+5. For orders, show status from ORDERS above
+6. Be helpful and concise`
+            },
+            { role: "user", content: message }
+        ]
+    });
 
-1. FORMAT:
-   - NO newlines, NO markdown, NO bullets - plain text only
-   - Keep each message under 300 characters
-   - Use ---SPLIT--- to break into multiple messages
-   - Example: "First message here ---SPLIT--- Second message here"
-
-2. PRODUCT QUERIES (MOST IMPORTANT):
-   - If MATCHING PRODUCTS section has products, you MUST use those exact URLs
-   - Format: "Check out [Product Name] - ₹[Price]: https://d2bcart.com/products/[slug]"
-   - ONLY use category URLs if NO products are found in MATCHING PRODUCTS
-   - Send each product as a separate message using ---SPLIT---
-
-3. ORDER QUERIES:
-   - If customer asks "where is my order", show their order status from ORDER HISTORY above
-   - Include order number, status, and tracking number if available
-
-4. GREETING:
-   - Use customer's business name if known: "Hi [Business Name]!"
-   - For new visitors: "Welcome to D2BCart!"
-
-5. TONE:
-   - Professional but friendly
-   - Helpful and solution-oriented
-   - Use emojis sparingly (max 1 per message)`;
-
-    try {
-        const model = getGemini().getGenerativeModel({
-            model: "gemini-1.5-flash",
-            systemInstruction: systemPrompt
-        });
-
-        const result = await model.generateContent(message);
-        const fullResponse = result.response.text() || "Sorry, please try again.";
-
-        // Split into multiple messages if needed
-        const messages = fullResponse.split('---SPLIT---').map(m => m.trim()).filter(m => m.length > 0);
-
-        return messages.length > 0 ? messages : [fullResponse];
-    } catch (error: any) {
-        console.error('[Gemini AI] Error:', error);
-        return ["Sorry, I'm having trouble right now. Please WhatsApp us at 917557777987 for assistance."];
-    }
+    const fullResponse = response.choices[0].message.content || "Sorry, please try again.";
+    const messages = fullResponse.split('---SPLIT---').map(m => m.trim()).filter(m => m.length > 0);
+    return messages.length > 0 ? messages : [fullResponse];
 }
