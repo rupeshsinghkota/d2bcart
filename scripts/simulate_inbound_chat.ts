@@ -39,7 +39,7 @@ async function simulateInbound(mobile: string, message: string) {
 
 // Test Run
 const testMobile = "918000421913"
-const testQuery = "Samsung MagSafe case"
+const testQuery = "Redmi cases"
 
 simulateInbound(testMobile, testQuery).then(() => {
     console.log("Simulation Finished.");
