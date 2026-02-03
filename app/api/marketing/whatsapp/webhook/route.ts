@@ -101,10 +101,21 @@ export async function POST(request: NextRequest) {
         }
 
         // Get AI Response (returns array of structured messages)
-        const aiMessages = await getSalesAssistantResponse({
+        const { messages: aiMessages, escalate } = await getSalesAssistantResponse({
             message: messageText,
             phone: mobile
         })
+
+        // Handle Escalation (Emergency Contact)
+        if (escalate) {
+            const adminMobile = "919155149597"; // Chandan
+            console.log(`[WhatsApp Webhook] Escalating ${mobile} to Admin ${adminMobile}`);
+            // Send Alert to Admin using Session Message
+            await sendWhatsAppSessionMessage({
+                mobile: adminMobile,
+                message: `🚨 ALERT: User ${mobile} needs urgent help/human support.`
+            }).catch(e => console.error("Escalation failed", e));
+        }
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 

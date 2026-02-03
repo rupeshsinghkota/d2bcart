@@ -31,6 +31,12 @@ export interface AIMessage {
     productName?: string;
 }
 
+export interface AIResponse {
+    reasoning: string;
+    escalate?: boolean;
+    messages: AIMessage[];
+}
+
 // Get customer details by phone
 async function getCustomer(phone: string) {
     const cleanPhone = phone.replace('+', '').replace(/\s/g, '');
@@ -163,7 +169,7 @@ async function getChatHistory(dateObj: any, phone: string) {
 export async function getSalesAssistantResponse(params: {
     message: string,
     phone: string,
-}): Promise<AIMessage[]> {
+}): Promise<{ messages: AIMessage[], escalate: boolean }> {
     const { message, phone } = params;
 
     // Parallelize detailed context fetching
@@ -282,22 +288,23 @@ IMPORTANT: Return ONLY valid JSON object. No markdown.`
     try {
         // Parse JSON response
         const cleanJson = fullResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
+        const parsed: AIResponse = JSON.parse(cleanJson);
 
         console.log('[AI Thinking]:', parsed.reasoning); // Log the thinking
 
-        if (parsed.messages && Array.isArray(parsed.messages)) {
-            return parsed.messages.map((msg: any) => ({
+        return {
+            messages: parsed.messages.map((msg: any) => ({
                 type: msg.type || 'text',
                 text: msg.text || '',
                 imageUrl: msg.imageUrl,
                 productName: msg.productName
-            }));
-        }
+            })),
+            escalate: parsed.escalate || false
+        };
     } catch (e) {
         console.error('[AI] Failed to parse JSON response. raw:', fullResponse, 'error:', e);
     }
 
     // Fallback to text-only
-    return [{ type: 'text', text: fullResponse.slice(0, 300) }];
+    return { messages: [{ type: 'text', text: fullResponse.slice(0, 300) }], escalate: false };
 }
