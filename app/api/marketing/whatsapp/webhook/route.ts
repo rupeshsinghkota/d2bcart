@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSalesAssistantResponse, AIMessage } from '@/lib/gemini'
-import { sendWhatsAppSessionMessage } from '@/lib/msg91'
+import { sendWhatsAppSessionMessage, sendWhatsAppImageTemplate } from '@/lib/msg91'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,20 +33,31 @@ export async function POST(request: NextRequest) {
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 
-        // Send each message via text session (MSG91 doesn't support image session messages)
-        // Text session messages can show link previews when user clicks the link
+        // Send each message based on type
         const results = []
         for (const msg of aiMessages) {
             const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-            console.log(`[WhatsApp Webhook] Sending to ${mobile}:`, cleanText.slice(0, 50))
+            console.log(`[WhatsApp Webhook] Sending to ${mobile} [${msg.type}]:`, cleanText.slice(0, 50))
 
-            const result = await sendWhatsAppSessionMessage({
-                mobile: mobile,
-                message: cleanText
-            })
-            results.push({ type: 'text', result })
+            let result;
+            if (msg.type === 'image' && msg.imageUrl) {
+                // Use IMAGE TEMPLATE
+                result = await sendWhatsAppImageTemplate({
+                    mobile: mobile,
+                    imageUrl: msg.imageUrl,
+                    caption: cleanText
+                })
+            } else {
+                // Use TEXT SESSION MESSAGE
+                result = await sendWhatsAppSessionMessage({
+                    mobile: mobile,
+                    message: cleanText
+                })
+            }
+            results.push({ type: msg.type, result })
             await new Promise(r => setTimeout(r, 500))
         }
+
 
         return NextResponse.json({
             success: true,

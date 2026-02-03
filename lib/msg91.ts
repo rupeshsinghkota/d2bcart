@@ -61,7 +61,7 @@ export async function sendWhatsAppMessage({
         }
     }
 
-    return await executeMsg91Call(payload)
+    return await executeMsg91Call(payload, true)
 }
 
 /**
@@ -91,47 +91,44 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
 }
 
 /**
- * Sends a FREE-FORM image message (Session Message with Image).
- * Only works if the customer has messaged you in the last 24 hours.
+ * Sends an IMAGE using a TEMPLATE (since session images aren't supported).
+ * Template: d2b_product_image
+ * Header: Image (Dynamic)
+ * Body variable {{1}}: Caption/Text
  */
-export async function sendWhatsAppImageMessage(params: {
+export async function sendWhatsAppImageTemplate(params: {
     mobile: string,
     imageUrl: string,
-    caption?: string
+    caption: string
 }) {
     const { mobile, imageUrl, caption } = params
-    let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
 
-    if (cleanPhone.length === 10) {
-        cleanPhone = '91' + cleanPhone
-    }
-
-    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER
-
-    const payload = {
-        integrated_number: integratedNumber,
-        content_type: "image",
-        payload: {
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: cleanPhone,
-            type: "image",
-            image: {
-                link: imageUrl,
-                caption: caption || ''
+    return await sendWhatsAppMessage({
+        mobile,
+        templateName: 'd2b_product_image',
+        components: {
+            header: {
+                type: 'image',
+                value: imageUrl
+            },
+            body_1: {
+                type: 'text',
+                value: caption
             }
         }
-    }
-
-    return await executeMsg91Call(payload)
+    })
 }
 
-async function executeMsg91Call(payload: any) {
+async function executeMsg91Call(payload: any, isBulk: boolean = false) {
     const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
     if (!MSG91_AUTH_KEY) return { success: false, error: 'MSG91_AUTH_KEY missing' }
 
+    const endpoint = isBulk
+        ? 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/'
+        : 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
+
     try {
-        const response = await fetch('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/', {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'authkey': MSG91_AUTH_KEY,
