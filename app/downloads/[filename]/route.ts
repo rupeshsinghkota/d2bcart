@@ -18,6 +18,8 @@ export async function GET(
     const supabase = supabaseAdmin
 
     // 1. Resolve Identifier to Category ID
+    let category: any = null;
+
     // FALLBACK: If identifier is just 'catalog' (generic test), pick the first category
     if (identifier.toLowerCase() === 'catalog') {
         const { data } = await supabase.from('categories').select('id, name').limit(1).single()
