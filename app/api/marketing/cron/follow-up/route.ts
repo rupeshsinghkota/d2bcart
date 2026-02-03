@@ -30,33 +30,36 @@ export async function GET(request: Request) {
 
         const { data: downloads, error: downloadError } = await supabaseAdmin
             .from('catalog_downloads')
-            .select(`
-                id,
-                user_id,
-                created_at,
-                category_id,
-                users (
-                    phone,
-                    business_name
-                )
-            `)
+            .select(`id, user_id, created_at, category_id`)
             .is('followup_sent_at', null)
             .lt('created_at', threeDaysAgo.toISOString())
-            .limit(50) // Process in batches
+            .limit(50)
 
         if (downloadError) throw downloadError
         if (!downloads || downloads.length === 0) {
             return NextResponse.json({ message: 'No pending follow-ups found' })
         }
 
+        // 2. Fetch Users (Manual Join)
+        const userIds = [...new Set(downloads.map(d => d.user_id))]
+        const { data: users } = await supabaseAdmin
+            .from('users')
+            .select('id, phone, business_name')
+            .in('id', userIds)
+
+        const userMap = (users || []).reduce((acc: any, u: any) => {
+            acc[u.id] = u
+            return acc
+        }, {})
+
         const results = []
 
-        // 2. Process each lead
+        // 3. Process each lead
         for (const download of downloads) {
-            const user = download.users as any
+            const user = userMap[download.user_id]
             if (!user?.phone) continue
 
-            // 3. Check for orders AFTER the download
+            // 4. Check for orders AFTER the download
             const { data: orders } = await supabaseAdmin
                 .from('orders')
                 .select('id')
@@ -67,8 +70,6 @@ export async function GET(request: Request) {
             const hasConverted = orders && orders.length > 0
 
             if (hasConverted) {
-                // User bought something! No need to nag them.
-                // Mark as "handled" (sent at = now) so we don't check again
                 await supabaseAdmin
                     .from('catalog_downloads')
                     .update({ followup_sent_at: new Date().toISOString() })
@@ -76,9 +77,6 @@ export async function GET(request: Request) {
 
                 results.push({ id: download.id, status: 'skipped_converted' })
             } else {
-                // 4. Send "The Closer" Message
-                // Template: d2b_catalog_followup
-                // Variables: {{1}} = Business/User Name
                 try {
                     await sendWhatsAppMessage({
                         templateName: 'd2b_catalog_followup',
@@ -91,7 +89,6 @@ export async function GET(request: Request) {
                         }
                     })
 
-                    // 5. Mark as Sent
                     await supabaseAdmin
                         .from('catalog_downloads')
                         .update({ followup_sent_at: new Date().toISOString() })

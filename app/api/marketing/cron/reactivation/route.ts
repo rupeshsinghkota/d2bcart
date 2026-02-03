@@ -49,13 +49,19 @@ export async function GET(request: Request) {
             if (!user.phone) continue
 
             // 3. Check their Last Order Date
-            const { data: lastOrder } = await supabaseAdmin
-                .from('orders')
-                .select('created_at')
-                .eq('retailer_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
+            let lastOrder = null
+            try {
+                const { data } = await supabaseAdmin
+                    .from('orders')
+                    .select('created_at')
+                    .eq('retailer_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single()
+                lastOrder = data
+            } catch (e) {
+                // If single fails (no row), it's fine
+            }
 
             const lastOrderDate = lastOrder ? new Date(lastOrder.created_at) : new Date(user.created_at)
 

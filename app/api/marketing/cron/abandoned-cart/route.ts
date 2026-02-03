@@ -30,21 +30,9 @@ export async function GET(request: Request) {
         twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
 
         // 2. Fetch Abandoned Carts
-        // We select carts where user has NOT been messaged yet
         const { data: carts, error: cartError } = await supabaseAdmin
             .from('carts')
-            .select(`
-                id,
-                user_id,
-                updated_at,
-                users (
-                    phone,
-                    business_name
-                ),
-                cart_items (
-                    id
-                )
-            `)
+            .select(`id, user_id, updated_at`)
             .lt('updated_at', oneHourAgo.toISOString())
             .gt('updated_at', twentyFourHoursAgo.toISOString())
             .is('recovery_sent_at', null)
@@ -52,23 +40,42 @@ export async function GET(request: Request) {
 
         if (cartError) throw cartError
         if (!carts || carts.length === 0) {
-            return NextResponse.json({ message: 'No, abandoned carts found' })
+            return NextResponse.json({ message: 'No abandoned carts found' })
         }
+
+        // 3. Robust Fetching: Users & Items (Manual Join to avoid PGRST200)
+        const userIds = [...new Set(carts.map(c => c.user_id))]
+        const cartIds = carts.map(c => c.id)
+
+        const { data: users } = await supabaseAdmin
+            .from('users')
+            .select('id, phone, business_name')
+            .in('id', userIds)
+
+        const userMap = (users || []).reduce((acc: any, u: any) => {
+            acc[u.id] = u
+            return acc
+        }, {})
+
+        const { data: cartItems } = await supabaseAdmin
+            .from('cart_items')
+            .select('cart_id')
+            .in('cart_id', cartIds)
+
+        const cartItemCounts = (cartItems || []).reduce((acc: any, item: any) => {
+            acc[item.cart_id] = (acc[item.cart_id] || 0) + 1
+            return acc
+        }, {})
 
         const results = []
 
         for (const cart of carts) {
-            const user = cart.users as any
-            const items = cart.cart_items || []
+            const user = userMap[cart.user_id]
+            const itemCount = cartItemCounts[cart.id] || 0
 
             // Skip empty carts or users without phone
-            if (items.length === 0 || !user?.phone) continue
+            if (itemCount === 0 || !user?.phone) continue
 
-            // 3. Send "Recovery" Message
-            // Template: d2b_abandoned_cart
-            // Body: "Hi {{1}}, you have items waiting in your cart! Complete your order now: {{2}}"
-            // {{1}} = Name
-            // {{2}} = Cart Link (e.g., https://d2bcart.com/cart)
             try {
                 await sendWhatsAppMessage({
                     templateName: 'd2b_abandoned_cart',
@@ -77,15 +84,6 @@ export async function GET(request: Request) {
                         body_1: {
                             type: 'text',
                             value: user.business_name || 'Partner'
-                        },
-                        body_2: {
-                            type: 'text',
-                            value: 'https://d2bcart.com/cart'
-                        },
-                        button_1: {
-                            subtype: 'url',
-                            type: 'text',
-                            value: 'cart' // Suffix for https://d2bcart.com/{{1}}
                         }
                     }
                 })
