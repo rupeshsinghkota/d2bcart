@@ -14,20 +14,24 @@ async function simulateInbound(mobile: string, message: string) {
 
     console.log("1. Generating AI Response...")
     try {
-        const aiResponse = await getSalesAssistantResponse({ message, phone: mobile });
-        console.log("AI Response:", aiResponse);
+        const aiMessages = await getSalesAssistantResponse({ message, phone: mobile });
+        console.log("AI Responses:", aiMessages);
 
-        console.log("2. Sending Reply via Template...");
+        console.log("2. Sending Replies via Template...");
         const { sendWhatsAppMessage } = await import('../lib/msg91');
-        const result = await sendWhatsAppMessage({
-            mobile: mobile,
-            templateName: 'd2b_ai_response',
-            components: {
-                body_1: { type: 'text', value: aiResponse }
-            }
-        });
 
-        console.log("MSG91 Result:", JSON.stringify(result, null, 2));
+        for (const msg of aiMessages) {
+            const cleanMsg = msg.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            console.log(`Sending: ${cleanMsg.substring(0, 50)}...`);
+            const result = await sendWhatsAppMessage({
+                mobile: mobile,
+                templateName: 'd2b_ai_response',
+                components: {
+                    body_1: { type: 'text', value: cleanMsg }
+                }
+            });
+            console.log("MSG91 Result:", result.success ? "✓ Sent" : "✗ Failed");
+        }
     } catch (e) {
         console.error("Simulation Failed:", e);
     }
@@ -35,7 +39,7 @@ async function simulateInbound(mobile: string, message: string) {
 
 // Test Run
 const testMobile = "918000421913"
-const testQuery = "Where is my order?"
+const testQuery = "Show me iPhone 15 cases and chargers"
 
 simulateInbound(testMobile, testQuery).then(() => {
     console.log("Simulation Finished.");

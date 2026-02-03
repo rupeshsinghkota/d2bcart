@@ -32,28 +32,34 @@ export async function POST(request: NextRequest) {
 
         const userName = user?.business_name || 'Retailer'
 
-        // 2. Get AI Response with customer context
-        const aiResponse = await getSalesAssistantResponse({
+        // 2. Get AI Response with customer context (returns array of messages)
+        const aiMessages = await getSalesAssistantResponse({
             message: messageText,
             phone: mobile
         })
 
-        console.log(`[WhatsApp Webhook] AI Response for ${mobile}: ${aiResponse}`)
+        console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 
-        // 3. Send Response via MSG91 (Using template since bulk API only supports templates)
-        // You need to create a template 'd2b_ai_response' with body: "{{1}}"
-        const result = await sendWhatsAppMessage({
-            mobile: mobile,
-            templateName: 'd2b_ai_response',
-            components: {
-                body_1: { type: 'text', value: aiResponse }
-            }
-        })
+        // 3. Send each message via MSG91 (strip newlines for compatibility)
+        const results = []
+        for (const msg of aiMessages) {
+            const cleanMsg = msg.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+            const result = await sendWhatsAppMessage({
+                mobile: mobile,
+                templateName: 'd2b_ai_response',
+                components: {
+                    body_1: { type: 'text', value: cleanMsg }
+                }
+            })
+            results.push(result)
+            // Small delay between messages
+            await new Promise(r => setTimeout(r, 500))
+        }
 
         return NextResponse.json({
             success: true,
-            ai_response: aiResponse,
-            msg91_result: result
+            ai_responses: aiMessages,
+            msg91_results: results
         })
 
     } catch (error: any) {
