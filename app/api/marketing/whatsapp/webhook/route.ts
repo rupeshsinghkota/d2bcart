@@ -110,11 +110,30 @@ export async function POST(request: NextRequest) {
         if (escalate) {
             const adminMobile = "919155149597"; // Chandan
             console.log(`[WhatsApp Webhook] Escalating ${mobile} to Admin ${adminMobile}`);
-            // Send Alert to Admin using Session Message
-            await sendWhatsAppSessionMessage({
+
+            const alertText = `🚨 ALERT: User ${mobile} needs urgent help/human support.`;
+
+            // Send Alert to Admin
+            const alertResult = await sendWhatsAppSessionMessage({
                 mobile: adminMobile,
-                message: `🚨 ALERT: User ${mobile} needs urgent help/human support.`
-            }).catch(e => console.error("Escalation failed", e));
+                message: alertText
+            }).catch(e => {
+                console.error("Escalation failed", e);
+                return { success: false, error: e };
+            });
+
+            // Log the alert to DB so it shows up in dashboard even if WhatsApp fails
+            try {
+                await supabaseAdmin.from('whatsapp_chats').insert({
+                    mobile: adminMobile,
+                    message: alertText,
+                    direction: 'outbound',
+                    status: alertResult.success ? 'sent' : 'failed',
+                    metadata: { type: 'escalation_alert', ...alertResult }
+                });
+            } catch (dbErr) {
+                console.error("Failed to log alert to DB", dbErr);
+            }
         }
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
