@@ -257,7 +257,8 @@ RULES:
 1. "reasoning": Briefly explain your plan (e.g., "User asked for cases. Found 5 matches. Showing top 2 and category link.")
 2. "messages": Array of response objects.
 3. "type": "image" PREFERRED for products. "text" for general info.
-4. For "image" type: MUST include 'imageUrl' and 'productName'.
+4. For "image" type: MUST include 'imageUrl', 'productName'. 
+   - CRITICAL: The 'text' field MUST contain the Product Name, Price, and the full Product URL.
 5. For "text" type: You can include Links. Links in text messages will generate previews.
 6. Maximum 3-4 messages total.
 7. CRITICAL: IF "MATCHING PRODUCTS" is found, ONLY use those. If "NO EXACT MATCH", say so, and optionally offer "TOP PRODUCTS" as generic suggestions.

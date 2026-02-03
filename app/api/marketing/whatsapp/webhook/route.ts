@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         // Send each message based on type
         const results = []
         for (const msg of aiMessages) {
-            const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+            const cleanText = msg.text.trim()
             console.log(`[WhatsApp Webhook] Sending to ${mobile} [${msg.type}]:`, cleanText.slice(0, 50))
 
             // Unified Session Message Logic (Supports Text & Images directly)
