@@ -33,31 +33,18 @@ export async function POST(request: NextRequest) {
 
         console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
 
-        // Send each message based on type
+        // Send each message via text session (MSG91 doesn't support image session messages)
+        // Text session messages can show link previews when user clicks the link
         const results = []
         for (const msg of aiMessages) {
-            let result;
             const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+            console.log(`[WhatsApp Webhook] Sending to ${mobile}:`, cleanText.slice(0, 50))
 
-            if (msg.type === 'image' && msg.imageUrl) {
-                // Send image with caption
-                console.log(`[WhatsApp Webhook] Sending IMAGE to ${mobile}:`, msg.imageUrl)
-                result = await sendWhatsAppImageMessage({
-                    mobile: mobile,
-                    imageUrl: msg.imageUrl,
-                    caption: cleanText
-                })
-            } else {
-                // Send text message
-                console.log(`[WhatsApp Webhook] Sending TEXT to ${mobile}:`, cleanText.slice(0, 50))
-                result = await sendWhatsAppSessionMessage({
-                    mobile: mobile,
-                    message: cleanText
-                })
-            }
-
-            results.push({ type: msg.type, result })
-            // Small delay between messages
+            const result = await sendWhatsAppSessionMessage({
+                mobile: mobile,
+                message: cleanText
+            })
+            results.push({ type: 'text', result })
             await new Promise(r => setTimeout(r, 500))
         }
 
