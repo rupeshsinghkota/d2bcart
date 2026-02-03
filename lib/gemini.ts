@@ -86,11 +86,10 @@ async function searchProducts(query: string) {
                 .select('id, parent_id, name, slug, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
-                .is('parent_id', null)
                 .gt('stock', 0)
                 .not('images', 'is', null) // Must have images
                 .eq('manufacturer.is_verified', true)
-                .limit(20);
+                .limit(40); // Increased limit to allow for deduplication filter
 
             if (data) {
                 for (const p of data) {
@@ -131,7 +130,17 @@ async function searchProducts(query: string) {
         return 0;
     });
 
-    return sorted.slice(0, 10);
+    // Grouping / Deduplication Logic: One best match per product family
+    const uniqueGroups = new Map<string, any>();
+    for (const p of sorted) {
+        const groupId = p.parent_id || p.id;
+        if (!uniqueGroups.has(groupId)) {
+            uniqueGroups.set(groupId, p);
+        }
+        if (uniqueGroups.size >= 10) break;
+    }
+
+    return [...uniqueGroups.values()];
 }
 
 // Get all categories
