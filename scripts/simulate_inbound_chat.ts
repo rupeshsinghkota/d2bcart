@@ -10,7 +10,7 @@ async function simulateInbound(mobile: string, message: string) {
 
     console.log("1. Generating AI Response...")
     try {
-        const aiMessages = await getSalesAssistantResponse({ message, phone: mobile });
+        const { messages: aiMessages } = await getSalesAssistantResponse({ message, phone: mobile });
         console.log("AI Responses:", JSON.stringify(aiMessages, null, 2));
 
         console.log("2. Sending Replies (Matched to Production Webhook)...");
