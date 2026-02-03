@@ -330,7 +330,7 @@ export async function GET(request: Request) {
                                     header: {
                                         type: 'document',
                                         document: {
-                                            link: `https://research.google.com/pubs/archive/44678.pdf`,
+                                            link: `https://d2bcart.com/downloads/catalog_${topCategoryId}.pdf`,
                                             filename: 'Catalog.pdf'
                                         }
                                     }
