@@ -59,6 +59,35 @@ export async function POST(request: NextRequest) {
         // Treat checking for message as optional for now - if empty, assume greeting
         if (!messageText) messageText = "Hi"
 
+        // IDEMPOTENCY: Check db to prevent loops
+        try {
+            // 1. Check if processed recently
+            const { data: existing } = await supabaseAdmin
+                .from('whatsapp_chats')
+                .select('id')
+                .eq('mobile', mobile)
+                .eq('message', messageText)
+                .eq('direction', 'inbound')
+                .gt('created_at', new Date(Date.now() - 60000).toISOString()) // 1 min check
+                .limit(1)
+                .single()
+
+            if (existing) {
+                console.warn('Duplicate webhook detected, ignoring.')
+                return NextResponse.json({ success: true, duplicate: true })
+            }
+
+            // 2. Log Inbound
+            await supabaseAdmin.from('whatsapp_chats').insert({
+                mobile,
+                message: messageText,
+                direction: 'inbound',
+                metadata: body
+            })
+        } catch (e) {
+            console.log('Chat logging failed (Table missing?):', e)
+        }
+
         // Get AI Response (returns array of structured messages)
         const aiMessages = await getSalesAssistantResponse({
             message: messageText,
@@ -79,6 +108,17 @@ export async function POST(request: NextRequest) {
                 message: cleanText,
                 imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined
             })
+
+            // Log Outbound
+            try {
+                await supabaseAdmin.from('whatsapp_chats').insert({
+                    mobile,
+                    message: cleanText,
+                    direction: 'outbound',
+                    status: result.success ? 'sent' : 'failed',
+                    metadata: result
+                })
+            } catch (e) { }
 
             results.push({ type: msg.type, result })
             await new Promise(r => setTimeout(r, 500))

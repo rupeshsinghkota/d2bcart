@@ -101,6 +101,26 @@ async function getTopProducts() {
     return data || [];
 }
 
+// Get chat history
+async function getChatHistory(dateObj: any, phone: string) {
+    // Only attempt if table exists (handled by try-catch inside or user setup)
+    try {
+        const cleanPhone = phone.replace('+', '').replace(/\s/g, '');
+        // We match loosely on phone substring or precise
+        const { data } = await getSupabase()
+            .from('whatsapp_chats')
+            .select('message, direction, created_at')
+            .or(`mobile.eq.${cleanPhone},mobile.eq.+${cleanPhone}`)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (!data) return [];
+        return data.reverse().map(m => `${m.direction === 'inbound' ? 'User' : 'Assistant'}: ${m.message}`);
+    } catch (e) {
+        return [];
+    }
+}
+
 export async function getSalesAssistantResponse(params: {
     message: string,
     phone: string,
@@ -108,15 +128,15 @@ export async function getSalesAssistantResponse(params: {
     const { message, phone } = params;
 
     // Parallelize detailed context fetching
-    const [customer, categories, matchingProducts, topProducts] = await Promise.all([
+    const [customer, categories, matchingProducts, topProducts, history] = await Promise.all([
         getCustomer(phone),
         getCategories(),
         searchProducts(message),
-        getTopProducts()
+        getTopProducts(),
+        getChatHistory(null, phone)
     ]);
 
-    // Fetch orders only if customer exists (can be parallelized slightly if we fetching simple orders)
-    // But since orders depend on customer.id, we do it after or use a join query (simplified here)
+    // Fetch orders only if customer exists
     const orders = customer ? await getCustomerOrders(customer.id) : [];
 
     const categoryContext = categories.map(c =>
@@ -143,6 +163,8 @@ export async function getSalesAssistantResponse(params: {
         }
     }
 
+    const historyContext = history.length > 0 ? `HISTORY:\n${history.join('\n')}` : "HISTORY: None";
+
     const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         max_tokens: 600,
@@ -163,6 +185,8 @@ TOP PRODUCTS:
 ${topProductContext}
 
 ${customerContext}
+
+${historyContext}
 
 RESPONSE FORMAT (CRITICAL):
 You must respond in a JSON object with a reasoning field and a messages array:
