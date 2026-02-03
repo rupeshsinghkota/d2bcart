@@ -107,11 +107,17 @@ export async function getSalesAssistantResponse(params: {
 }): Promise<AIMessage[]> {
     const { message, phone } = params;
 
-    const customer = await getCustomer(phone);
+    // Parallelize detailed context fetching
+    const [customer, categories, matchingProducts, topProducts] = await Promise.all([
+        getCustomer(phone),
+        getCategories(),
+        searchProducts(message),
+        getTopProducts()
+    ]);
+
+    // Fetch orders only if customer exists (can be parallelized slightly if we fetching simple orders)
+    // But since orders depend on customer.id, we do it after or use a join query (simplified here)
     const orders = customer ? await getCustomerOrders(customer.id) : [];
-    const categories = await getCategories();
-    const matchingProducts = await searchProducts(message);
-    const topProducts = await getTopProducts();
 
     const categoryContext = categories.map(c =>
         `• ${c.name}: https://d2bcart.com/products?category=${c.slug}`
