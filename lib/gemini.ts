@@ -86,6 +86,7 @@ async function searchProducts(query: string) {
                 .select('id, name, slug, base_price, display_price, moq, stock, images')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
+                .gt('stock', 0) // Ensure in stock
                 .limit(20); // Fetch more candidates
 
             if (data) {
@@ -141,6 +142,7 @@ async function getTopProducts() {
         .from('products')
         .select('name, slug, display_price, images')
         .eq('is_active', true)
+        .gt('stock', 0) // Ensure in stock
         .order('created_at', { ascending: false })
         .limit(10);
     return data || [];
