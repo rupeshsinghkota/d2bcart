@@ -9,6 +9,9 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// In-memory cache to prevent immediate loops (Container reuse)
+const processedCache = new Map<string, number>();
+
 export async function POST(request: NextRequest) {
     try {
 
@@ -58,6 +61,15 @@ export async function POST(request: NextRequest) {
 
         // Treat checking for message as optional for now - if empty, assume greeting
         if (!messageText) messageText = "Hi"
+
+        // 0. MEMORY CACHE CHECK (Fastest)
+        const cacheKey = `${mobile}:${messageText}`;
+        const now = Date.now();
+        if (processedCache.has(cacheKey) && (now - processedCache.get(cacheKey)!) < 60000) {
+            console.warn('[WhatsApp Route] Memory Cache Hit - Dropping Duplicate');
+            return NextResponse.json({ status: 'ignored_memory' });
+        }
+        processedCache.set(cacheKey, now);
 
         // IDEMPOTENCY: Check db to prevent loops
         try {
