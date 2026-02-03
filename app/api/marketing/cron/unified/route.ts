@@ -100,7 +100,7 @@ export async function GET(request: Request) {
                             templateName: 'd2b_catalog_followup',
                             components: {
                                 body_1: { type: 'text', value: u.business_name || 'there' },
-                                button_1: { subtype: 'url', type: 'text', value: d.category_id || 'all' }
+                                button_1: { subtype: 'url', type: 'text', value: `catalog_${d.category_id || 'all'}.pdf` }
                             }
                         })
                         await supabaseAdmin.from('catalog_downloads').update({ followup_sent_at: new Date().toISOString() }).eq('id', d.id)
@@ -217,7 +217,7 @@ export async function GET(request: Request) {
                                     button_1: {
                                         subtype: 'url',
                                         type: 'text',
-                                        value: categoryId
+                                        value: `catalog_${categoryId}.pdf`
                                     }
                                 } : {})
                             }
