@@ -19,8 +19,18 @@ export async function POST(request: NextRequest) {
         try {
             body = JSON.parse(rawBody)
         } catch (e) {
-            console.error('[WhatsApp Webhook] Failed to parse JSON body, trying query params logic or text')
-            // Fallback for url-encoded or text
+            console.error('[WhatsApp Webhook] Failed to parse JSON body, trying URL search params')
+            try {
+                const params = new URLSearchParams(rawBody)
+                const entries: any = {}
+                for (const [key, value] of params) {
+                    entries[key] = value
+                }
+                body = entries
+                console.log('[WhatsApp Webhook] Parsed Form Data:', body)
+            } catch (formError) {
+                console.warn('Failed to parse as form data')
+            }
         }
 
         // Expanded MSG91 Inbound Structure Support
