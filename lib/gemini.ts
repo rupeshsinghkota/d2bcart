@@ -83,7 +83,7 @@ async function searchProducts(query: string) {
         try {
             const { data } = await getSupabase()
                 .from('products')
-                .select('id, name, slug, base_price, display_price, moq, stock, images')
+                .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
                 .gt('stock', 0) // Ensure in stock
@@ -127,7 +127,22 @@ async function searchProducts(query: string) {
         return 0;
     });
 
-    return sorted.slice(0, 10);
+    // VARIANT DEDUPLICATION:
+    // If multiple products share the same parent_id, only show the TOP ranked one.
+    const seenParents = new Set<string>();
+    const uniqueResults = [];
+
+    for (const p of sorted) {
+        // Group by parent_id. If no parent_id, use own id (it is the parent).
+        const familyId = p.parent_id || p.id;
+
+        if (!seenParents.has(familyId)) {
+            seenParents.add(familyId);
+            uniqueResults.push(p);
+        }
+    }
+
+    return uniqueResults.slice(0, 10);
 }
 
 // Get all categories
