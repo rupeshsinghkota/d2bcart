@@ -1,20 +1,32 @@
 
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null;
+let supabase: SupabaseClient | null = null;
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getOpenAI() {
+    if (!openai) {
+        openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return openai;
+}
+
+function getSupabase() {
+    if (!supabase) {
+        supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+    }
+    return supabase;
+}
 
 // Get customer details by phone
 async function getCustomer(phone: string) {
     const cleanPhone = phone.replace('+', '').replace(/\s/g, '');
-    const { data } = await supabase
+    const { data } = await getSupabase()
         .from('users')
         .select('id, business_name, phone, user_type, created_at')
         .or(`phone.eq.${cleanPhone},phone.eq.91${cleanPhone.slice(-10)}`)
@@ -24,7 +36,7 @@ async function getCustomer(phone: string) {
 
 // Get customer's recent orders with items
 async function getCustomerOrders(userId: string) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
         .from('orders')
         .select('id, order_number, status, total_amount, created_at, tracking_number')
         .eq('retailer_id', userId)
@@ -39,7 +51,7 @@ async function searchProducts(query: string) {
     let products: any[] = [];
 
     for (const keyword of keywords) {
-        const { data } = await supabase
+        const { data } = await getSupabase()
             .from('products')
             .select('id, name, slug, retail_price, wholesale_price, categories(name, slug)')
             .ilike('name', `%${keyword}%`)
@@ -55,13 +67,13 @@ async function searchProducts(query: string) {
 
 // Get all categories
 async function getCategories() {
-    const { data } = await supabase.from('categories').select('id, name, slug').limit(30);
+    const { data } = await getSupabase().from('categories').select('id, name, slug').limit(30);
     return data || [];
 }
 
 // Get top selling products
 async function getTopProducts() {
-    const { data } = await supabase
+    const { data } = await getSupabase()
         .from('products')
         .select('name, slug, retail_price')
         .eq('is_active', true)
@@ -118,7 +130,7 @@ Member Since: ${new Date(customer.created_at).toLocaleDateString()}`;
         }
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         max_tokens: 500,
         messages: [
