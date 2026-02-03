@@ -31,6 +31,8 @@ async function getProduct(slug: string) {
         .single()
 
     if (data) {
+        // Strict Active Check: If inactive, treat as Not Found (404)
+        if (!data.is_active) return null
         return { product: data as Product, redirect: null }
     }
 
@@ -38,11 +40,12 @@ async function getProduct(slug: string) {
     if (UUID_REGEX.test(slug)) {
         const { data: dataById } = await supabase
             .from('products')
-            .select('slug')
+            .select('slug, is_active') // Check active
             .eq('id', slug)
             .single()
 
         if (dataById && dataById.slug) {
+            if (!dataById.is_active) return null // Block inactive redirects too
             return { product: null, redirect: dataById.slug }
         }
     }
