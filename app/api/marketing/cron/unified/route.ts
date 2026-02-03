@@ -321,20 +321,25 @@ export async function GET(request: Request) {
 
                     if ((recentSent || 0) === 0) {
                         try {
-                            console.log(`[Remarketing] Sending to User: ${userId}, Category: ${topCategoryId}`);
+                            // Fetch Category Name for proper personalization
+                            const { data: catData } = await supabaseAdmin
+                                .from('categories')
+                                .select('name')
+                                .eq('id', topCategoryId)
+                                .single()
+
+                            const categoryName = catData?.name || 'Popular'
+
+                            console.log(`[Remarketing] Sending to User: ${userId}, Category: ${categoryName} (${topCategoryId})`);
 
                             await sendWhatsAppMessage({
                                 mobile: userDetails[userId].phone,
-                                templateName: 'd2b_daily_remarketing_simplest', // Static Body, Document Header
+                                templateName: 'd2b_daily_text_v1',
                                 components: {
-                                    header: {
-                                        type: 'document',
-                                        document: {
-                                            link: `https://d2bcart.com/downloads/catalog_${topCategoryId}.pdf`,
-                                            filename: 'Catalog.pdf'
-                                        }
-                                    }
-                                    // No body variables to avoid type errors
+                                    // Body: "Hi {{1}}, explored our {{2}} collection yet? New arrivals are waiting for you here: {{3}}"
+                                    body_1: { type: 'text', value: userDetails[userId].name },
+                                    body_2: { type: 'text', value: categoryName },
+                                    body_3: { type: 'text', value: `https://d2bcart.com/products?category=${topCategoryId}` }
                                 }
                             })
 

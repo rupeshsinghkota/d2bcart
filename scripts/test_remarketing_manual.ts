@@ -12,20 +12,14 @@ async function runTest() {
     console.log(`Using Namespace: ${ns}`);
     console.log(`Sending v1 test message to ${mobile}...`);
 
-    // TEST: No-Variable Template Strategy
+    // TEST: Text-Only Remarketing
     const result = await sendWhatsAppMessage({
         mobile,
-        templateName: 'd2b_daily_remarketing_simplest',
+        templateName: 'd2b_daily_text_v1',
         components: {
-            header: {
-                type: 'document',
-                document: {
-                    // Using Google Research PDF as it's reliable
-                    link: `https://research.google.com/pubs/archive/44678.pdf`,
-                    filename: 'Covers_Collection.pdf'
-                }
-            }
-            // NO Body params
+            body_1: { type: 'text', value: 'Rupesh' },       // {{1}} Name
+            body_2: { type: 'text', value: 'Sarees' },       // {{2}} Category
+            body_3: { type: 'text', value: 'https://d2bcart.com/products?category=123' } // {{3}} Link
         }
     });
 
