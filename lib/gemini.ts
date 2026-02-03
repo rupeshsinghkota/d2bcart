@@ -255,6 +255,7 @@ You must respond in a JSON object with a reasoning field and a messages array:
 
 {
   "reasoning": "Analyze the user's intent, available context (products, orders), and decide the best response strategy.",
+  "escalate": false,
   "messages": [
     {"type": "text", "text": "Your greeting or general message"},
     {"type": "image", "text": "Product Name - ₹X (Pack of Z): URL", "imageUrl": "image_url_from_products", "productName": "Product Name"},
@@ -317,6 +318,15 @@ IMPORTANT: Return ONLY valid JSON object. No markdown.`
 
         console.log('[AI Thinking]:', parsed.reasoning); // Log the thinking
 
+        let escalate = parsed.escalate || false;
+
+        // FAILSAVE: If AI says it "notified Chandan/Support", force escalate to true
+        const fullText = parsed.messages.map((m: any) => m.text).join(' ').toLowerCase();
+        if (fullText.includes('notified chandan') || fullText.includes('support team') || fullText.includes('contact you shortly')) {
+            console.log('[AI Failsafe] Triggering escalation based on response text keywords.');
+            escalate = true;
+        }
+
         return {
             messages: parsed.messages.map((msg: any) => ({
                 type: msg.type || 'text',
@@ -324,7 +334,7 @@ IMPORTANT: Return ONLY valid JSON object. No markdown.`
                 imageUrl: msg.imageUrl,
                 productName: msg.productName
             })),
-            escalate: parsed.escalate || false
+            escalate: escalate
         };
     } catch (e) {
         console.error('[AI] Failed to parse JSON response. raw:', fullResponse, 'error:', e);
