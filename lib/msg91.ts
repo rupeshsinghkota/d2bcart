@@ -53,7 +53,7 @@ export async function sendWhatsAppMessage({
                 namespace: namespace,
                 to_and_components: [
                     {
-                        to: [cleanPhone],
+                        to: cleanPhone,
                         components: transformComponents(components)
                     }
                 ]
