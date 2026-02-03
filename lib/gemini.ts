@@ -99,11 +99,25 @@ async function searchProducts(query: string) {
     }
 
     // Sort by relevance (count desc) -> then newest
+    // IMPROVED SCORING: Deduct points for model mismatches (Pro, Max, Ultra)
+    const modifiers = ['pro', 'max', 'plus', 'ultra', 'lite', 'mini', 'note', 'edge', 'prime'];
+
     const sorted = [...productMap.values()].sort((a, b) => {
-        const scoreA = counts.get(a.id) || 0;
-        const scoreB = counts.get(b.id) || 0;
+        let scoreA = counts.get(a.id) || 0;
+        let scoreB = counts.get(b.id) || 0;
+
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+
+        // Penalty Logic
+        for (const mod of modifiers) {
+            const qHas = query.toLowerCase().includes(mod);
+            if (qHas !== nameA.includes(mod)) scoreA -= 0.5; // Mismatch
+            if (qHas !== nameB.includes(mod)) scoreB -= 0.5; // Mismatch
+        }
+
         if (scoreB !== scoreA) return scoreB - scoreA;
-        return 0; // maintain order or sort by date?
+        return 0;
     });
 
     return sorted.slice(0, 10);
@@ -235,6 +249,8 @@ RULES:
 7. CRITICAL: IF "MATCHING PRODUCTS" is found, ONLY use those. If "NO EXACT MATCH", say so, and optionally offer "TOP PRODUCTS" as generic suggestions.
 8. QUANTITY: Show MAXIMUM 3 best matching products as images. Do not spam. If more matches exist, mention "Browse all matches here: [Link]" in the final text message.
 9. INTELLIGENCE: Only send images if they clearly match the user's intent. If user asks "Do you have S24?", answer "Yes/No" text first, then show images if Yes.
+10. HISTORY: Check the HISTORY context. If you already sent a specific product recently, DO NOT send it again unless the user asks for it again. Avoid repetition.
+11. PRECISION: If user asks for "iPhone 16", do NOT show "16 Pro" unless you clarify it's an alternative. Be specific.
 
 EXAMPLES:
 
