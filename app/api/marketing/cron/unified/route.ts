@@ -320,53 +320,65 @@ export async function GET(request: Request) {
                     }
 
                     if ((recentSent || 0) === 0) {
+                        // CHECK: Did they buy something today? (Exclude recent buyers)
+                        let recentOrders = 0;
                         try {
-                            // Fetch Category Name for proper personalization
-                            const { data: catData } = await supabaseAdmin
-                                .from('categories')
-                                .select('name')
-                                .eq('id', topCategoryId)
-                                .single()
+                            const { count } = await supabaseAdmin
+                                .from('orders')
+                                .select('id', { count: 'exact', head: true })
+                                .eq('retailer_id', userId)
+                                .gt('created_at', twentyFourHoursAgoForBrowse)
+                            recentOrders = count || 0;
+                        } catch (e) { }
 
-                            const categoryName = catData?.name || 'Popular'
+                        if ((recentOrders || 0) === 0) {
+                            try {
+                                // Fetch Category Name for proper personalization
+                                const { data: catData } = await supabaseAdmin
+                                    .from('categories')
+                                    .select('name')
+                                    .eq('id', topCategoryId)
+                                    .single()
 
-                            console.log(`[Remarketing] Sending to User: ${userId}, Category: ${categoryName} (${topCategoryId})`);
+                                const categoryName = catData?.name || 'Popular'
 
-                            await sendWhatsAppMessage({
-                                mobile: userDetails[userId].phone,
-                                templateName: 'd2b_daily_text_v1',
-                                components: {
-                                    // Body: "Hi {{1}}, explored our {{2}} collection yet? New arrivals are waiting for you here: {{3}}"
-                                    body_1: { type: 'text', value: userDetails[userId].name },
-                                    body_2: { type: 'text', value: categoryName },
-                                    body_3: { type: 'text', value: `https://d2bcart.com/products?category=${topCategoryId}` }
-                                }
-                            })
+                                console.log(`[Remarketing] Sending to User: ${userId}, Category: ${categoryName} (${topCategoryId})`);
 
-                            // Validate UUID before insert to prevent "invalid input syntax for uuid"
-                            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                            if (!uuidRegex.test(userId) || !uuidRegex.test(topCategoryId)) {
-                                console.error(`[Remarketing] Invalid UUID: User=${userId}, Cat=${topCategoryId}`);
-                            } else {
-                                // Log it
-                                const { error: insertError } = await supabaseAdmin.from('catalog_downloads').insert({
-                                    user_id: userId,
-                                    category_id: topCategoryId,
-                                    source_page: 'auto_daily_remarketing'
+                                await sendWhatsAppMessage({
+                                    mobile: userDetails[userId].phone,
+                                    templateName: 'd2b_daily_text_v1',
+                                    components: {
+                                        // Body: "Hi {{1}}, explored our {{2}} collection yet? New arrivals are waiting for you here: {{3}}"
+                                        body_1: { type: 'text', value: userDetails[userId].name },
+                                        body_2: { type: 'text', value: categoryName },
+                                        body_3: { type: 'text', value: `https://d2bcart.com/products?category=${topCategoryId}` }
+                                    }
                                 })
-                                if (insertError) console.error('[Remarketing] DB Insert Error:', insertError);
+
+                                // Validate UUID before insert to prevent "invalid input syntax for uuid"
+                                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                if (!uuidRegex.test(userId) || !uuidRegex.test(topCategoryId)) {
+                                    console.error(`[Remarketing] Invalid UUID: User=${userId}, Cat=${topCategoryId}`);
+                                } else {
+                                    // Log it
+                                    const { error: insertError } = await supabaseAdmin.from('catalog_downloads').insert({
+                                        user_id: userId,
+                                        category_id: topCategoryId,
+                                        source_page: 'auto_daily_remarketing'
+                                    })
+                                    if (insertError) console.error('[Remarketing] DB Insert Error:', insertError);
+                                }
+                            } catch (e: any) {
+                                console.error('[Remarketing] Exception:', e.message || e)
                             }
-                        } catch (e: any) {
-                            console.error('[Remarketing] Exception:', e.message || e)
                         }
                     }
                 }
             }
+
+            return NextResponse.json({ success: true, report })
+
+        } catch (error: any) {
+            return NextResponse.json({ error: error.message }, { status: 500 })
         }
-
-        return NextResponse.json({ success: true, report })
-
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
     }
-}
