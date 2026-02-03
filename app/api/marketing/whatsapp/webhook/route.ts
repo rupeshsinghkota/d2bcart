@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSalesAssistantResponse, AIMessage } from '@/lib/gemini'
-import { sendWhatsAppSessionMessage, sendWhatsAppImageTemplate } from '@/lib/msg91'
+import { sendWhatsAppSessionMessage } from '@/lib/msg91'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,30 +73,13 @@ export async function POST(request: NextRequest) {
             const cleanText = msg.text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
             console.log(`[WhatsApp Webhook] Sending to ${mobile} [${msg.type}]:`, cleanText.slice(0, 50))
 
-            let result;
-            if (msg.type === 'image' && msg.imageUrl) {
-                // Use IMAGE TEMPLATE
-                try {
-                    result = await sendWhatsAppImageTemplate({
-                        mobile: mobile,
-                        imageUrl: msg.imageUrl,
-                        caption: cleanText
-                    })
-                    if (!result.success) throw new Error(JSON.stringify(result.error))
-                } catch (err) {
-                    console.log('Image template failed, falling back to text', err)
-                    result = await sendWhatsAppSessionMessage({
-                        mobile: mobile,
-                        message: cleanText
-                    })
-                }
-            } else {
-                // Use TEXT SESSION MESSAGE
-                result = await sendWhatsAppSessionMessage({
-                    mobile: mobile,
-                    message: cleanText
-                })
-            }
+            // Unified Session Message Logic (Supports Text & Images directly)
+            const result = await sendWhatsAppSessionMessage({
+                mobile: mobile,
+                message: cleanText,
+                imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined
+            })
+
             results.push({ type: msg.type, result })
             await new Promise(r => setTimeout(r, 500))
         }

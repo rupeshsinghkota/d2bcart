@@ -68,8 +68,8 @@ export async function sendWhatsAppMessage({
  * Sends a FREE-FORM text message (Session Message).
  * Only works if the customer has messaged you in the last 24 hours.
  */
-export async function sendWhatsAppSessionMessage(params: { mobile: string, message: string }) {
-    const { mobile, message } = params
+export async function sendWhatsAppSessionMessage(params: { mobile: string, message: string, imageUrl?: string }) {
+    const { mobile, message, imageUrl } = params
     let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
 
     // Auto-fix for India: If 10 digits, add '91'
@@ -80,11 +80,18 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
     const namespace = process.env.MSG91_NAMESPACE
     const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
 
-    const payload = {
+    let payload: any = {
         integrated_number: integratedNumber,
         recipient_number: cleanPhone,
-        content_type: "text",
-        text: message
+    }
+
+    if (imageUrl) {
+        payload.content_type = "image"
+        payload.attachment_url = imageUrl
+        payload.caption = message
+    } else {
+        payload.content_type = "text"
+        payload.text = message
     }
 
     return await executeMsg91Call(payload)
