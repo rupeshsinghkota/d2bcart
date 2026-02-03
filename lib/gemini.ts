@@ -86,6 +86,7 @@ async function searchProducts(query: string) {
                 .select('id, parent_id, name, slug, base_price, display_price, moq, stock, images, manufacturer:manufacturer_id!inner(is_verified)')
                 .ilike('name', `%${keyword}%`)
                 .eq('is_active', true)
+                .is('parent_id', null) // Match Website: Parents Only
                 .gt('stock', 0)
                 .eq('manufacturer.is_verified', true) // Filter unverified sellers
                 .limit(20);
@@ -128,22 +129,7 @@ async function searchProducts(query: string) {
         return 0;
     });
 
-    // VARIANT DEDUPLICATION:
-    // If multiple products share the same parent_id, only show the TOP ranked one.
-    const seenParents = new Set<string>();
-    const uniqueResults = [];
-
-    for (const p of sorted) {
-        // Group by parent_id. If no parent_id, use own id (it is the parent).
-        const familyId = p.parent_id || p.id;
-
-        if (!seenParents.has(familyId)) {
-            seenParents.add(familyId);
-            uniqueResults.push(p);
-        }
-    }
-
-    return uniqueResults.slice(0, 10);
+    return sorted.slice(0, 10);
 }
 
 // Get all categories
@@ -158,6 +144,7 @@ async function getTopProducts() {
         .from('products')
         .select('name, slug, display_price, images, manufacturer:manufacturer_id!inner(is_verified)')
         .eq('is_active', true)
+        .is('parent_id', null) // Match Website: Parents Only
         .gt('stock', 0)
         .eq('manufacturer.is_verified', true)
         .order('created_at', { ascending: false })
