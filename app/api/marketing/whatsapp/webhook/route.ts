@@ -105,16 +105,17 @@ export async function POST(request: NextRequest) {
             const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
             const { data: recentHumanOutbound } = await supabaseAdmin
                 .from('whatsapp_chats')
-                .select('id')
+                .select('id, message, metadata')
                 .eq('mobile', mobile)
                 .eq('direction', 'outbound')
                 .gt('created_at', twoHoursAgo)
-                .not('metadata->>source', 'eq', 'ai_assistant')
+                .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant') // Explicitly handle null source
                 .limit(1);
 
             if (recentHumanOutbound && recentHumanOutbound.length > 0) {
-                console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Skipping AI response.`);
-                return NextResponse.json({ status: 'ignored_human_takeover' });
+                const triggerMsg = recentHumanOutbound[0];
+                console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Triggered by msg: "${triggerMsg.message?.slice(0, 50)}..." (ID: ${triggerMsg.id})`);
+                return NextResponse.json({ status: 'ignored_human_takeover', trigger_id: triggerMsg.id });
             }
         } catch (e) {
             console.error('Takeover check failed:', e);
