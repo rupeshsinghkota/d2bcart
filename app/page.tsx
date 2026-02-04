@@ -31,6 +31,11 @@ async function HomeContent() {
     return <GuestHome initialCategories={categories} initialProducts={products} />
   }
 
+  // Admin Override: Check email before profile lookup
+  if (authUser.email === 'rupeshsingh1103@gmail.com') {
+    redirect('/admin')
+  }
+
   // Get Profile data
   const { data: profile } = await supabase
     .from('users')
@@ -57,10 +62,6 @@ async function HomeContent() {
         <p className="text-xs text-gray-400 mt-4">Auth ID: {authUser.id}</p>
       </div>
     )
-  }
-
-  if (profile.email === 'rupeshsingh1103@gmail.com') {
-    redirect('/admin')
   }
 
   if (profile.user_type === 'manufacturer') {

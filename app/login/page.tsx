@@ -57,11 +57,15 @@ export default function LoginPage() {
                     // Redirect based on user type
                     if (profile.user_type === 'manufacturer') {
                         router.push('/wholesaler')
-                    } else if (profile.user_type === 'admin') {
+                    } else if (profile.user_type === 'admin' || email === 'rupeshsingh1103@gmail.com') {
                         router.push('/admin')
                     } else {
                         router.push('/products')
                     }
+                } else if (email === 'rupeshsingh1103@gmail.com') {
+                    // Admin login successful but no profile record exists
+                    toast.success('Admin Login successful!')
+                    router.push('/admin')
                 } else {
                     // Auth exists but no profile -> Redirect to completion
                     toast('Please complete your profile details.', { icon: '📝' })
