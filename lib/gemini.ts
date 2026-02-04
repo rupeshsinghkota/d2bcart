@@ -196,7 +196,7 @@ async function getChatHistory(dateObj: any, phone: string) {
 export async function getSalesAssistantResponse(params: {
     message: string,
     phone: string,
-}): Promise<{ messages: AIMessage[], escalate: boolean }> {
+}): Promise<{ messages: AIMessage[], escalate: boolean, reasoning: string }> {
     const { message, phone } = params;
 
     // Extract slug if message contains a product URL
@@ -358,12 +358,17 @@ IMPORTANT: Return ONLY valid JSON object. No markdown.`
                 imageUrl: msg.imageUrl,
                 productName: msg.productName
             })),
-            escalate: escalate
+            escalate: escalate,
+            reasoning: parsed.reasoning || ""
         };
     } catch (e) {
         console.error('[AI] Failed to parse JSON response. raw:', fullResponse, 'error:', e);
     }
 
     // Fallback to text-only
-    return { messages: [{ type: 'text', text: fullResponse.slice(0, 300) }], escalate: false };
+    return {
+        messages: [{ type: 'text', text: fullResponse.slice(0, 300) }],
+        escalate: false,
+        reasoning: "Failed to parse JSON"
+    };
 }
