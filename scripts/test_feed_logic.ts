@@ -42,7 +42,8 @@ async function verifyFeedSync() {
 
     console.log("\nTest Case 2: Unverified Manufacturer Check");
     if (unverifiedProduct) {
-        console.log(`Checking Product: "${unverifiedProduct.name}" from "${unverifiedProduct.manufacturer.business_name}" (Verified: ${unverifiedProduct.manufacturer.is_verified})`);
+        const manufacturer = unverifiedProduct.manufacturer as any;
+        console.log(`Checking Product: "${unverifiedProduct.name}" from "${manufacturer.business_name}" (Verified: ${manufacturer.is_verified})`);
         const isUnverifiedFound = feedResults?.some(p => p.id === unverifiedProduct.id);
         if (isUnverifiedFound) {
             console.error("❌ FAILURE: Product from unverified manufacturer still found in feed!");
