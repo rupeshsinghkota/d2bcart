@@ -100,6 +100,26 @@ export async function POST(request: NextRequest) {
             console.log('Chat logging failed (Table missing?):', e)
         }
 
+        // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 2h)
+        try {
+            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+            const { data: recentHumanOutbound } = await supabaseAdmin
+                .from('whatsapp_chats')
+                .select('id')
+                .eq('mobile', mobile)
+                .eq('direction', 'outbound')
+                .gt('created_at', twoHoursAgo)
+                .not('metadata->>source', 'eq', 'ai_assistant')
+                .limit(1);
+
+            if (recentHumanOutbound && recentHumanOutbound.length > 0) {
+                console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Skipping AI response.`);
+                return NextResponse.json({ status: 'ignored_human_takeover' });
+            }
+        } catch (e) {
+            console.error('Takeover check failed:', e);
+        }
+
         // Get AI Response (returns array of structured messages)
         const { messages: aiMessages, escalate } = await getSalesAssistantResponse({
             message: messageText,
@@ -162,7 +182,7 @@ export async function POST(request: NextRequest) {
                     message: cleanText,
                     direction: 'outbound',
                     status: result.success ? 'sent' : 'failed',
-                    metadata: result
+                    metadata: { ...result, source: 'ai_assistant' }
                 })
             } catch (e) { }
 
