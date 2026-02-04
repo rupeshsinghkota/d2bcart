@@ -23,11 +23,13 @@ export async function GET() {
     try {
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://d2bcart.com'
 
-        // 1. Get total count to determine concurrency
+        // 1. Get total count of Active products from Verified Manufacturers with stock
         const { count } = await supabaseAdmin
             .from('products')
-            .select('*', { count: 'exact', head: true })
+            .select('id, manufacturer:users!products_manufacturer_id_fkey!inner(is_verified)', { count: 'exact', head: true })
             .eq('is_active', true)
+            .eq('manufacturer.is_verified', true)
+            .gt('stock', 0)
 
         const totalProducts = count || 0
         const pageSize = 1000
@@ -43,11 +45,13 @@ export async function GET() {
                 .select(`
                     *,
                     slug,
-                    manufacturer:users!products_manufacturer_id_fkey(business_name),
+                    manufacturer:users!products_manufacturer_id_fkey!inner(business_name, is_verified),
                     category:categories!products_category_id_fkey(name),
-                    variations:products!parent_id(display_price, moq)
+                    variations:products!parent_id(display_price, moq, is_active, stock)
                 `)
                 .eq('is_active', true)
+                .eq('manufacturer.is_verified', true)
+                .gt('stock', 0)
                 .range(from, to)
         })
 
@@ -75,8 +79,8 @@ export async function GET() {
             let unitPrice = product.display_price
 
             if ((!unitPrice || unitPrice === 0) && product.variations && product.variations.length > 0) {
-                // Sort variations by price and take the lowest
-                const validVariations = product.variations.filter((v: any) => v.display_price > 0)
+                // Sort variations by price and take the lowest, but only for ACTIVE variants with stock
+                const validVariations = product.variations.filter((v: any) => v.display_price > 0 && v.is_active && v.stock > 0)
                 if (validVariations.length > 0) {
                     unitPrice = Math.min(...validVariations.map((v: any) => v.display_price))
                 }
