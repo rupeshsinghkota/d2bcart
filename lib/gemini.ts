@@ -143,6 +143,16 @@ async function searchProducts(query: string) {
     return [...uniqueGroups.values()];
 }
 
+// Search products by exact slug (for shared links)
+async function getProductBySlug(slug: string) {
+    const { data } = await getSupabase()
+        .from('products')
+        .select('id, name, slug, display_price, is_active, stock, images')
+        .eq('slug', slug)
+        .maybeSingle();
+    return data;
+}
+
 // Get all categories
 async function getCategories() {
     const { data } = await getSupabase().from('categories').select('id, name, slug').limit(30);
@@ -189,37 +199,49 @@ export async function getSalesAssistantResponse(params: {
 }): Promise<{ messages: AIMessage[], escalate: boolean }> {
     const { message, phone } = params;
 
+    // Extract slug if message contains a product URL
+    const slugMatch = message.match(/products\/([^/?\s]+)/);
+    const slug = slugMatch ? slugMatch[1] : null;
+
     // Parallelize detailed context fetching
-    const [customer, categories, matchingProducts, topProducts, history] = await Promise.all([
+    const [customer, categories, matchingProducts, topProducts, history, targetedProduct] = await Promise.all([
         getCustomer(phone),
         getCategories(),
         searchProducts(message),
         getTopProducts(),
-        getChatHistory(null, phone)
+        getChatHistory(null, phone),
+        slug ? getProductBySlug(slug) : null
     ]);
 
     // Fetch orders only if customer exists
     const orders = customer ? await getCustomerOrders(customer.id) : [];
 
-    const categoryContext = categories.map(c =>
+    const categoryContext = categories.map((c: any) =>
         `• ${c.name}: https://d2bcart.com/products?category=${c.slug}`
     ).join('\n');
 
     const productContext = matchingProducts.length > 0
-        ? matchingProducts.map(p =>
+        ? matchingProducts.map((p: any) =>
             `• ${p.name} | Price: ₹${p.display_price} | MOQ: ${p.moq || 1} | Stock: ${p.stock || 'Available'} | Image: ${p.images?.[0] || 'none'} | URL: https://d2bcart.com/products/${p.slug}`
         ).join('\n')
         : '';
 
-    const topProductContext = topProducts.map(p =>
+    const topProductContext = topProducts.map((p: any) =>
         `• ${p.name} - ₹${p.display_price} | Image: ${p.images?.[0] || 'none'}: https://d2bcart.com/products/${p.slug}`
     ).join('\n');
+
+    let targetedProductContext = '';
+    if (targetedProduct) {
+        const status = !targetedProduct.is_active ? 'DEACTIVATED' : (targetedProduct.stock <= 0 ? 'OUT OF STOCK' : 'AVAILABLE');
+        targetedProductContext = `TARGETED PRODUCT (User shared link):
+• ${targetedProduct.name} | Status: ${status} | Price: ₹${targetedProduct.display_price} | URL: https://d2bcart.com/products/${targetedProduct.slug}`;
+    }
 
     let customerContext = "NEW VISITOR";
     if (customer) {
         customerContext = `CUSTOMER: ${customer.business_name || 'Retailer'}, Member since ${new Date(customer.created_at).toLocaleDateString()}`;
         if (orders.length > 0) {
-            customerContext += `\nORDERS:\n` + orders.map(o =>
+            customerContext += `\nORDERS:\n` + orders.map((o: any) =>
                 `#${o.order_number}: ₹${o.total_amount} - ${o.status}${o.tracking_number ? ` - Track: ${o.tracking_number}` : ''}`
             ).join('\n');
         }
@@ -240,7 +262,7 @@ SUPPORT: WhatsApp 917557777987
 
 CATEGORIES:
 ${categoryContext}
-
+${targetedProductContext ? `\n${targetedProductContext}\n` : ''}
 ${productContext ? `MATCHING PRODUCTS:\n${productContext}` : 'NO EXACT MATCH'}
 
 TOP PRODUCTS:
@@ -280,10 +302,12 @@ RULES:
 13. EMERGENCY: If user asks for "Human", "Support", "Emergency" or "Call me", set "escalate": true. Tell the user "I have notified Chandan/Support team. They will contact you shortly." 
     - CRITICAL: DO NOT share the Admin/Support phone number with the user. Keep it private.
     - Ask for their concern if not stated so Chandan knows the context.
-14. DEACTIVATED PRODUCTS: Your MATCHING PRODUCTS and TOP PRODUCTS lists are the ONLY live sources. 
+14. DEACTIVATED/OUT OF STOCK: 
+    - If "TARGETED PRODUCT" is inactive or out of stock, EXPLAIN this to the user immediately.
     - If a product appears in CHAT HISTORY but is NOT in the current MATCHING/TOP lists, IT IS DEACTIVATED. 
-    - DO NOT recommend, link, or mention it. Act as if it doesn't exist.
+    - DO NOT recommend, link, or mention deactivated products except to say they are gone.
     - NEVER "invent" or "hallucinate" product URLs or details. Only use provided data.
+15. TARGETED LINK HANDLING: If the user shared a direct link (Targeted Product), acknowledge that specific item first. If it's unavailable, offer the closest matches from "MATCHING PRODUCTS".
 
 EXAMPLES:
 
