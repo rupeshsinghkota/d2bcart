@@ -36,6 +36,12 @@ export default function AdminCategoriesPage() {
         fetchCategories()
     }, [])
 
+    useEffect(() => {
+        if (editingCategory && markup !== editingCategory.markup_percentage) {
+            setShouldSync(true)
+        }
+    }, [markup, editingCategory])
+
     const fetchCategories = async () => {
         const { data, error } = await supabase
             .from('categories')
@@ -77,7 +83,7 @@ export default function AdminCategoriesPage() {
         if (error) {
             toast.error(error.message)
         } else {
-            // Apply Sync if requested
+            // Apply Sync if requested or if markup changed
             if (shouldSync && editingCategory) {
                 setSyncing(true)
                 const res = await syncCategoryPrices(editingCategory.id, markup)
@@ -128,6 +134,8 @@ export default function AdminCategoriesPage() {
         setImageUrl(cat.image_url || '')
         setParentId(cat.parent_id || '')
         setIsModalOpen(true)
+        // Reset sync status initially
+        setShouldSync(false)
     }
 
     // Recursive function to render category tree
