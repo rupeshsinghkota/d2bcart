@@ -6,38 +6,32 @@ import { useEffect, useState } from 'react';
 import * as fpixel from '@/lib/fpixel';
 
 export default function FacebookPixel() {
-    const [loaded, setLoaded] = useState(false);
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
+    // Track PageView on route change
     useEffect(() => {
-        if (!loaded) return;
         fpixel.pageview();
-    }, [pathname, searchParams, loaded]);
+    }, [pathname, searchParams]);
 
     return (
         <>
             <Script
                 id="fb-pixel"
-                src="https://connect.facebook.net/en_US/fbevents.js"
                 strategy="afterInteractive"
-                onLoad={() => {
-                    setLoaded(true);
-                    if (!window.fbq) {
-                        window.fbq = function () {
-                            // eslint-disable-next-line prefer-rest-params
-                            window.fbq.callMethod ? window.fbq.callMethod.apply(window.fbq, arguments) : window.fbq.queue.push(arguments);
-                        } as any;
-                        if (!window._fbq) window._fbq = window.fbq;
-                        window.fbq.push = window.fbq;
-                        window.fbq.loaded = true;
-                        window.fbq.version = '2.0';
-                        window.fbq.queue = [];
-                    }
-                    if (fpixel.FB_PIXEL_ID) {
-                        window.fbq('init', fpixel.FB_PIXEL_ID);
-
-                    }
+                dangerouslySetInnerHTML={{
+                    __html: `
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${fpixel.FB_PIXEL_ID}');
+            fbq('track', 'PageView');
+          `,
                 }}
             />
         </>
