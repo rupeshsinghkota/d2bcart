@@ -24,7 +24,36 @@ export async function syncCategoryPrices(categoryId: string, markupPercentage: n
 
         if (!products || products.length === 0) return { success: true, count: 0 }
 
-        // 2. Prepare updates (Modify in memory)
+        // OPTIMIZATION: Try to use Database RPC function if it exists (Much faster)
+        try {
+            const { data: rpcCount, error: rpcError } = await supabaseAdmin
+                .rpc('sync_category_prices', {
+                    target_category_id: categoryId,
+                    markup_percentage: markupPercentage
+                })
+
+            if (!rpcError) {
+                console.log(`[SYNC] RPC Success! Updated ${rpcCount} products in DB directly.`)
+
+                revalidatePath('/', 'layout')
+                revalidatePath('/products')
+                revalidatePath('/categories')
+                revalidatePath('/admin/categories')
+
+                return { success: true, count: rpcCount as number }
+            } else {
+                // If error is "function not found", ignore and proceed to JS fallback
+                if (rpcError.code === '42883') { // undefined_function
+                    console.log('[SYNC] RPC function not found, falling back to JS batch loop.')
+                } else {
+                    console.warn('[SYNC] RPC failed with other error, falling back to JS:', rpcError)
+                }
+            }
+        } catch (e) {
+            console.warn('[SYNC] RPC execution error, falling back to JS', e)
+        }
+
+        // 2. Prepare updates (Modify in memory) (Modify in memory)
         const updates = products.map(p => {
             const basePrice = Number(p.base_price)
             if (isNaN(basePrice)) {
@@ -50,7 +79,8 @@ export async function syncCategoryPrices(categoryId: string, markupPercentage: n
         console.log(`[SYNC] Prepared ${updates.length} updates`)
 
         // 3. Batch Upsert in Chunks
-        const CHUNK_SIZE = 500
+        // Reduced chunk size to 100 to avoid Supabase statement timeouts (limit is often ~2s - 10s depending on plan)
+        const CHUNK_SIZE = 100
         let successCount = 0
         let errorCount = 0
 
