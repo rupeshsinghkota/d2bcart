@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
         console.log(`[Debug Sourcing] Action: ${action}`);
 
         if (action === 'research') {
-            const suppliers = await findSuppliers(category, body.location || "India");
-            return NextResponse.json({ success: true, suppliers });
+            const result = await findSuppliers(category, body.location || "India");
+            return NextResponse.json({ success: true, suppliers: result.suppliers, logs: result.logs });
         }
 
         if (action === 'initiate_chat') {

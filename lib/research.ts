@@ -18,8 +18,14 @@ export interface DiscoveredSupplier {
     source: string;
 }
 
-export async function findSuppliers(category: string, location: string = "India"): Promise<DiscoveredSupplier[]> {
-    console.log(`[Research] Searching for suppliers in category (Free Mode): ${category} in ${location}`);
+export async function findSuppliers(category: string, location: string = "India"): Promise<{ suppliers: DiscoveredSupplier[], logs: string[] }> {
+    const logs: string[] = [];
+    const addLog = (msg: string) => {
+        console.log(msg);
+        logs.push(msg);
+    };
+
+    addLog(`[Research] Searching for suppliers in category (Free Mode): ${category} in ${location}`);
     const results: DiscoveredSupplier[] = [];
 
     try {
@@ -45,11 +51,11 @@ export async function findSuppliers(category: string, location: string = "India"
                     cache: 'no-store'  // Ensure we don't hit Next.js cache
                 });
                 const html = await response.text();
-                console.log(`[Research] Query: "${q}" | HTML Length: ${html.length}`);
+                addLog(`[Research] Query: "${q}" | HTML Length: ${html.length}`);
 
                 // Check for block
-                if (html.includes('Please verify you are a human') || html.length < 500) {
-                    console.warn(`[Research] Potential Block or Empty response for query: ${q}`);
+                if (html.length < 500) {
+                    addLog(`[Research] WARNING: Blocked or Empty response (<500 chars).`);
                 }
 
                 // Simple Regex Extraction from HTML text
@@ -62,7 +68,7 @@ export async function findSuppliers(category: string, location: string = "India"
 
                 const phonesFound = new Set<string>();
                 const phoneMatch = Array.from(html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g));
-                console.log(`[Research] matches found: ${phoneMatch.length}`);
+                addLog(`[Research] matches found: ${phoneMatch.length}`);
 
                 for (const match of phoneMatch) {
                     const rawPhone = match[0];
@@ -90,7 +96,7 @@ export async function findSuppliers(category: string, location: string = "India"
                             name: name,
                             phone: cleanPhone,
                             website: null,
-                            location: "India (Derived)",
+                            location: location,
                             description: cleanText,
                             source: "DuckDuckGo Search"
                         });
@@ -98,7 +104,7 @@ export async function findSuppliers(category: string, location: string = "India"
                 }
 
             } catch (err) {
-                console.error(`[Research] Failed query: ${q}`, err);
+                addLog(`[Research] Failed query: ${q} - ${(err as Error).message}`);
             }
         }
 
@@ -111,11 +117,11 @@ export async function findSuppliers(category: string, location: string = "India"
         }
 
         const finalResults = Array.from(unique.values()).slice(0, 5); // Limit to top 5
-        console.log(`[Research] Found ${finalResults.length} unique suppliers.`);
-        return finalResults;
+        addLog(`[Research] Found ${finalResults.length} unique suppliers.`);
+        return { suppliers: finalResults, logs };
 
     } catch (error) {
-        console.error("[Research] Error finding suppliers:", error);
-        return [];
+        addLog(`[Research] Critical Error: ${(error as Error).message}`);
+        return { suppliers: [], logs };
     }
 }

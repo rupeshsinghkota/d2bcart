@@ -54,6 +54,11 @@ export default function SourcingDashboard() {
 
             const data = await res.json();
 
+            if (data.logs) {
+                // Add server-side logs to the UI log panel
+                data.logs.forEach((l: string) => addLog(l));
+            }
+
             if (data.suppliers) {
                 setDiscoveredSuppliers(data.suppliers);
                 addLog(`Found ${data.suppliers.length} potential suppliers.`);
