@@ -46,36 +46,21 @@ function isValidIndianPhone(phone: string | null): boolean {
     return digits.length === 10 && /^[6-9]/.test(digits);
 }
 
-async function generateSearchQueries(category: string, location: string, addLog: (msg: string) => void): Promise<string[]> {
-    try {
-        const response = await getOpenAI().chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "system",
-                    content: `Generate 4 diverse search queries to find mobile/electronics wholesalers/manufacturers in India.
-                    Mix general terms with specific market names like "Gaffar Market", "Karol Bagh", "Nehru Place" if relevant to the category.
-                    Focus on: ${category} in ${location}. Focus on contact numbers. Return as JSON: { "queries": [] }`
-                },
-                { role: "user", content: `Category: ${category}, Location: ${location}` }
-            ],
-            response_format: { type: "json_object" }
-        });
-        const parsed = JSON.parse(response.choices[0].message.content || "{}");
-        return parsed.queries || [`${category} wholesalers in ${location} contact number`];
-    } catch {
-        return [`${category} wholesalers in ${location} phone numbers`];
-    }
-}
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+];
 
 async function safeFetch(url: string, referer: string = 'https://www.google.com/'): Promise<string | null> {
     try {
+        const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'User-Agent': ua,
                 'Referer': referer,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Language': 'en-IN,en;q=0.9,hi;q=0.8',
             }
         });
         return response.ok ? await response.text() : null;
@@ -88,9 +73,9 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .substring(0, 25000);
+        .substring(0, 30000);
 
-    if (cleanText.length < 500) return [];
+    if (cleanText.length < 300) return [];
 
     try {
         const response = await getOpenAI().chat.completions.create({
@@ -98,10 +83,10 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
             messages: [
                 {
                     role: "system",
-                    content: `Extract business names and Indian phone numbers from this search page text. 
+                    content: `Extract business names and 10-digit Indian phone numbers for ${category} wholesalers in ${location}. 
                     Format as JSON: { "suppliers": [ { "name": "...", "phone": "...", "description": "..." } ] }`
                 },
-                { role: "user", content: `Category: ${category}\n\nPage Content:\n${cleanText}` }
+                { role: "user", content: `Page Content:\n${cleanText}` }
             ],
             response_format: { type: "json_object" }
         });
@@ -118,21 +103,18 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
     } catch { return []; }
 }
 
-async function getSuppliersFromAIKnowledge(category: string, location: string, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
-    addLog(`[Research] 🧠 Fetching top recommendations from AI knowledge base...`);
+async function getSuppliersFromAIKnowledge(category: string, location: string, count: number = 20, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
+    addLog(`[Research] 🧠 Fetching recommendations from AI knowledge base (Count: ${count})...`);
     try {
         const response = await getOpenAI().chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
-                    content: `You are a Sourcing Expert. Provide a comprehensive list of 15 well-known mobile/electronics wholesalers or manufacturers specifically in the given location in India. 
-                    Focus on: ${category}. 
-                    Include their 10-digit Indian phone numbers. 
-                    IMPORTANT: Provide REAL businesses that are famous in the wholesale markets. 
+                    content: `You are a Sourcing Expert. Provide a list of ${count} REAL Indian mobile/electronics wholesalers/manufacturers in ${location}. 
+                    Focus on: ${category}. Include their 10-digit Indian phone numbers.
                     Return as JSON: { "suppliers": [ { "name": "...", "phone": "...", "description": "..." } ] }`
-                },
-                { role: "user", content: `Category: ${category}, Location: ${location}` }
+                }
             ],
             response_format: { type: "json_object" }
         });
@@ -143,7 +125,7 @@ async function getSuppliersFromAIKnowledge(category: string, location: string, a
             phone: cleanPhone(s.phone),
             website: null,
             location: location,
-            description: s.description || `${category} wholesaler in ${location}`,
+            description: s.description || `${category} wholesaler`,
             source: "AI Knowledge Base"
         })).filter((s: any) => isValidIndianPhone(s.phone));
     } catch { return []; }
@@ -154,73 +136,43 @@ export async function findSuppliers(category: string, location: string = "India"
     const addLog = (msg: string) => { console.log(msg); logs.push(msg); };
     const results: DiscoveredSupplier[] = [];
 
-    addLog(`[Research] 🔍 Initiating deep research for "${category}" in "${location}"...`);
+    addLog(`[Research] 🔍 Researching "${category}" in "${location}"...`);
 
-    // 1. Check Local Database
-    try {
-        addLog(`[Research] 📂 Checking local database...`);
-        const { data: dbSuppliers } = await getSupabase()
-            .from('suppliers')
-            .select('name, phone, location')
-            .ilike('name', `%${category.split(' ')[0]}%`)
-            .limit(10);
+    // 1. Scraping with aggressive fallback
+    const qBase = `${category} wholesalers ${location} contact number`;
+    const searchEngines = [
+        { name: "Ask.com", url: `https://www.ask.com/web?q=${encodeURIComponent(qBase)}` },
+        { name: "DuckDuckGo", url: `https://duckduckgo.com/html/?q=${encodeURIComponent(qBase)}` },
+        { name: "Google Basic", url: `https://www.google.com/search?q=${encodeURIComponent(qBase)}&gbv=1` }
+    ];
 
-        if (dbSuppliers && dbSuppliers.length > 0) {
-            results.push(...(dbSuppliers as any[]).map((s: any) => ({
-                name: s.name,
-                phone: s.phone,
-                website: null,
-                location: s.location,
-                description: "Previously discovered supplier.",
-                source: "Database"
-            })));
-            addLog(`[Research] ✅ Found ${dbSuppliers.length} matching in database.`);
-        }
-    } catch (e) {
-        addLog(`[Research] DB Check skipped: ${(e as Error).message}`);
-    }
+    for (const engine of searchEngines) {
+        addLog(`[Research] 🌐 Trying ${engine.name}...`);
+        const html = await safeFetch(engine.url);
 
-    // 2. Scraping with better fallback
-    if (results.length < 10) {
-        const queries = await generateSearchQueries(category, location, addLog);
-
-        for (const q of queries) {
-            addLog(`[Research] 🌐 Searching: ${q}`);
-
-            // Try Google Basic first
-            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}&gbv=1`;
-            let html = await safeFetch(googleUrl, 'https://www.google.com/');
-            let source = "Google Search";
-
-            if (!html || html.includes('detected unusual traffic')) {
-                // Try DuckDuckGo
-                source = "DuckDuckGo";
-                html = await safeFetch(`https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`);
-            }
-
-            if (html && !html.includes('anomaly.js') && !html.includes('redirect')) {
-                const found = await extractSuppliersWithAI(html, category, location, source, addLog);
-                if (found.length > 0) {
-                    addLog(`[Research] ✅ Found ${found.length} items from ${source}.`);
-                    results.push(...found);
-                }
+        if (html && !html.includes('detected unusual traffic') && !html.includes('anomaly.js')) {
+            const found = await extractSuppliersWithAI(html, category, location, engine.name, addLog);
+            if (found.length > 0) {
+                addLog(`[Research] ✅ Found ${found.length} from ${engine.name}.`);
+                results.push(...found);
             } else {
-                addLog(`[Research] ⚠️ ${source} blocked the request (Bot detection).`);
+                addLog(`[Research] ⚠️ No suppliers extracted from ${engine.name}.`);
             }
-
-            if (results.length >= 15) break;
-            await sleep(2000);
+        } else {
+            addLog(`[Research] ❌ ${engine.name} blocked/failed.`);
         }
+
+        if (results.length >= 10) break;
+        await sleep(1000);
     }
 
-    // 3. AI Knowledge Fallback (Increased volume)
-    if (results.length < 10) {
-        const aiKnowledge = await getSuppliersFromAIKnowledge(category, location, addLog);
+    // 2. AI Knowledge Fallback (High Volume)
+    if (results.length < 5) {
+        const aiKnowledge = await getSuppliersFromAIKnowledge(category, location, 25, addLog);
         results.push(...aiKnowledge);
     }
 
     // 4. FILTER OUT EXISTING SUPPLIERS FROM DB
-    // This ensures we only show NEW potential leads
     const unique = new Map<string, DiscoveredSupplier>();
     results.forEach(s => { if (s.phone) unique.set(s.phone, s); });
 
@@ -234,19 +186,17 @@ export async function findSuppliers(category: string, location: string = "India"
                 .select('phone')
                 .in('phone', phones);
 
-            if (existing && existing.length > 0) {
+            if (existing && (existing as any[]).length > 0) {
                 const existingPhones = new Set((existing as any[]).map(e => e.phone));
-                const originalCount = finalResults.length;
                 finalResults = finalResults.filter(s => !existingPhones.has(s.phone!));
-                addLog(`[Research] 🧹 Filtered ${originalCount - finalResults.length} already known suppliers.`);
+                addLog(`[Research] 🧹 Filtered already known suppliers.`);
             }
         }
     } catch (e) {
         addLog(`[Research] Filtering error: ${(e as Error).message}`);
     }
 
-    addLog(`[Research] ✨ Finalized ${finalResults.length} potential suppliers.`);
-
+    addLog(`[Research] ✨ Finalized ${finalResults.length} new potential suppliers.`);
     return { suppliers: finalResults, logs };
 }
 
