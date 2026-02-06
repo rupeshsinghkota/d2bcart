@@ -1,12 +1,13 @@
 
 /**
- * Supplier Research Module
- * Uses Search API to find potential suppliers, wholesalers, and manufacturers.
+ * Supplier Research Module (Free Version)
+ * Uses DuckDuckGo HTML scraping to find potential suppliers.
  * Extracts: Name, Phone, Website, Location.
  */
 
-// Placeholder for Search API Key - ideally this comes from process.env
-// const SERPER_API_KEY = process.env.SERPER_API_KEY;
+// import * as cheerio from 'cheerio'; // We might need to install this or use regex
+// If cheerio isn't available, we'll use basic regex parsing for now to avoid install steps if possible.
+// Actually, standard regex is often enough for simple DDG HTML.
 
 export interface DiscoveredSupplier {
     name: string;
@@ -18,66 +19,92 @@ export interface DiscoveredSupplier {
 }
 
 export async function findSuppliers(category: string): Promise<DiscoveredSupplier[]> {
-    console.log(`[Research] Searching for suppliers in category: ${category}`);
+    console.log(`[Research] Searching for suppliers in category (Free Mode): ${category}`);
+    const results: DiscoveredSupplier[] = [];
 
     try {
-        // Step 1: Construct Search Queries
+        // Search Queries designed to surface contact numbers
         const queries = [
-            `Top wholesalers for ${category} in India with phone number`,
-            `Manufacturers of ${category} contact number India`,
-            `${category} bulk suppliers list India`,
-            `Mobile accessories importers Delhi contact`
+            `Top wholesalers for ${category} India contact number`,
+            `Manufacturers of ${category} in Delhi/Mumbai contact`,
+            `IndiaMart ${category} supplier phone number`
         ];
 
-        // MOCK IMPLEMENTATION (Since we don't have a live Search API key yet)
-        // In a real scenario, we would loop queries and call Serper/Exa/Bing API
+        for (const q of queries) {
+            try {
+                // DuckDuckGo HTML endpoint is easier to scrape than Google
+                const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
 
-        // Simulating network delay
-        await new Promise(r => setTimeout(r, 1500));
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+                    }
+                });
+                const html = await response.text();
 
-        // Return Dummy Data for testing the flow
-        // The user can replace this with real API calls later
-        const mockSuppliers: DiscoveredSupplier[] = [
-            {
-                name: "Royal Mobile Accessories",
-                phone: "919899123456", // Fake valid Indian mobile
-                website: "https://royalmobile.example.com",
-                location: "Karol Bagh, Delhi",
-                description: `Wholesaler of ${category}, noted for low prices.`,
-                source: "Google Search"
-            },
-            {
-                name: "Super Impex India",
-                phone: "919876543210",
-                website: "https://superimpex.indiamart.com",
-                location: "Mumbai, Maharashtra",
-                description: "Direct importer of mobile accessories and gadgets.",
-                source: "IndiaMart Listing"
-            },
-            {
-                name: "Gaffar Market Traders",
-                phone: "918888899999",
-                website: null,
-                location: "New Delhi",
-                description: "Bulk trader in Gaffar Market.",
-                source: "Local Directory"
+                // Simple Regex Extraction from HTML text
+                // Look for snippets that have 10 digit numbers
+                const snippetRegex = /class="result__snippet".*?>(.*?)<\/a>/g;
+                const titleRegex = /class="result__a".*?>(.*?)<\/a>/g;
+
+                // Hacky parse since we don't assume cheerio is installed yet
+                // We'll just scan the raw HTML for phone patterns + context
+
+                const phonesFound = new Set<string>();
+                const phoneMatch = html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g);
+
+                for (const match of phoneMatch) {
+                    const rawPhone = match[0];
+                    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+
+                    // Filter strict length
+                    if (cleanPhone.length >= 10 && cleanPhone.length <= 12) {
+                        if (phonesFound.has(cleanPhone)) continue;
+                        phonesFound.add(cleanPhone);
+
+                        // Try to find context (Name near the phone)
+                        // This is rough but works for "free"
+                        const index = match.index || 0;
+                        const surroundingText = html.substring(Math.max(0, index - 100), Math.min(html.length, index + 100));
+
+                        // Remove HTML tags for clean text
+                        const cleanText = surroundingText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+                        // Guess name from text before phone
+                        // e.g. "Contact Royal Traders at 98..."
+                        const nameMatch = cleanText.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/);
+                        const name = nameMatch ? nameMatch[0] : `${category} Supplier`;
+
+                        results.push({
+                            name: name,
+                            phone: cleanPhone,
+                            website: null,
+                            location: "India (Derived)",
+                            description: cleanText,
+                            source: "DuckDuckGo Search"
+                        });
+                    }
+                }
+
+            } catch (err) {
+                console.error(`[Research] Failed query: ${q}`, err);
             }
-        ];
+        }
 
-        console.log(`[Research] Found ${mockSuppliers.length} suppliers.`);
-        return mockSuppliers;
+        // De-duplicate by phone
+        const unique = new Map();
+        for (const item of results) {
+            if (!unique.has(item.phone)) {
+                unique.set(item.phone, item);
+            }
+        }
+
+        const finalResults = Array.from(unique.values()).slice(0, 5); // Limit to top 5
+        console.log(`[Research] Found ${finalResults.length} unique suppliers.`);
+        return finalResults;
 
     } catch (error) {
         console.error("[Research] Error finding suppliers:", error);
         return [];
     }
-}
-
-/**
- * Helper to validate if a string looks like a mobile number
- */
-export function extractMobile(text: string): string | null {
-    // Basic regex for Indian mobile numbers (starts with 6-9, 10 digits, optional +91)
-    const match = text.match(/((\+91|91)?[6-9][0-9]{9})/);
-    return match ? match[0] : null;
 }

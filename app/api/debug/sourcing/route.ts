@@ -28,13 +28,19 @@ export async function POST(request: NextRequest) {
 
             // Simulate Sending using TEMPLATE for first contact (Reliable)
             if (aiRes.message && phone) {
-                // Reuse d2b_ai_response template 
+                const { sendWhatsAppMessage } = await import('@/lib/msg91');
+
+                // Reuse d2b_ai_response template with specific variables if needed
+                // Assuming the template body is just "{{1}}" or "Hello {{1}}"
+                // We will send the full composed message
+                const msgBody = `Hello, this is the sourcing team from D2BCart.\n\n${aiRes.message}\n\nRegards,\nD2BCart Team`;
+
                 await sendWhatsAppMessage({
                     mobile: phone,
                     templateName: 'd2b_ai_response',
                     integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
                     components: {
-                        body_1: { type: 'text', value: aiRes.message }
+                        body_1: { type: 'text', value: msgBody }
                     }
                 }).catch(e => console.error("Failed to send initial template:", e));
             }
