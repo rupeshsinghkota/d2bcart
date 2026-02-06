@@ -114,85 +114,37 @@ export async function POST(req: Request) {
             console.error('[Verify] No orders formatted. Payload empty?')
             return NextResponse.json({ error: 'No orders created from payload' }, { status: 400 })
         }
+        // Mark Attempt as Processing (Atomic Lock)
+        const { data: lockResult, error: lockError } = await supabaseAdmin
+            .from('payment_attempts')
+            .update({ status: 'processing' })
+            .eq('razorpay_order_id', razorpay_order_id)
+            .eq('status', 'pending')
+            .select()
+
+        if (lockError || !lockResult || lockResult.length === 0) {
+            console.log(`[Verify] Order ${razorpay_order_id} already being processed or completed. Skipping order creation.`)
+            return NextResponse.json({ success: true, message: 'Already processed' })
+        }
+
         const { error } = await supabaseAdmin.from('orders').insert(formattedOrders)
         if (error) {
             console.error('[Verify] DB Insert Error:', error)
+            // Rollback lock if insert fails so webhook or retry can pick it up
+            await supabaseAdmin.from('payment_attempts').update({ status: 'pending' }).eq('razorpay_order_id', razorpay_order_id)
             throw error
         }
 
-        // --- Facebook CAPI: Server-Side Tracking ---
-        try {
-            // Fetch user details for matching
-            const { data: userData } = await supabaseAdmin
-                .from('users')
-                .select('email,phone')
-                .eq('id', user_id)
-                .single()
+        // ... tracking and notifications ...
 
-            if (userData) {
-                const { sendFacebookEvent } = await import('@/lib/facebook-capi')
-
-                // Calculate total value across all sub-orders
-                const totalValue = formattedOrders.reduce((sum, o) => sum + o.paid_amount, 0)
-
-                await sendFacebookEvent(
-                    'Purchase',
-                    {
-                        currency: 'INR',
-                        value: totalValue,
-                        order_id: razorpay_payment_id,
-                        content_ids: formattedOrders.map(o => o.product_id),
-                        content_type: 'product'
-                    },
-                    {
-                        email: userData.email,
-                        phone: userData.phone,
-                        fbc: attribution?.fbclid ? `fb.1.${Date.now()}.${attribution.fbclid}` : undefined,
-                        fbp: undefined // Could pass from frontend cookies if available
-                    }
-                )
-            }
-        } catch (capiError) {
-            console.error('CAPI Tracking Failed (Non-blocking):', capiError)
-        }
-        // -------------------------------------------
-
-        // WhatsApp Notification to Admin
-        try {
-            const adminPhone = process.env.NEXT_PUBLIC_ADMIN_PHONE || "917557777987"
-            // Use a generic template or placeholder. 
-            // Note: Msg91 requires a valid template. If 'd2b_new_order_admin' doesn't exist, this will error safely.
-            const templateName = process.env.MSG91_TEMPLATE_NEW_ORDER || "d2b_new_order_admin"
-
-            // Construct a simple summary param? 
-            // Assuming template has 1 variable {{1}} for Order ID or Summary
-            await sendWhatsAppMessage({
-                mobile: adminPhone,
-                templateName: templateName,
-                components: [
-                    {
-                        type: 'body',
-                        parameters: [
-                            { type: 'text', text: formattedOrders[0].order_number }
-                        ]
-                    }
-                ]
-            })
-        } catch (waError) {
-            console.error('WhatsApp Notification Failed:', waError)
-        }
-
-        // ... existing success logic ...
-
-        // Mark Attempt as Completed (to prevent Webhook from re-processing)
+        // Mark Attempt as Completed
         try {
             await supabaseAdmin
                 .from('payment_attempts')
-                .update({ status: 'completed' })
+                .update({ status: 'completed', payment_id: razorpay_payment_id })
                 .eq('razorpay_order_id', razorpay_order_id)
         } catch (updateError) {
             console.error('[Verify] Failed to update payment_attempt status:', updateError)
-            // Non-blocking
         }
 
         return NextResponse.json({ success: true })

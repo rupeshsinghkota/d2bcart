@@ -45,39 +45,22 @@ export async function POST(req: Request) {
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
             )
 
-            // 1. Check if Order already exists (Idempotency)
-            const { data: existingOrders } = await supabaseAdmin
-                .from('orders')
-                .select('id')
-                .eq('order_number', razorpay_order_id)
-            // Wait, order_number in 'orders' table is NOT razorpay_order_id. It's the D2B-xxx one.
-            // We check 'payment_id' instead, or we need to look up if ANY order has this razorpay_order_id.
-            // But wait, our 'orders' table schema has 'payment_id' (which is the payment_id).
-            // It does NOT have 'razorpay_order_id' column explicitly in the schema I read earlier.
-            // Let's check 'payment_attempts' status first.
-
-            // Ideally we should add 'razorpay_order_id' to `orders` table to make this easier, but let's use payment_attempts.
-
-            const { data: attempt } = await supabaseAdmin
+            // 1. Check & Lock Attempt (Atomic)
+            const { data: lockResult, error: lockError } = await supabaseAdmin
                 .from('payment_attempts')
-                .select('*')
+                .update({ status: 'processing' })
                 .eq('razorpay_order_id', razorpay_order_id)
-                .single()
+                .eq('status', 'pending')
+                .select()
 
-            if (!attempt) {
-                console.error(`[Webhook] No attempt found for order ${razorpay_order_id}`)
-                return NextResponse.json({ error: 'No order context found' }, { status: 404 })
-            }
-
-            if (attempt.status === 'completed') {
-                console.log(`[Webhook] Order ${razorpay_order_id} already completed.`)
+            if (lockError || !lockResult || lockResult.length === 0) {
+                console.log(`[Webhook] Order ${razorpay_order_id} already being processed or completed. Skipping.`)
                 return NextResponse.json({ message: 'Already processed' })
             }
 
-            // 2. Create Order Logic (Duplicated/Refactored from verify/route.ts)
-            // Ideally we extract this to a lib function.
-            // For now, I'll inline it to ensure it works identically.
+            const attempt = lockResult[0]
 
+            // 2. Create Order Logic 
             const {
                 user_id,
                 cart_payload,
@@ -89,43 +72,7 @@ export async function POST(req: Request) {
             const formattedOrders = []
             const { total_product_amount, remaining_balance } = payment_breakdown
 
-            // We need to know the payment option (advance/full).
-            // It's not in payment_attempts schema explicitly, but can be inferred or added.
-            // Let's assume 'full' if not present, OR look at the breakdown.
-            // If remaining_balance > 0, it's 'advance'. 
             const payment_option = remaining_balance > 0 ? 'advance' : 'full'
-            // Wait, logic says:
-            // const itemPendingAmount = Math.round(remaining_balance * itemPendingRatio)
-            // if remaining_balance is in breakdown, we can use it.
-
-            // Wait, logic in verify/route.ts:
-            // const ADVANCE_PAYMENT_PERCENT = 0 // User hardcoded 0 in verify route!
-            // "User context: Pay Shipping Only. Advance % is 0." 
-            // So actually payment_option usually results in same math if Advance % is 0?
-            // Actually:
-            // paidAmount = payment_option === 'advance' ? (Product * 0%) + Shipping : Product + Shipping
-            // If option is 'full', paidAmount = Product + Shipping.
-            // If option is 'advance' (pay shipping only), paidAmount = Shipping.
-
-            // I need to know the User's choice. 
-            // Check if payment_breakdown has 'payable_amount'.
-            // If payable_amount ~= total_shipping_amount, it's Advance.
-            // If payable_amount ~= total_product + total_shipping, it's Full.
-
-            // ACTUALLY: I should just add 'payment_option' to payment_attempts payload in step 7. 
-            // I will update the schema in my mind (it's JSONB, so flexible). 
-            // I will update Update Cart Page Step to include it.
-
-            // For now, let's look at breakdown.
-            // If I can't determine, default to 'full'? No, safer to default to what matches the PAID amount?
-            // Razorpay event has 'amount'.
-            // We can check if `event.payload.payment.entity.amount` (paise) matches full or advance calculation?
-            // That is robust.
-
-            const paidAmountPaise = event.payload.payment.entity.amount
-            const paidAmount = paidAmountPaise / 100
-
-            // However, just strictly following the logic:
             const ADVANCE_PAYMENT_PERCENT = 0
 
             for (const item of cart_payload) {
@@ -145,14 +92,6 @@ export async function POST(req: Request) {
                 const itemPendingRatio = itemTotal / total_product_amount
                 const itemPendingAmount = Math.round(remaining_balance * itemPendingRatio)
 
-                // Re-derive payment option or PAID amount per item?
-                // Logic:
-                // paidAmount = (payment_option === 'advance') ? ... : ...
-
-                // Let's treat it simply: The user PAID X amount. Ideally we just blindly trust the breakdown?
-                // But we need individual item 'paid_amount'.
-
-                // Let's assume if remaining_balance > 0, it is 'advance'.
                 const isAdvance = remaining_balance > 0
                 const computedPaymentOption = isAdvance ? 'advance' : 'full'
 
@@ -181,9 +120,7 @@ export async function POST(req: Request) {
                     paid_amount: itemPaidAmount,
                     pending_amount: itemPendingAmount,
                     payment_id: razorpay_payment_id || 'webhook_recovered',
-                    created_at: new Date().toISOString(),
-                    // Attribution... pulled from attempt if saved? I didn't save attribution in 'order' route yet.
-                    // Keep it simple for now. 
+                    created_at: new Date().toISOString()
                 })
             }
 
@@ -192,7 +129,10 @@ export async function POST(req: Request) {
 
             if (!error) {
                 // Mark Attempt as Completed
-                await supabaseAdmin.from('payment_attempts').update({ status: 'completed' }).eq('id', attempt.id)
+                await supabaseAdmin.from('payment_attempts').update({
+                    status: 'completed',
+                    payment_id: razorpay_payment_id
+                }).eq('id', attempt.id)
 
                 // Send WhatsApp (Copy-paste logic)
                 try {
