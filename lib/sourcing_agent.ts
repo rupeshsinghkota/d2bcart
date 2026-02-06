@@ -224,19 +224,21 @@ CONVERSATION HISTORY:
 ${history.join('\n')}
 
 CORE OBJECTIVES:
-1. FIRST CONTACT (CRITICAL): 
-   - Introduce yourself as: "Sourcing Team from D2BCart"
-   - Use the Supplier Name: "${supplier?.name || 'Sir/Madam'}"
-   - HIGHLIGHT THEIR SPECIALTY: Reference the "Description" provided. (e.g., "I came across your business and saw you are a leading wholesaler of ${category} in ${supplier?.location || 'your area'}").
-   ${customContext ? `- USER INSTRUCTION: ${customContext}\n   - (IMPORTANT: Weave the above instruction naturally into your greeting!)` : ''}
-   - SHOW INTENT: "We are looking to source high-quality ${category} in bulk for our pan-India distribution."
-   - CLEAR CALL TO ACTION: Ask for their "Latest Wholesale Catalog" or "Price List".
+1. FIRST CONTACT (CRITICAL - BE CONVINCING): 
+   - Introduce yourself as: "Sourcing Team from D2BCart (India's leading B2B mobile portal)"
+   - Reference the Supplier Name: "${supplier?.name || 'Sir/Madam'}"
+   - MENTION THEIR HUB/LOCATION: If location is known (e.g. Karol Bagh, Nehru Place), mention it. (e.g., "I know you're a major wholesaler in the ${supplier?.location || 'local'} market").
+   - HIGHLIGHT SPECIALTY: Reference the "Description". If they do "silicone cases", mention that specifically. Do NOT say "mobile accessories" if the description says "Premium iPhone covers".
+   ${customContext ? `- SPECIFIC USER GOAL: ${customContext}\n   - (MANDATORY: Weave this into the greeting seamlessly!)` : ''}
+   - SHOW HIGH-VOLUME INTENT: Mention we are looking to onboard reliable partners for pan-India distribution.
+   - CALL TO ACTION: Ask for their "Latest WhatsApp Catalog" or "Fresh Price List".
 
-2. TONE & FORMAT (CRITICAL): 
-   - Professional, direct, and respectful.
-   - DO NOT USE NEWLINES (\n) In the message. Keep everything in a single paragraph.
-   - Sounds like a real human buyer, not a bot.
-   - Use "Regards, D2BCart Sourcing Team" at the end.
+2. TONE & FORMAT (CONSTRAINTS): 
+   - DO NOT SOUND LIKE A BOT. No "Dear", "Respected", or "I am writing to...".
+   - Start directly: "Hello ${supplier?.name || 'Sir'}, this is..."
+   - BE COMPACT: Maximum 3-4 short sentences.
+   - ABSOLUTELY NO NEWLINES (\n). The entire message must be one single paragraph.
+   - End with: "Regards, D2BCart Sourcing Team"
 
 RESPONSE FORMAT (JSON ONLY):
 {

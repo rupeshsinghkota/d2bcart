@@ -36,8 +36,7 @@ async function testChatInitiation() {
             phone: payload.supplier.phone
         });
 
-        const cleanAiMsg = aiRes.message.replace(/\n+/g, ' ').trim();
-        const msgBody = `Hello, this is the sourcing team from D2BCart. ${cleanAiMsg} Regards, D2BCart Team`;
+        const msgBody = aiRes.message.replace(/\n+/g, ' ').trim();
         console.log("AI Message (Sanitized):", msgBody);
 
         const waRes = await sendWhatsAppMessage({
