@@ -1,9 +1,14 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Loader2, Search, MessageSquare, Save, UserCheck, Clock, CheckCircle } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Client directly
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function SourcingDashboard() {
     const [category, setCategory] = useState('');
@@ -13,8 +18,8 @@ export default function SourcingDashboard() {
     const [discoveredSuppliers, setDiscoveredSuppliers] = useState<any[]>([]);
     const [savedSuppliers, setSavedSuppliers] = useState<any[]>([]);
 
-    // Supabase client for client-side fetching
-    const supabase = createClientComponentClient();
+    // Supabase client defined globally or via hook not strictly needed for this simple dashboard
+    // using the const supabase defined above
 
     const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
 
@@ -183,7 +188,7 @@ export default function SourcingDashboard() {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h3 className="font-bold text-gray-900">{s.name}</h3>
                                                         <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                                                s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                                            s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                                                             }`}>
                                                             {s.status.toUpperCase()}
                                                         </span>
