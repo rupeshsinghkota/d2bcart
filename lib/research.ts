@@ -181,6 +181,48 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
     }
 }
 
+// Serper API Search (Google)
+async function searchWithSerper(query: string, category: string, location: string, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
+    const apiKey = process.env.SERPER_API_KEY;
+    if (!apiKey) return [];
+
+    const url = 'https://google.serper.dev/search';
+    addLog(`[Research] 🚀 Using Serper API (Google) for query: "${query}"`);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ q: query, num: 20 })
+        });
+
+        if (!response.ok) {
+            addLog(`[Research] Serper API Error: ${response.status}`);
+            return [];
+        }
+
+        const data = await response.json();
+        const organic = data.organic || [];
+
+        // Convert Serper results to text for AI extraction
+        // We simulate "HTML" by checking the snippets
+        let simulatedMeta = "";
+        organic.forEach((item: any) => {
+            simulatedMeta += `Title: ${item.title}\nSnippet: ${item.snippet}\nLink: ${item.link}\n\n`;
+        });
+
+        // Use the same AI extractor on this high-quality text
+        return await extractSuppliersWithAI(simulatedMeta, category, location, "Serper (Google API)", addLog);
+
+    } catch (e) {
+        addLog(`[Research] Serper Failed: ${(e as Error).message}`);
+        return [];
+    }
+}
+
 // Generic Phone Extractor from HTML
 function extractSuppliersFromHtml(html: string, category: string, location: string, sourceName: string): DiscoveredSupplier[] {
     const extracted: DiscoveredSupplier[] = [];
@@ -234,7 +276,8 @@ export async function findSuppliers(category: string, location: string = "India"
         logs.push(msg);
     };
 
-    addLog(`[Research] Searching for suppliers in category (AI Enhanced): ${category} in ${location}`);
+    const useApi = !!process.env.SERPER_API_KEY;
+    addLog(`[Research] Searching for suppliers in category (${useApi ? 'Google API Mode 🚀' : 'Free Mode 🕸️'}): ${category} in ${location}`);
     const results: DiscoveredSupplier[] = [];
 
     try {
@@ -243,6 +286,18 @@ export async function findSuppliers(category: string, location: string = "India"
         const queries = await generateSearchQueries(category, location, addLog);
 
         for (const q of queries) {
+
+            // PRIORITY 1: SERPER API (If Key Exists)
+            if (useApi) {
+                const found = await searchWithSerper(q, category, location, addLog);
+                if (found.length > 0) {
+                    addLog(`[Research] Serper found ${found.length} suppliers.`);
+                    results.push(...found);
+                    continue; // Skip scraping if API works
+                }
+            }
+
+            // PRIORITY 2: FREE SCRAPING (Fallback/Default)
             const delay = Math.floor(Math.random() * 2000) + 1000;
             await sleep(delay);
 
