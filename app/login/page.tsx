@@ -92,7 +92,7 @@ export default function LoginPage() {
                     </div>
                     <h1 className="text-4xl font-bold mb-6 leading-tight">Empowering B2B Trade with Simplicity</h1>
                     <p className="text-lg text-emerald-100 leading-relaxed">
-                        Join thousands of retailers and manufacturers transforming their business with D2BCart's seamless marketplace platform.
+                        The bridge between Bharat's manufacturers and retailers. Source at factory rates or scale your production by selling to 10k+ businesses.
                     </p>
                 </div>
                 {/* Decorative circles */}

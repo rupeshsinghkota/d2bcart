@@ -211,7 +211,8 @@ const RegisterContent = () => {
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${userType === 'retailer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
                                             <Store className="w-5 h-5" />
                                         </div>
-                                        <span className={`font-bold text-sm ${userType === 'retailer' ? 'text-emerald-900' : 'text-gray-700'}`}>Retailer</span>
+                                        <span className={`font-bold text-sm ${userType === 'retailer' ? 'text-emerald-900' : 'text-gray-700'}`}>Retailer (Buyer)</span>
+                                        <span className="text-[10px] text-gray-500 text-center mt-1 leading-tight">Buy for your shop at factory rates</span>
                                         {userType === 'retailer' && <div className="absolute top-2 right-2 text-emerald-600"><Check className="w-4 h-4" /></div>}
                                     </button>
 
@@ -226,7 +227,8 @@ const RegisterContent = () => {
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${userType === 'manufacturer' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
                                             <Factory className="w-5 h-5" />
                                         </div>
-                                        <span className={`font-bold text-sm ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Wholesaler</span>
+                                        <span className={`font-bold text-sm ${userType === 'manufacturer' ? 'text-emerald-900' : 'text-gray-700'}`}>Seller / Mfr</span>
+                                        <span className="text-[10px] text-gray-500 text-center mt-1 leading-tight">Sell your products to 10k+ retailers</span>
                                         {userType === 'manufacturer' && <div className="absolute top-2 right-2 text-emerald-600"><Check className="w-4 h-4" /></div>}
                                     </button>
                                 </div>
