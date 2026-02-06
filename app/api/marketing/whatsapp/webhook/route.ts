@@ -144,6 +144,27 @@ export async function POST(request: NextRequest) {
                 console.error('[WhatsApp Webhook] Failed to auto-save supplier:', err);
             }
 
+            // CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 4h)
+            try {
+                const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+                const { data: recentHumanOutbound } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id, message, metadata')
+                    .eq('mobile', mobile)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', fourHoursAgo)
+                    .or('metadata->>source.is.null,metadata->>source.neq.sourcing_agent') // Check against sourcing_agent source
+                    .limit(1);
+
+                if (recentHumanOutbound && recentHumanOutbound.length > 0) {
+                    const triggerMsg = recentHumanOutbound[0];
+                    console.log(`[WhatsApp Webhook] 🛑 Supply Agent Paused. Human Manual Chat detected for ${mobile}. Last msg: "${triggerMsg.message?.slice(0, 50)}..."`);
+                    return NextResponse.json({ status: 'ignored_human_takeover_supplier', trigger_id: triggerMsg.id });
+                }
+            } catch (e) {
+                console.error('Supplier Takeover check failed:', e);
+            }
+
             // LAZY IMPORT TO AVOID CIRCULAR DEPS IF ANY
             const { getSourcingAgentResponse } = await import('@/lib/sourcing_agent');
 
