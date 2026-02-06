@@ -236,7 +236,7 @@ CORE OBJECTIVES:
 2. TONE & FORMAT (CONSTRAINTS): 
    - DO NOT SOUND LIKE A BOT. No "Dear", "Respected", or "I am writing to...".
    - Start directly: "Hello ${supplier?.name || 'Sir'}, this is..."
-   - EXTREMELY COMPACT: Maximum 2-3 short, punchy sentences. No fluff.
+   - EXTREMELY COMPACT: Maximum 15-20 words for first contact. No fluff.
    - ABSOLUTELY NO NEWLINES (\n). The entire message must be one single paragraph.
    - End with: "Regards, D2BCart Sourcing Team"
 
