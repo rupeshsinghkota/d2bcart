@@ -76,6 +76,81 @@ async function generateSearchQueries(category: string, location: string, addLog:
         ];
     }
 }
+}
+
+// Helper to perform a robust fetch with browser headers
+async function safeFetch(url: string, referer: string = 'https://www.google.com/'): Promise<string | null> {
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': referer,
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            console.warn(`[Research] Fetch failed for ${url}: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        return await response.text();
+    } catch (e) {
+        console.error(`[Research] Fetch Error: ${(e as Error).message}`);
+        return null;
+    }
+}
+
+// Generic Phone Extractor from HTML
+function extractSuppliersFromHtml(html: string, category: string, location: string, sourceName: string): DiscoveredSupplier[] {
+    const extracted: DiscoveredSupplier[] = [];
+    const phoneMatch = Array.from(html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g));
+    const phonesFound = new Set<string>();
+
+    for (const match of phoneMatch) {
+        const rawPhone = match[0];
+        const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+
+        if (cleanPhone.length >= 10 && cleanPhone.length <= 12) {
+            if (phonesFound.has(cleanPhone)) continue;
+            phonesFound.add(cleanPhone);
+
+            const index = match.index || 0;
+            // Get wider context for Bing which is often verbose
+            const surroundingText = html.substring(Math.max(0, index - 200), Math.min(html.length, index + 200));
+
+            const cleanText = surroundingText
+                .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gmi, "")
+                .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gmi, "")
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            // Name guessing
+            let name = `${category} Supplier`;
+            // Try to find a capitalized sequence before the number
+            const nameMatch = cleanText.split(rawPhone)[0].match(/([A-Z][a-zA-Z0-9&]+(?:\s[A-Z][a-zA-Z0-9&]+){0,4})/g);
+            if (nameMatch && nameMatch.length > 0) {
+                name = nameMatch[nameMatch.length - 1];
+            }
+
+            extracted.push({
+                name: name.substring(0, 50),
+                phone: cleanPhone,
+                website: null,
+                location: location,
+                description: cleanText.substring(0, 200),
+                source: sourceName
+            });
+        }
+    }
+    return extracted;
+}
 
 export async function findSuppliers(category: string, location: string = "India"): Promise<{ suppliers: DiscoveredSupplier[], logs: string[] }> {
     const logs: string[] = [];
