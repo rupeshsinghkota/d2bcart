@@ -91,3 +91,13 @@ body {
 img {
   @apply transition-opacity duration-300;
 }
+/* Hide number input spin buttons */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
