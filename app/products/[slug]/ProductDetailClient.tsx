@@ -715,7 +715,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                                                         const val = parseInt(e.target.value) || 0
                                                                         handleQuantityChange(v.id, val, v.moq || 1)
                                                                     }}
-                                                                    className={`w-8 md:w-10 text-center text-xs md:text-sm font-bold focus:outline-none ${isActive ? 'text-emerald-600' : 'text-gray-700'} bg-transparent`}
+                                                                    className={`w-10 md:w-12 text-center text-xs md:text-sm font-bold focus:outline-none appearance-none ${isActive ? 'text-emerald-600' : 'text-gray-700'} bg-transparent p-0 leading-none`}
                                                                 />
                                                                 <button
                                                                     onClick={() => handleQuantityChange(v.id, qty + (v.moq || 1), v.moq || 1)}
@@ -761,7 +761,7 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
                                                 value={quantity}
                                                 step={currentProduct.moq || 1}
                                                 onChange={(e) => setQuantity(Math.max(currentProduct.moq || 1, parseInt(e.target.value) || currentProduct.moq || 1))}
-                                                className="w-16 text-center text-lg font-bold text-gray-900 bg-transparent focus:outline-none"
+                                                className="w-20 text-center text-xl font-black text-gray-900 bg-transparent focus:outline-none appearance-none p-0 leading-none"
                                                 min={currentProduct.moq || 1}
                                             />
                                             <button
