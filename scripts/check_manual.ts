@@ -9,24 +9,35 @@ const supabase = createClient(
 );
 
 async function check() {
-    console.log('\n=== Checking what IDs we store from API responses ===\n');
+    console.log('\n=== DEBUG WEBHOOK LOGS (last 20) ===\n');
 
     const { data, error } = await supabase
         .from('whatsapp_chats')
-        .select('metadata')
-        .eq('direction', 'outbound')
-        .not('metadata', 'is', null)
+        .select('message, created_at, metadata')
+        .eq('mobile', '000_DEBUG_RAW')
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(20);
 
     if (error) {
         console.error('Error:', error);
         return;
     }
 
+    if (!data || data.length === 0) {
+        console.log('No debug logs found');
+        return;
+    }
+
     data?.forEach((msg, i) => {
-        console.log(`\n=== Message ${i + 1} ===`);
-        console.log('Full metadata:', JSON.stringify(msg.metadata, null, 2));
+        const time = new Date(msg.created_at).toLocaleTimeString();
+        const payload = msg.metadata?.payload;
+        console.log(`\n=== ${i + 1}. [${time}] ===`);
+        console.log('Direction:', payload?.direction);
+        console.log('Status:', payload?.status || payload?.message_status);
+        console.log('Mobile:', payload?.customerNumber || payload?.mobile);
+        console.log('wamid:', payload?.wamid);
+        console.log('uuid:', payload?.uuid || payload?.message_uuid);
+        console.log('Text:', payload?.text?.slice(0, 30) || payload?.body?.slice(0, 30) || '[no text]');
     });
 }
 

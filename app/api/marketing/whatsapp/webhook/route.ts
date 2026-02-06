@@ -131,7 +131,8 @@ export async function POST(request: NextRequest) {
 
             // TIME-BASED DETECTION: If we sent an API message to this phone in the last 30 seconds, 
             // this is likely a delivery report for that message. Otherwise, it's manual.
-            if (cleanMobile && (status === 'sent' || status === 'dispatched')) {
+            // MSG91 sends direction:1 for outbound, often without status field
+            if (cleanMobile && isDirectionOutbound) {
                 const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
 
                 const { data: recentApiMessage } = await supabaseAdmin
@@ -160,10 +161,13 @@ export async function POST(request: NextRequest) {
                     console.log(`[WhatsApp Webhook] Delivery report for API message, ignoring.`);
                     return NextResponse.json({ status: 'ignored_api_delivery_report' });
                 }
-            } else {
-                // Non-sent statuses (delivered, read) - always ignore
+            } else if (status) {
+                // Status-based events (delivered, read, failed) - always ignore
                 console.log(`[WhatsApp Webhook] Ignoring ${status} delivery report.`);
                 return NextResponse.json({ status: 'ignored_delivery_report' });
+            } else {
+                console.log(`[WhatsApp Webhook] Ignoring outbound event without mobile or direction.`);
+                return NextResponse.json({ status: 'ignored_incomplete_outbound' });
             }
         }
 
