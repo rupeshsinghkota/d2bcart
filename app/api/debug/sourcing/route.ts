@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Debug Sourcing] Action: ${action}`);
 
         if (action === 'research') {
-            const suppliers = await findSuppliers(category);
+            const suppliers = await findSuppliers(category, body.location || "India");
             return NextResponse.json({ success: true, suppliers });
         }
 

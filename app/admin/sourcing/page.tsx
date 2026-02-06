@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Search, MessageSquare, Save, UserCheck, Clock, CheckCircle } from 'lucide-react';
+import { Loader2, Search, MessageSquare, Save, CheckCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase Client directly
@@ -17,9 +17,6 @@ export default function SourcingDashboard() {
     const [logs, setLogs] = useState<string[]>([]);
     const [discoveredSuppliers, setDiscoveredSuppliers] = useState<any[]>([]);
     const [savedSuppliers, setSavedSuppliers] = useState<any[]>([]);
-
-    // Supabase client defined globally or via hook not strictly needed for this simple dashboard
-    // using the const supabase defined above
 
     const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
 
@@ -43,16 +40,16 @@ export default function SourcingDashboard() {
         }
     }, [activeTab]);
 
-    const handleSearch = async () => {
+    const handleSearch = async (location: string = "India") => {
         if (!category) return;
         setIsLoading(true);
-        addLog(`Starting research for: ${category}`);
+        addLog(`Starting research for: ${category} in ${location}`);
 
         try {
             const res = await fetch('/api/debug/sourcing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'research', category })
+                body: JSON.stringify({ action: 'research', category, location })
             });
 
             const data = await res.json();
@@ -117,19 +114,52 @@ export default function SourcingDashboard() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <h2 className="text-lg font-semibold mb-4">Research Parameters</h2>
                             <div className="space-y-4">
+                                {/* Category Selection */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Product Category</label>
+                                    <div className="space-y-2">
+                                        <select
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                            value={category}
+                                        >
+                                            <option value="">Select or Type...</option>
+                                            <option value="Mobile Covers">Mobile Covers</option>
+                                            <option value="Tempered Glass">Tempered Glass</option>
+                                            <option value="Data Cables">Data Cables</option>
+                                            <option value="Smart Watch Straps">Smart Watch Straps</option>
+                                            <option value="Earbuds (TWS)">Earbuds (TWS)</option>
+                                            <option value="Chargers & Adapters">Chargers & Adapters</option>
+                                            <option value="Power Banks">Power Banks</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            placeholder="Or type custom category..."
+                                            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Location Input */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Location</label>
                                     <input
                                         type="text"
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        placeholder="e.g. Mobile Covers"
+                                        defaultValue="India"
+                                        id="locationInput"
+                                        placeholder="e.g. Delhi, Mumbai, Karol Bagh"
                                         className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     />
+                                    <p className="text-xs text-gray-500 mt-1">Leaves empty to search pan-India.</p>
                                 </div>
 
                                 <button
-                                    onClick={handleSearch}
+                                    onClick={() => {
+                                        const locInput = document.getElementById('locationInput') as HTMLInputElement;
+                                        handleSearch(locInput.value || "India");
+                                    }}
                                     disabled={isLoading || !category}
                                     className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                                 >
@@ -160,7 +190,7 @@ export default function SourcingDashboard() {
                                 {discoveredSuppliers.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                                         <Search className="w-12 h-12 mb-2 opacity-20" />
-                                        <p>Enter a category to search.</p>
+                                        <p>Select a category to start searching.</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
@@ -188,7 +218,7 @@ export default function SourcingDashboard() {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h3 className="font-bold text-gray-900">{s.name}</h3>
                                                         <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                                            s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                                                s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                                                             }`}>
                                                             {s.status.toUpperCase()}
                                                         </span>

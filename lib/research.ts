@@ -18,16 +18,17 @@ export interface DiscoveredSupplier {
     source: string;
 }
 
-export async function findSuppliers(category: string): Promise<DiscoveredSupplier[]> {
-    console.log(`[Research] Searching for suppliers in category (Free Mode): ${category}`);
+export async function findSuppliers(category: string, location: string = "India"): Promise<DiscoveredSupplier[]> {
+    console.log(`[Research] Searching for suppliers in category (Free Mode): ${category} in ${location}`);
     const results: DiscoveredSupplier[] = [];
 
     try {
         // Search Queries designed to surface contact numbers
         const queries = [
-            `Top wholesalers for ${category} India contact number`,
-            `Manufacturers of ${category} in Delhi/Mumbai contact`,
-            `IndiaMart ${category} supplier phone number`
+            `Top wholesalers for ${category} in ${location} contact number`,
+            `Manufacturers of ${category} in ${location} contact`,
+            `${category} supplier phone number ${location}`,
+            `Wholesale market for ${category} in ${location}`
         ];
 
         for (const q of queries) {
