@@ -9,36 +9,43 @@ const supabase = createClient(
 );
 
 async function check() {
-    console.log('\n=== DEBUG WEBHOOK LOGS (last 20) ===\n');
+    console.log('\n=== DEBUG LOGS - Last 10 (checking direction:1 events) ===\n');
 
-    const { data, error } = await supabase
+    const { data } = await supabase
         .from('whatsapp_chats')
         .select('message, created_at, metadata')
         .eq('mobile', '000_DEBUG_RAW')
         .order('created_at', { ascending: false })
-        .limit(20);
-
-    if (error) {
-        console.error('Error:', error);
-        return;
-    }
-
-    if (!data || data.length === 0) {
-        console.log('No debug logs found');
-        return;
-    }
+        .limit(10);
 
     data?.forEach((msg, i) => {
         const time = new Date(msg.created_at).toLocaleTimeString();
         const payload = msg.metadata?.payload;
-        console.log(`\n=== ${i + 1}. [${time}] ===`);
-        console.log('Direction:', payload?.direction);
-        console.log('Status:', payload?.status || payload?.message_status);
-        console.log('Mobile:', payload?.customerNumber || payload?.mobile);
-        console.log('wamid:', payload?.wamid);
-        console.log('uuid:', payload?.uuid || payload?.message_uuid);
-        console.log('Text:', payload?.text?.slice(0, 30) || payload?.body?.slice(0, 30) || '[no text]');
+        const dir = payload?.direction;
+        console.log(`${i + 1}. [${time}] dir:${dir} | text:"${payload?.text?.slice(0, 20) || '[no text]'}" | mobile:${payload?.customerNumber || payload?.mobile}`);
     });
+
+    // Now check - when we get direction:1, is there a recent API message?
+    console.log('\n=== Testing: Recent API messages in last 30s ===\n');
+
+    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+    const { data: recentApi } = await supabase
+        .from('whatsapp_chats')
+        .select('message, created_at, metadata')
+        .eq('mobile', '918651567003')
+        .eq('direction', 'outbound')
+        .gt('created_at', thirtySecondsAgo)
+        .not('metadata->>source', 'ilike', 'manual%')
+        .limit(5);
+
+    if (recentApi && recentApi.length > 0) {
+        console.log(`Found ${recentApi.length} API messages in last 30s:`);
+        recentApi.forEach(m => {
+            console.log(`  - [${new Date(m.created_at).toLocaleTimeString()}] ${m.metadata?.source}: "${m.message?.slice(0, 30)}..."`);
+        });
+    } else {
+        console.log('No API messages in last 30s - manual detection SHOULD trigger');
+    }
 }
 
 check();

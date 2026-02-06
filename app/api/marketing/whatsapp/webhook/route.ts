@@ -58,6 +58,64 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // ============================================================
+        // OUTBOUND CHECK FIRST - Must run before any inbound processing
+        // MSG91 sends direction:1 for outbound events (including manual dashboard messages)
+        // ============================================================
+        const directionValue = body.direction;
+        const isDirectionOutbound = directionValue === 1 || directionValue === '1' || directionValue === 'outbound';
+        const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
+        const msgStatus = body.status || body.message_status;
+
+        const isOutboundEvent = isDirectionOutbound || (msgStatus && outboundStatuses.includes(msgStatus));
+
+        if (isOutboundEvent) {
+            const outUuid = body.wamid || body.uuid || body.message_uuid || body.id || body.msg_id;
+            const outMobile = body.customerNumber || body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+            const cleanMobile = outMobile.replace('+', '').replace(/\s/g, '');
+
+            console.log(`[WhatsApp Webhook] 📤 Outbound Event Detected! Direction: ${directionValue}, Status: ${msgStatus}, Mobile: ${outMobile}`);
+
+            if (cleanMobile && isDirectionOutbound) {
+                // TIME-BASED DETECTION: If no API message in last 30s, it's manual
+                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+
+                const { data: recentApiMessage } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id')
+                    .eq('mobile', cleanMobile)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', thirtySecondsAgo)
+                    .not('metadata->>source', 'ilike', 'manual%')
+                    .limit(1);
+
+                if (!recentApiMessage || recentApiMessage.length === 0) {
+                    console.log(`[WhatsApp Webhook] 🛑 MANUAL Outbound Detected! No API message in last 30s for ${cleanMobile}. Pausing AI.`);
+
+                    await supabaseAdmin.from('whatsapp_chats').insert({
+                        mobile: cleanMobile,
+                        message: "[Manual Outbound - AI Paused 4h]",
+                        direction: 'outbound',
+                        status: 'sent',
+                        metadata: { source: 'manual_detected', wamid: outUuid }
+                    });
+
+                    return NextResponse.json({ status: 'registered_manual_takeover' });
+                } else {
+                    console.log(`[WhatsApp Webhook] Delivery report for API message, ignoring.`);
+                    return NextResponse.json({ status: 'ignored_api_delivery_report' });
+                }
+            }
+
+            // Other outbound events (status updates) - ignore
+            console.log(`[WhatsApp Webhook] Ignoring outbound event.`);
+            return NextResponse.json({ status: 'ignored_outbound' });
+        }
+
+        // ============================================================
+        // INBOUND MESSAGE PROCESSING (Only if NOT outbound)
+        // ============================================================
+
         // Expanded MSG91/Meta Inbound Structure Support
         let messageText = body.content || body.message || body.data?.message || body.text || ""
         let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || body.from || body.waId || ""
@@ -106,73 +164,7 @@ export async function POST(request: NextRequest) {
         }
 
         // ============================================================
-        // 0.C OUTBOUND EVENT INTERCEPTOR - MUST RUN BEFORE INBOUND PROCESSING
-        // ============================================================
-        // Detect if this is an Outbound Report (Delivery Report) FIRST
-        // MSG91 uses direction: 1 (number) for outbound, not 'outbound' (string)
-        const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
-        const status = body.status || body.message_status;
-
-        // MSG91 direction: 1 = outbound, 0 = inbound (or it could be string)
-        const directionValue = body.direction;
-        const isDirectionOutbound = directionValue === 1 || directionValue === '1' || directionValue === 'outbound';
-
-        const isOutboundEvent =
-            (status && outboundStatuses.includes(status)) ||
-            isDirectionOutbound;
-
-        if (isOutboundEvent) {
-            const outUuid = body.wamid || body.uuid || body.message_uuid || body.id || body.msg_id;
-            const outMobile = body.customerNumber || body.mobile || body.recipient_id || body.customer_number || body.destination || "";
-            const cleanMobile = outMobile.replace('+', '').replace(/\s/g, '');
-
-            console.log(`[WhatsApp Webhook] Processing Outbound Event. Status: ${status}, Mobile: ${outMobile}`);
-            console.log(`[WhatsApp Webhook] Outbound IDs - wamid: ${body.wamid}, uuid: ${body.uuid}, message_uuid: ${body.message_uuid}`);
-
-            // TIME-BASED DETECTION: If we sent an API message to this phone in the last 30 seconds, 
-            // this is likely a delivery report for that message. Otherwise, it's manual.
-            // MSG91 sends direction:1 for outbound, often without status field
-            if (cleanMobile && isDirectionOutbound) {
-                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
-
-                const { data: recentApiMessage } = await supabaseAdmin
-                    .from('whatsapp_chats')
-                    .select('id, metadata')
-                    .eq('mobile', cleanMobile)
-                    .eq('direction', 'outbound')
-                    .gt('created_at', thirtySecondsAgo)
-                    .not('metadata->>source', 'ilike', 'manual%')
-                    .limit(1);
-
-                if (!recentApiMessage || recentApiMessage.length === 0) {
-                    console.log(`[WhatsApp Webhook] 🛑 MANUAL Outbound Detected! No API message in last 30s for ${cleanMobile}. Pausing AI.`);
-
-                    await supabaseAdmin.from('whatsapp_chats').insert({
-                        mobile: cleanMobile,
-                        message: "[Manual Outbound Detected - AI Paused for 4h]",
-                        direction: 'outbound',
-                        status: 'sent',
-                        metadata: { source: 'manual_detected', wamid: outUuid, timestamp: new Date().toISOString() }
-                    });
-
-                    return NextResponse.json({ status: 'registered_manual_takeover' });
-                } else {
-                    // This is a delivery report for an API-sent message, ignore it
-                    console.log(`[WhatsApp Webhook] Delivery report for API message, ignoring.`);
-                    return NextResponse.json({ status: 'ignored_api_delivery_report' });
-                }
-            } else if (status) {
-                // Status-based events (delivered, read, failed) - always ignore
-                console.log(`[WhatsApp Webhook] Ignoring ${status} delivery report.`);
-                return NextResponse.json({ status: 'ignored_delivery_report' });
-            } else {
-                console.log(`[WhatsApp Webhook] Ignoring outbound event without mobile or direction.`);
-                return NextResponse.json({ status: 'ignored_incomplete_outbound' });
-            }
-        }
-
-        // ============================================================
-        // INBOUND MESSAGE PROCESSING (Only runs if NOT an outbound event)
+        // INBOUND MESSAGE PROCESSING CONTINUES (Outbound already filtered above)
         // ============================================================
         if (!messageText) messageText = "Hi"
 
