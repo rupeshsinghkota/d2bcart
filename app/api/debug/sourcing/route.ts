@@ -4,12 +4,28 @@ import { createClient } from '@supabase/supabase-js';
 import { findSuppliers } from '@/lib/research_openai';
 import { getSourcingAgentResponse } from '@/lib/sourcing_agent';
 
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Circuit Breaker State (In-Memory for this instance)
+let consecutiveBlocks = 0;
+const BLOCK_THRESHOLD = 3;
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { action, category, location, autoContact, supplier, customContext } = body;
 
         console.log(`[Debug Sourcing] Action: ${action}`);
+
+        if (consecutiveBlocks >= BLOCK_THRESHOLD && action === 'initiate_chat') {
+            return NextResponse.json({
+                error: 'Circuit Breaker Active',
+                message: 'Outreach paused due to multiple consecutive Meta blocks. Please wait 24h.'
+            }, { status: 429 });
+        }
 
         if (action === 'research') {
             const result = await findSuppliers(category, location || "India");
@@ -75,12 +91,16 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
                 }
             });
 
-            if (waRes.success) break;
+            if (waRes.success) {
+                consecutiveBlocks = 0; // Reset on success
+                break;
+            }
 
             // Check for permanent blocks (Meta Error 131026) -> DO NOT RETRY
             const errorMsg = JSON.stringify(waRes.error || "");
             if (errorMsg.includes("131026") || errorMsg.includes("engagement")) {
                 console.warn(`[Sourcing API] Permanent block detected (131026). Stopping retries for ${normalizedPhone}`);
+                consecutiveBlocks++; // Increment circuit breaker
                 break;
             }
 

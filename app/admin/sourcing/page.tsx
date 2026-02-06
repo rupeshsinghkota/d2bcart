@@ -18,6 +18,8 @@ export default function SourcingDashboard() {
     const [discoveredSuppliers, setDiscoveredSuppliers] = useState<any[]>([]);
     const [savedSuppliers, setSavedSuppliers] = useState<any[]>([]);
     const [customContext, setCustomContext] = useState('');
+    const [isSafetyLocked, setIsSafetyLocked] = useState(false); // Global safety toggle
+    const [consecutiveFailures, setConsecutiveFailures] = useState(0);
 
     const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
 
@@ -113,12 +115,23 @@ export default function SourcingDashboard() {
 
             if (data.success) {
                 addLog(`✅ SUCCESS: ${data.message.slice(0, 50)}...`);
+                setConsecutiveFailures(0); // Reset failures on success
                 // Update local status in discovered results
                 setDiscoveredSuppliers(prev =>
                     prev.map(s => s.phone === supplier.phone ? { ...s, status: 'contacted' } : s)
                 );
             } else {
                 addLog(`⚠️ ALERT: ${data.message}`);
+
+                // Detection for Meta block
+                if (data.message?.includes("131026") || data.message?.includes("engagement")) {
+                    setConsecutiveFailures(prev => prev + 1);
+                }
+
+                // Update local state to show failure
+                setDiscoveredSuppliers(prev =>
+                    prev.map(s => s.phone === supplier.phone ? { ...s, status: 'failed' } : s)
+                );
             }
         } catch (error) {
             addLog(`❌ Chat Error: ${error}`);
@@ -161,16 +174,38 @@ export default function SourcingDashboard() {
                 Supplier AI Agent
             </h1>
 
+            {/* Safety Master Switch Banner */}
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex gap-3 items-center">
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
+                        <span className="text-xl">🛑</span>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-red-900 leading-none mb-1">Outreach Safety Lock</h3>
+                        <p className="text-xs text-red-700">Disable all automated contact to allow your WhatsApp number to "heal."</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setIsSafetyLocked(!isSafetyLocked)}
+                    className={`px-6 py-2 rounded-lg font-bold transition-all ${isSafetyLocked ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-red-600 text-white shadow-lg shadow-red-200'}`}
+                >
+                    {isSafetyLocked ? '🔓 UNLOCK SYSTEM' : '🔒 LOCK OUTREACH'}
+                </button>
+            </div>
+
             {/* Meta Quality Warning */}
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start">
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
-                    <span className="text-xl">⚠️</span>
+            <div className={`mb-6 p-4 border rounded-xl flex gap-3 items-start transition-colors ${consecutiveFailures >= 3 ? 'bg-red-50 border-red-200 animate-pulse' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="w-10 h-10 bg-opacity-20 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-xl">{consecutiveFailures >= 3 ? '🚨' : '⚠️'}</span>
                 </div>
                 <div>
-                    <h3 className="font-bold text-amber-900 leading-none mb-1">Meta Quality Safety Alert</h3>
-                    <p className="text-xs text-amber-700 leading-relaxed">
-                        To avoid **Error 131026 (Message Undeliverable)**, we've increased the outreach delay to **30 seconds**.
-                        If your messages continue to fail, please check your **Meta Business Suite** and pause outreach until your Quality Score recovers.
+                    <h3 className={`font-bold leading-none mb-1 ${consecutiveFailures >= 3 ? 'text-red-900' : 'text-amber-900'}`}>
+                        {consecutiveFailures >= 3 ? 'CRITICAL: Account Protection Active' : 'Meta Quality Safety Alert'}
+                    </h3>
+                    <p className={`text-xs leading-relaxed ${consecutiveFailures >= 3 ? 'text-red-700' : 'text-amber-700'}`}>
+                        {consecutiveFailures >= 3
+                            ? "Circuit Breaker triggered. Meta is blocking your messages. **PAUSE OUTREACH FOR 48 HOURS IMMEDIATELY** to avoid a permanent ban."
+                            : "To avoid **Error 131026 (Message Undeliverable)**, we've increased the outreach delay to **30-45 seconds**. If messages fail, please pause outreach."}
                     </p>
                 </div>
             </div>
@@ -271,11 +306,11 @@ export default function SourcingDashboard() {
                                         const locInput = document.getElementById('locationInput') as HTMLInputElement;
                                         handleSearch(locInput.value || "India");
                                     }}
-                                    disabled={isLoading || !category}
+                                    disabled={isLoading || !category || isSafetyLocked}
                                     className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                                 >
                                     {isLoading ? <Loader2 className="animate-spin w-4 h-4" /> : <Search className="w-4 h-4" />}
-                                    Find Suppliers
+                                    {isSafetyLocked ? 'System Locked' : 'Find Suppliers'}
                                 </button>
                             </div>
                         </div>
@@ -317,7 +352,7 @@ export default function SourcingDashboard() {
                                 ) : (
                                     <div className="space-y-4">
                                         {discoveredSuppliers.map((s, i) => (
-                                            <SupplierCard key={i} supplier={s} onChat={() => handleStartChat(s)} />
+                                            <SupplierCard key={i} supplier={s} onChat={() => handleStartChat(s)} isSafetyLocked={isSafetyLocked} />
                                         ))}
                                     </div>
                                 )}
@@ -378,7 +413,7 @@ export default function SourcingDashboard() {
     );
 }
 
-function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void }) {
+function SupplierCard({ supplier, onChat, isSafetyLocked }: { supplier: any, onChat: () => void, isSafetyLocked: boolean }) {
     const isContacted = supplier.status === 'contacted';
     const isFailed = supplier.status === 'failed';
 
@@ -400,11 +435,11 @@ function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void 
             <div className="flex flex-col gap-2 justify-center">
                 <button
                     onClick={onChat}
-                    disabled={isContacted}
-                    className={`px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 ${isContacted ? 'bg-gray-400 cursor-not-allowed' : isFailed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}
+                    disabled={isContacted || isSafetyLocked}
+                    className={`px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 ${isContacted || isSafetyLocked ? 'bg-gray-400 cursor-not-allowed' : isFailed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                     <MessageSquare className="w-4 h-4" />
-                    {isContacted ? 'Message Sent' : isFailed ? 'Retry Contact' : 'Contact'}
+                    {isSafetyLocked ? 'Locked' : isContacted ? 'Message Sent' : isFailed ? 'Retry Contact' : 'Contact'}
                 </button>
             </div>
         </div>
