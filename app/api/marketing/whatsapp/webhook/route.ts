@@ -94,6 +94,59 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'ignored_own_number' });
         }
 
+        // ============================================================
+        // 0.C OUTBOUND EVENT INTERCEPTOR - MUST RUN BEFORE INBOUND PROCESSING
+        // ============================================================
+        // Detect if this is an Outbound Report (Delivery Report) FIRST
+        const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
+        const status = body.status || body.message_status;
+
+        const isOutboundEvent =
+            (status && outboundStatuses.includes(status)) ||
+            body.direction === 'outbound' ||
+            body.message_uuid;
+
+        if (isOutboundEvent) {
+            console.log(`[WhatsApp Webhook] Processing Outbound Event. Status: ${status}, UUID: ${body.message_uuid}`);
+            const outUuid = body.message_uuid || body.uuid || body.id;
+            const outMobile = body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+
+            if (outUuid) {
+                const { data: knownOutbound } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id')
+                    .or(`metadata->>messageId.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
+                    .single();
+
+                if (!knownOutbound) {
+                    console.log(`[WhatsApp Webhook] 🛑 Manual Outbound Detected (ID: ${outUuid}). Pausing AI for ${outMobile}.`);
+
+                    if (outMobile) {
+                        await supabaseAdmin.from('whatsapp_chats').insert({
+                            mobile: outMobile,
+                            message: "[Manual Outbound Message Detected]",
+                            direction: 'outbound',
+                            status: 'sent',
+                            metadata: { source: 'manual_app_outbound_webhook', message_id: outUuid, raw: body }
+                        });
+                        return NextResponse.json({ status: 'registered_manual_takeover' });
+                    } else {
+                        console.warn("[WhatsApp Webhook] Manual Outbound detected but no mobile number found.");
+                        return NextResponse.json({ status: 'ignored_no_mobile' });
+                    }
+                } else {
+                    console.log(`[WhatsApp Webhook] Outbound is known API message, ignoring.`);
+                    return NextResponse.json({ status: 'ignored_api_outbound_update' });
+                }
+            } else {
+                console.log("[WhatsApp Webhook] Outbound event without UUID ignored.");
+                return NextResponse.json({ status: 'ignored_outbound_no_uuid' });
+            }
+        }
+
+        // ============================================================
+        // INBOUND MESSAGE PROCESSING (Only runs if NOT an outbound event)
+        // ============================================================
         if (!messageText) messageText = "Hi"
 
         // 0. MEMORY CACHE CHECK (Fastest)
@@ -132,57 +185,7 @@ export async function POST(request: NextRequest) {
             console.log('Chat logging failed (Table missing?):', e)
         }
 
-        // ============================================================
-        // 0.C STRONG OUTBOUND EVENT INTERCEPTOR
-        // ============================================================
-        // Detect if this is an Outbound Report (Delivery Report) or Listen Event
-        // We strictly check for KNOWN outbound statuses to avoid false positives on Inbound messages that might have a 'status' field.
-        const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
-        const status = body.status || body.message_status;
-
-        const isOutboundEvent =
-            (status && outboundStatuses.includes(status)) ||
-            body.direction === 'outbound' ||
-            body.message_uuid; // Only use message_uuid, not generic uuid which might exist in inbound
-
-        if (isOutboundEvent) {
-            console.log(`[WhatsApp Webhook] Processing Outbound Event. UUID: ${body.message_uuid || body.uuid}`);
-            const outUuid = body.message_uuid || body.uuid || body.id;
-            // Get the destination number from various fields
-            const outMobile = body.mobile || body.recipient_id || body.customer_number || body.destination || "";
-
-            if (outUuid) {
-                const { data: knownOutbound } = await supabaseAdmin
-                    .from('whatsapp_chats')
-                    .select('id')
-                    .or(`metadata->>messageId.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
-                    .single();
-
-                if (!knownOutbound) {
-                    console.log(`[WhatsApp Webhook] 🛑 Manual Outbound Detected (ID: ${outUuid}). Pausing AI.`);
-
-                    if (outMobile) {
-                        await supabaseAdmin.from('whatsapp_chats').insert({
-                            mobile: outMobile,
-                            message: "[Manual Outbound Message Detected]",
-                            direction: 'outbound',
-                            status: 'sent',
-                            metadata: { source: 'manual_app_outbound_webhook', message_id: outUuid, raw: body }
-                        });
-                        return NextResponse.json({ status: 'registered_manual_takeover' });
-                    } else {
-                        console.warn("[WhatsApp Webhook] Manual Outbound detected but no mobile number found in payload.");
-                        return NextResponse.json({ status: 'ignored_no_mobile' });
-                    }
-                } else {
-                    return NextResponse.json({ status: 'ignored_api_outbound_update' });
-                }
-            } else {
-                // Outbound event without UUID? Unlikely but safe to ignore to prevent Loop
-                console.log("[WhatsApp Webhook] Outbound event without UUID ignored.");
-                return NextResponse.json({ status: 'ignored_outbound_no_uuid' });
-            }
-        }
+        // (Outbound interceptor already ran above)
 
         // ============================================================
         // ROUTING LOGIC: SUPPLIER vs CUSTOMER
