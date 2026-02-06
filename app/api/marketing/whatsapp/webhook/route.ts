@@ -109,18 +109,24 @@ export async function POST(request: NextRequest) {
         // 0.C OUTBOUND EVENT INTERCEPTOR - MUST RUN BEFORE INBOUND PROCESSING
         // ============================================================
         // Detect if this is an Outbound Report (Delivery Report) FIRST
+        // MSG91 uses direction: 1 (number) for outbound, not 'outbound' (string)
         const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
         const status = body.status || body.message_status;
 
+        // MSG91 direction: 1 = outbound, 0 = inbound (or it could be string)
+        const directionValue = body.direction;
+        const isDirectionOutbound = directionValue === 1 || directionValue === '1' || directionValue === 'outbound';
+
         const isOutboundEvent =
             (status && outboundStatuses.includes(status)) ||
-            body.direction === 'outbound' ||
-            body.message_uuid;
+            isDirectionOutbound ||
+            body.message_uuid ||
+            body.uuid; // MSG91 uses 'uuid' for message ID
 
         if (isOutboundEvent) {
-            console.log(`[WhatsApp Webhook] Processing Outbound Event. Status: ${status}, UUID: ${body.message_uuid}`);
-            const outUuid = body.message_uuid || body.uuid || body.id;
-            const outMobile = body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+            console.log(`[WhatsApp Webhook] Processing Outbound Event. Direction: ${directionValue}, UUID: ${body.uuid || body.message_uuid}`);
+            const outUuid = body.uuid || body.message_uuid || body.id;
+            const outMobile = body.customerNumber || body.mobile || body.recipient_id || body.customer_number || body.destination || "";
 
             if (outUuid) {
                 const { data: knownOutbound } = await supabaseAdmin
