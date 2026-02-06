@@ -40,16 +40,18 @@ export default function SourcingDashboard() {
         }
     }, [activeTab]);
 
+    const [autoContact, setAutoContact] = useState(false);
+
     const handleSearch = async (location: string = "India") => {
         if (!category) return;
         setIsLoading(true);
-        addLog(`Starting research for: ${category} in ${location}`);
+        addLog(`Starting research for: ${category} in ${location} (Auto-Contact: ${autoContact ? 'ON' : 'OFF'})`);
 
         try {
             const res = await fetch('/api/debug/sourcing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'research', category, location })
+                body: JSON.stringify({ action: 'research', category, location, autoContact })
             });
 
             const data = await res.json();
@@ -160,6 +162,20 @@ export default function SourcingDashboard() {
                                     <p className="text-xs text-gray-500 mt-1">Leaves empty to search pan-India.</p>
                                 </div>
 
+                                {/* Auto-Contact Toggle */}
+                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <div>
+                                        <p className="text-sm font-semibold text-blue-900">Auto-Contact</p>
+                                        <p className="text-[10px] text-blue-700 leading-tight">AI will message new suppliers instantly.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setAutoContact(!autoContact)}
+                                        className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${autoContact ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoContact ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+
                                 <button
                                     onClick={() => {
                                         const locInput = document.getElementById('locationInput') as HTMLInputElement;
@@ -223,7 +239,7 @@ export default function SourcingDashboard() {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h3 className="font-bold text-gray-900">{s.name}</h3>
                                                         <span className={`text-xs px-2 py-0.5 rounded-full ${s.status === 'verified' ? 'bg-green-100 text-green-700' :
-                                                                s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                                            s.status === 'responded' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                                                             }`}>
                                                             {s.status.toUpperCase()}
                                                         </span>

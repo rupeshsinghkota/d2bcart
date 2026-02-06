@@ -1,9 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { findSuppliers } from '@/lib/research_openai';  // Using OpenAI with Scrapers fallback
+import { findSuppliers } from '@/lib/research_openai';
 import { getSourcingAgentResponse } from '@/lib/sourcing_agent';
-import { sendWhatsAppMessage } from '@/lib/msg91';
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,81 +13,33 @@ export async function POST(request: NextRequest) {
 
         if (action === 'research') {
             const result = await findSuppliers(category, body.location || "India");
-            return NextResponse.json({ success: true, suppliers: result.suppliers, logs: result.logs });
+            const researchLogs = [...(result.logs || [])];
+
+            // AUTO-CONTACT LOGIC
+            if (body.autoContact && result.suppliers.length > 0) {
+                researchLogs.push(`[Sourcing] ⚡ Starting Auto-Contact for ${result.suppliers.length} suppliers...`);
+                for (const s of result.suppliers) {
+                    try {
+                        const chatRes = await initiateSupplierChat(s);
+                        if (chatRes.success) {
+                            researchLogs.push(`[Auto-Contact] ✅ Messaged ${s.name || s.phone}: ${chatRes.message?.slice(0, 50)}...`);
+                        } else {
+                            researchLogs.push(`[Auto-Contact] ⚠️ Skipped ${s.name || s.phone}: ${chatRes.message}`);
+                        }
+                    } catch (e: any) {
+                        researchLogs.push(`[Auto-Contact] ❌ Failed to message ${s.name || s.phone}: ${e.message}`);
+                    }
+                    // Small delay to prevent rate limiting
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+
+            return NextResponse.json({ success: true, suppliers: result.suppliers, logs: researchLogs });
         }
 
         if (action === 'initiate_chat') {
-            const { name, phone } = supplier;
-            const normalizedPhone = phone.replace(/[^0-9]/g, '');
-
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!
-            );
-
-            // 1. CHECK DUPLICATE
-            const { data: existing } = await supabase
-                .from('suppliers')
-                .select('id, status')
-                .eq('phone', normalizedPhone)
-                .single();
-
-            if (existing && ['contacted', 'responded', 'verified', 'rejected'].includes(existing.status)) {
-                return NextResponse.json({
-                    success: false,
-                    message: `Skipped: Supplier already ${existing.status}.`
-                });
-            }
-
-            // Simulate initiating chat via Agent Logic
-            const aiRes = await getSourcingAgentResponse({
-                message: "", // Empty to trigger greeting
-                phone: normalizedPhone,
-                supplierId: supplier.id
-            });
-
-            // Simulate Sending using TEMPLATE for first contact (Reliable)
-            if (aiRes.message && normalizedPhone) {
-                const { sendWhatsAppMessage } = await import('@/lib/msg91');
-
-                // Reuse d2b_ai_response template
-                const msgBody = `Hello, this is the sourcing team from D2BCart.\n\n${aiRes.message}\n\nRegards,\nD2BCart Team`;
-
-                const waRes = await sendWhatsAppMessage({
-                    mobile: normalizedPhone,
-                    templateName: 'd2b_ai_response',
-                    integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
-                    components: {
-                        body_1: { type: 'text', value: msgBody }
-                    }
-                });
-
-                if (!waRes.success) {
-                    console.error("[Debug Sourcing] WhatsApp Send Failed:", waRes.error);
-                }
-
-                // 2. MARK AS CONTACTED (Save to DB)
-                if (!existing) {
-                    await supabase.from('suppliers').insert({
-                        name: name || `Supplier ${normalizedPhone.slice(-4)}`,
-                        phone: normalizedPhone,
-                        status: 'contacted',
-                        source: 'admin_dashboard',
-                        updated_at: new Date()
-                    });
-                } else {
-                    // Update if it was just 'discovered'
-                    await supabase.from('suppliers')
-                        .update({ status: 'contacted', updated_at: new Date() })
-                        .eq('id', existing.id);
-                }
-            }
-
-            return NextResponse.json({
-                success: true,
-                message: aiRes.message,
-                reasoning: aiRes.reasoning
-            });
+            const res = await initiateSupplierChat(supplier);
+            return NextResponse.json(res);
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -97,4 +48,75 @@ export async function POST(request: NextRequest) {
         console.error("Debug Sourcing Error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
+}
+
+async function initiateSupplierChat(supplier: any) {
+    const { name, phone } = supplier;
+    const normalizedPhone = phone.replace(/[^0-9]/g, '');
+
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: existing } = await supabase
+        .from('suppliers')
+        .select('id, status')
+        .eq('phone', normalizedPhone)
+        .single();
+
+    if (existing && ['contacted', 'responded', 'verified', 'rejected'].includes(existing.status)) {
+        return { success: false, message: `Skipped: ${normalizedPhone} already ${existing.status}` };
+    }
+
+    const aiRes = await getSourcingAgentResponse({
+        message: "",
+        phone: normalizedPhone,
+        supplierId: supplier.id
+    });
+
+    if (aiRes.message && normalizedPhone) {
+        const { sendWhatsAppMessage } = await import('@/lib/msg91');
+        const msgBody = `Hello, this is the sourcing team from D2BCart.\n\n${aiRes.message}\n\nRegards,\nD2BCart Team`;
+
+        const waRes = await sendWhatsAppMessage({
+            mobile: normalizedPhone,
+            templateName: 'd2b_ai_response',
+            integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
+            components: {
+                body_1: { type: 'text', value: msgBody }
+            }
+        });
+
+        if (waRes.success) {
+            // Log to whatsapp_chats for UI visibility
+            try {
+                await supabase.from('whatsapp_chats').insert({
+                    mobile: normalizedPhone,
+                    message: aiRes.message,
+                    direction: 'outbound',
+                    status: 'sent',
+                    metadata: { ...waRes, source: 'sourcing_initiation', reasoning: aiRes.reasoning }
+                });
+            } catch (logErr) {
+                console.error("Failed to log chat to DB:", logErr);
+            }
+
+            if (!existing) {
+                await supabase.from('suppliers').insert({
+                    name: name || `Supplier ${normalizedPhone.slice(-4)}`,
+                    phone: normalizedPhone,
+                    status: 'contacted',
+                    source: 'admin_dashboard',
+                    updated_at: new Date()
+                });
+            } else {
+                await supabase.from('suppliers')
+                    .update({ status: 'contacted', updated_at: new Date() })
+                    .eq('id', existing.id);
+            }
+        }
+    }
+
+    return { success: true, message: aiRes.message };
 }

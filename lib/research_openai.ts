@@ -219,10 +219,32 @@ export async function findSuppliers(category: string, location: string = "India"
         results.push(...aiKnowledge);
     }
 
+    // 4. FILTER OUT EXISTING SUPPLIERS FROM DB
+    // This ensures we only show NEW potential leads
     const unique = new Map<string, DiscoveredSupplier>();
     results.forEach(s => { if (s.phone) unique.set(s.phone, s); });
 
-    const finalResults = Array.from(unique.values());
+    let finalResults = Array.from(unique.values());
+
+    try {
+        const phones = finalResults.map(s => s.phone).filter(Boolean) as string[];
+        if (phones.length > 0) {
+            const { data: existing } = await getSupabase()
+                .from('suppliers')
+                .select('phone')
+                .in('phone', phones);
+
+            if (existing && existing.length > 0) {
+                const existingPhones = new Set((existing as any[]).map(e => e.phone));
+                const originalCount = finalResults.length;
+                finalResults = finalResults.filter(s => !existingPhones.has(s.phone!));
+                addLog(`[Research] 🧹 Filtered ${originalCount - finalResults.length} already known suppliers.`);
+            }
+        }
+    } catch (e) {
+        addLog(`[Research] Filtering error: ${(e as Error).message}`);
+    }
+
     addLog(`[Research] ✨ Finalized ${finalResults.length} potential suppliers.`);
 
     return { suppliers: finalResults, logs };
