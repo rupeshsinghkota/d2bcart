@@ -19,6 +19,10 @@
         {
             "path": "/api/marketing/cron/weekly-catalog",
             "schedule": "30 11 * * *"
+        },
+        {
+            "path": "/api/cron/supplier-followups",
+            "schedule": "30 3 * * *"
         }
     ]
 }

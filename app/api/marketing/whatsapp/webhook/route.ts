@@ -271,12 +271,49 @@ export async function POST(request: NextRequest) {
             // LAZY IMPORT TO AVOID CIRCULAR DEPS IF ANY
             const { getSourcingAgentResponse } = await import('@/lib/sourcing_agent');
 
+            // Extract image URL if present (MSG91 sends 'url' for images)
+            const imageUrl = body.url || body.attachment_url || body.media_url || undefined;
+            if (imageUrl) {
+                console.log(`[WhatsApp Webhook] 📷 Image detected for Sourcing Agent: ${imageUrl}`);
+            }
+
             const aiResult = await getSourcingAgentResponse({
-                message: messageText,
-                phone: mobile
+                message: messageText || '[Image received]',
+                phone: mobile,
+                imageUrl: imageUrl
             });
 
-            console.log(`[WhatsApp Webhook] Sourcing Agent Action: ${aiResult.action}, Reply: ${aiResult.message}`);
+            console.log(`[WhatsApp Webhook] Sourcing Agent v2 Action: ${aiResult.action}, Reply: ${aiResult.message}`);
+
+            // Update supplier record with extracted data (Vision AI results)
+            if (aiResult.update_supplier || aiResult.extracted_data) {
+                try {
+                    const updateData: any = {
+                        last_contacted_at: new Date().toISOString()
+                    };
+
+                    if (aiResult.update_supplier) {
+                        if (aiResult.update_supplier.last_quoted_price) updateData.last_quoted_price = aiResult.update_supplier.last_quoted_price;
+                        if (aiResult.update_supplier.negotiation_stage) updateData.negotiation_stage = aiResult.update_supplier.negotiation_stage;
+                        if (aiResult.update_supplier.conversation_summary) updateData.conversation_summary = aiResult.update_supplier.conversation_summary;
+                        if (aiResult.update_supplier.deal_score) updateData.deal_score = aiResult.update_supplier.deal_score;
+                    }
+
+                    if (aiResult.extracted_data?.gst_number) {
+                        updateData.gst_number = aiResult.extracted_data.gst_number;
+                        updateData.is_verified = true;
+                    }
+
+                    await supabaseAdmin
+                        .from('suppliers')
+                        .update(updateData)
+                        .eq('phone', mobile);
+
+                    console.log(`[WhatsApp Webhook] Updated supplier record:`, updateData);
+                } catch (e) {
+                    console.error('[WhatsApp Webhook] Failed to update supplier:', e);
+                }
+            }
 
             // Send Reply via Supplier Number
             const result = await sendWhatsAppSessionMessage({
@@ -292,7 +329,7 @@ export async function POST(request: NextRequest) {
                     message: aiResult.message,
                     direction: 'outbound',
                     status: result.success ? 'sent' : 'failed',
-                    metadata: { ...result, source: 'sourcing_agent', action: aiResult.action }
+                    metadata: { ...result, source: 'sourcing_agent', action: aiResult.action, extracted: aiResult.extracted_data }
                 })
             } catch (e) { }
 
