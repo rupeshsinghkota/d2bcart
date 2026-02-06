@@ -86,7 +86,7 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
                     content: `Extract business names and 10-digit Indian phone numbers for ${category} wholesalers in ${location}. 
                     Format as JSON: { "suppliers": [ { "name": "...", "phone": "...", "description": "..." } ] }`
                 },
-                { role: "user", content: `Page Content:\n${cleanText}` }
+                { role: "user", content: `Search Snippets Content:\n${cleanText}` }
             ],
             response_format: { type: "json_object" }
         });
@@ -104,15 +104,16 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
 }
 
 async function getSuppliersFromAIKnowledge(category: string, location: string, count: number = 20, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
-    addLog(`[Research] 🧠 Fetching recommendations from AI knowledge base (Count: ${count})...`);
+    addLog(`[Research] 🧠 Fetching recommendations from AI knowledge base...`);
     try {
         const response = await getOpenAI().chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
-                    content: `You are a Sourcing Expert. Provide a list of ${count} REAL Indian mobile/electronics wholesalers/manufacturers in ${location}. 
-                    Focus on: ${category}. Include their 10-digit Indian phone numbers.
+                    content: `You are a Wholesale Sourcing Expert in India. Provide a list of ${count} REAL Indian wholesalers/manufacturers for ${category} specifically in ${location} area if possible. 
+                    Focus on hubs like Karol Bagh, Nehru Place if relevant.
+                    Provide their VERIFIED Indian mobile numbers.
                     Return as JSON: { "suppliers": [ { "name": "...", "phone": "...", "description": "..." } ] }`
                 }
             ],
@@ -136,52 +137,61 @@ export async function findSuppliers(category: string, location: string = "India"
     const addLog = (msg: string) => { console.log(msg); logs.push(msg); };
     const results: DiscoveredSupplier[] = [];
 
-    addLog(`[Research] 🔍 Researching "${category}" in "${location}"...`);
+    addLog(`[Research] 🔍 High-speed research for "${category}" in "${location}"...`);
 
-    // 1. Scraping with aggressive fallback
-    const qBase = `${category} wholesalers ${location} contact number`;
+    const qBase = `${category} wholesalers ${location} contact mobile number`;
     const searchEngines = [
-        { name: "Ask.com", url: `https://www.ask.com/web?q=${encodeURIComponent(qBase)}` },
-        { name: "DuckDuckGo", url: `https://duckduckgo.com/html/?q=${encodeURIComponent(qBase)}` },
-        { name: "Google Basic", url: `https://www.google.com/search?q=${encodeURIComponent(qBase)}&gbv=1` }
+        { name: "Google Directory", url: `https://www.google.com/search?q=${encodeURIComponent(category + " wholesalers " + location + " indiamart justdial contact number")}&gbv=1` },
+        { name: "Ask List", url: `https://www.ask.com/web?q=${encodeURIComponent(category + " " + location + " wholesale price list 2024")}` },
+        { name: "DuckDuckGo", url: `https://duckduckgo.com/html/?q=${encodeURIComponent(category + " wholesalers in " + location + " contact numbers")}` }
     ];
 
-    for (const engine of searchEngines) {
-        addLog(`[Research] 🌐 Trying ${engine.name}...`);
-        const html = await safeFetch(engine.url);
-
-        if (html && !html.includes('detected unusual traffic') && !html.includes('anomaly.js')) {
-            const found = await extractSuppliersWithAI(html, category, location, engine.name, addLog);
-            if (found.length > 0) {
-                addLog(`[Research] ✅ Found ${found.length} from ${engine.name}.`);
-                results.push(...found);
-            } else {
-                addLog(`[Research] ⚠️ No suppliers extracted from ${engine.name}.`);
+    // Parallel fetch & extract for speed
+    addLog(`[Research] 🌐 Searching multiple engines in parallel...`);
+    const searchPromises = searchEngines.map(async (engine) => {
+        try {
+            const html = await safeFetch(engine.url);
+            if (html && !html.includes('detected unusual traffic') && !html.includes('anomaly.js')) {
+                const found = await extractSuppliersWithAI(html, category, location, engine.name, addLog);
+                return found;
             }
-        } else {
-            addLog(`[Research] ❌ ${engine.name} blocked/failed.`);
-        }
+        } catch { /* ignore */ }
+        return [];
+    });
 
-        if (results.length >= 10) break;
-        await sleep(1000);
-    }
+    const searchResults = await Promise.all(searchPromises);
+    searchResults.forEach((list, idx) => {
+        if (list.length > 0) {
+            addLog(`[Research] ✅ Found ${list.length} from ${searchEngines[idx].name}.`);
+            results.push(...list);
+        } else {
+            addLog(`[Research] ⚠️ No results from ${searchEngines[idx].name}.`);
+        }
+    });
 
     // 2. AI Knowledge Fallback (High Volume)
     if (results.length < 5) {
+        addLog(`[Research] 🧠 Low results, triggering AI knowledge fallback...`);
         const aiKnowledge = await getSuppliersFromAIKnowledge(category, location, 25, addLog);
         results.push(...aiKnowledge);
     }
 
-    // 4. FILTER OUT EXISTING SUPPLIERS FROM DB
+    // 4. FILTER & DE-DUPLICATE
     const unique = new Map<string, DiscoveredSupplier>();
-    results.forEach(s => { if (s.phone) unique.set(s.phone, s); });
+    results.forEach(s => {
+        if (s.phone) {
+            const clean = cleanPhone(s.phone);
+            if (clean) unique.set(clean, { ...s, phone: clean });
+        }
+    });
 
     let finalResults = Array.from(unique.values());
 
     try {
         const phones = finalResults.map(s => s.phone).filter(Boolean) as string[];
         if (phones.length > 0) {
-            const { data: existing } = await getSupabase()
+            const db = getSupabase();
+            const { data: existing } = await db
                 .from('suppliers')
                 .select('phone')
                 .in('phone', phones);
@@ -189,14 +199,14 @@ export async function findSuppliers(category: string, location: string = "India"
             if (existing && (existing as any[]).length > 0) {
                 const existingPhones = new Set((existing as any[]).map(e => e.phone));
                 finalResults = finalResults.filter(s => !existingPhones.has(s.phone!));
-                addLog(`[Research] 🧹 Filtered already known suppliers.`);
+                addLog(`[Research] 🧹 Filtered ${existing?.length} existing suppliers.`);
             }
         }
     } catch (e) {
         addLog(`[Research] Filtering error: ${(e as Error).message}`);
     }
 
-    addLog(`[Research] ✨ Finalized ${finalResults.length} new potential suppliers.`);
+    addLog(`[Research] ✨ Research complete. ${finalResults.length} new suppliers discovered.`);
     return { suppliers: finalResults, logs };
 }
 
