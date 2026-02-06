@@ -225,9 +225,9 @@ ${history.join('\n')}
 
 CORE OBJECTIVES:
 1. FIRST CONTACT (CRITICAL - BE CONVINCING): 
-   - Introduce yourself as: "Sourcing Team from D2BCart (India's leading B2B mobile portal)"
+   - Introduce yourself as: "Sourcing Team from D2BCart (India's leading B2B mobile portal, based in Delhi)"
    - Reference the Supplier Name: "${supplier?.name || 'Sir/Madam'}"
-   - MENTION THEIR HUB/LOCATION: If location is known (e.g. Karol Bagh, Nehru Place), mention it. (e.g., "I know you're a major wholesaler in the ${supplier?.location || 'local'} market").
+   - MENTION THEIR HUB/LOCATION: If location is known (e.g. Karol Bagh, Nehru Place), mention it. (e.g., "Since we both operate out of the ${supplier?.location || 'Delhi'} market hub, we're looking to onboard reliable local partners").
    - HIGHLIGHT SPECIALTY: Reference the "Description". If they do "silicone cases", mention that specifically. Do NOT say "mobile accessories" if the description says "Premium iPhone covers".
    ${customContext ? `- SPECIFIC USER GOAL: ${customContext}\n   - (MANDATORY: Weave this into the greeting seamlessly!)` : ''}
    - SHOW HIGH-VOLUME INTENT: Mention we are looking to onboard reliable partners for pan-India distribution.
