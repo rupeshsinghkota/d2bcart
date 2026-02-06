@@ -256,7 +256,7 @@ RESPONSE FORMAT (JSON ONLY):
             response_format: { type: "json_object" },
             messages: [
                 { role: "system", content: systemPrompt },
-                { role: "user", content: message || "[Image received]" }
+                { role: "user", content: message || (history.length === 0 ? "[INITIATE FIRST CONTACT]" : "[CONTINUE CONVERSATION]") }
             ]
         });
 
