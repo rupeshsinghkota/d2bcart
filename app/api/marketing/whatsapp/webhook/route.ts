@@ -122,15 +122,19 @@ export async function POST(request: NextRequest) {
             isDirectionOutbound;
 
         if (isOutboundEvent) {
-            console.log(`[WhatsApp Webhook] Processing Outbound Event. Direction: ${directionValue}, UUID: ${body.uuid || body.message_uuid}`);
-            const outUuid = body.uuid || body.message_uuid || body.id;
+            // Check ALL possible ID fields that MSG91 might use
+            const outUuid = body.wamid || body.uuid || body.message_uuid || body.id || body.msg_id;
             const outMobile = body.customerNumber || body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+
+            console.log(`[WhatsApp Webhook] Processing Outbound Event. Direction: ${directionValue}, Status: ${status}`);
+            console.log(`[WhatsApp Webhook] Outbound IDs - wamid: ${body.wamid}, uuid: ${body.uuid}, message_uuid: ${body.message_uuid}, id: ${body.id}`);
+            console.log(`[WhatsApp Webhook] Outbound Mobile: ${outMobile}`);
 
             if (outUuid) {
                 const { data: knownOutbound } = await supabaseAdmin
                     .from('whatsapp_chats')
                     .select('id')
-                    .or(`metadata->>messageId.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
+                    .or(`metadata->>messageId.eq.${outUuid},metadata->>wamid.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
                     .single();
 
                 if (!knownOutbound) {
