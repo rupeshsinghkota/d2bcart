@@ -124,9 +124,10 @@ export async function getSourcingAgentResponse(params: {
     phone: string,
     imageUrl?: string,
     supplierId?: string,
-    description?: string // NEW: Discovered description
+    description?: string,
+    customContext?: string // NEW: User-provided sourcing instructions
 }): Promise<SourcingResponse> {
-    const { message, phone, imageUrl, supplierId, description } = params;
+    const { message, phone, imageUrl, supplierId, description, customContext } = params;
 
     // 1. Gather Enhanced Context
     const supplier = await getSupplierContext(phone);
@@ -227,6 +228,7 @@ CORE OBJECTIVES:
    - Introduce yourself as: "Sourcing Team from D2BCart"
    - Use the Supplier Name: "${supplier?.name || 'Sir/Madam'}"
    - HIGHLIGHT THEIR SPECIALTY: Reference the "Description" provided. (e.g., "I came across your business and saw you are a leading wholesaler of ${category} in ${supplier?.location || 'your area'}").
+   ${customContext ? `- USER INSTRUCTION: ${customContext}\n   - (IMPORTANT: Weave the above instruction naturally into your greeting!)` : ''}
    - SHOW INTENT: "We are looking to source high-quality ${category} in bulk for our pan-India distribution."
    - CLEAR CALL TO ACTION: Ask for their "Latest Wholesale Catalog" or "Price List".
 

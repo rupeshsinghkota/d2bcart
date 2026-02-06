@@ -7,34 +7,13 @@ import { getSourcingAgentResponse } from '@/lib/sourcing_agent';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { action, category, supplier } = body;
+        const { action, category, location, autoContact, supplier, customContext } = body;
 
         console.log(`[Debug Sourcing] Action: ${action}`);
 
         if (action === 'research') {
-            const result = await findSuppliers(category, body.location || "India");
-            const researchLogs = [...(result.logs || [])];
-
-            // AUTO-CONTACT LOGIC
-            if (body.autoContact && result.suppliers.length > 0) {
-                researchLogs.push(`[Sourcing] ⚡ Starting Auto-Contact for ${result.suppliers.length} suppliers...`);
-                for (const s of result.suppliers) {
-                    try {
-                        const chatRes = await initiateSupplierChat(s);
-                        if (chatRes.success) {
-                            researchLogs.push(`[Auto-Contact] ✅ Messaged ${s.name || s.phone}: ${chatRes.message?.slice(0, 50)}...`);
-                        } else {
-                            researchLogs.push(`[Auto-Contact] ⚠️ Skipped ${s.name || s.phone}: ${chatRes.message}`);
-                        }
-                    } catch (e: any) {
-                        researchLogs.push(`[Auto-Contact] ❌ Failed to message ${s.name || s.phone}: ${e.message}`);
-                    }
-                    // Small delay to prevent rate limiting
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-            }
-
-            return NextResponse.json({ success: true, suppliers: result.suppliers, logs: researchLogs });
+            const result = await findSuppliers(category, location || "India");
+            return NextResponse.json(result);
         }
 
         if (action === 'initiate_chat') {
@@ -50,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 }
 
-async function initiateSupplierChat(supplier: any) {
+async function initiateSupplierChat(supplier: any, customContext?: string) {
     const { name, phone, description } = supplier;
     const normalizedPhone = phone.replace(/[^0-9]/g, '');
 
@@ -73,14 +52,14 @@ async function initiateSupplierChat(supplier: any) {
         message: "",
         phone: normalizedPhone,
         supplierId: supplier.id,
-        description: description // NEW: Pass discovered description
+        description: description,
+        customContext: customContext // NEW: Pass user instruction
     });
 
     if (aiRes.message && normalizedPhone) {
         const { sendWhatsAppMessage } = await import('@/lib/msg91');
         // MSG91 templates do NOT support newlines in body variables
-        const cleanAiMsg = aiRes.message.replace(/\n+/g, ' ').trim();
-        const msgBody = `Hello, this is the sourcing team from D2BCart. ${cleanAiMsg} Regards, D2BCart Team`;
+        const msgBody = aiRes.message.replace(/\n+/g, ' ').trim();
 
         const waRes = await sendWhatsAppMessage({
             mobile: normalizedPhone,

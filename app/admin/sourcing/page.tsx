@@ -17,6 +17,7 @@ export default function SourcingDashboard() {
     const [logs, setLogs] = useState<string[]>([]);
     const [discoveredSuppliers, setDiscoveredSuppliers] = useState<any[]>([]);
     const [savedSuppliers, setSavedSuppliers] = useState<any[]>([]);
+    const [customContext, setCustomContext] = useState('');
 
     const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
 
@@ -51,21 +52,29 @@ export default function SourcingDashboard() {
             const res = await fetch('/api/debug/sourcing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'research', category, location, autoContact })
+                body: JSON.stringify({ action: 'research', category, location, autoContact, customContext })
             });
 
             const data = await res.json();
 
             if (data.logs) {
-                // Add server-side logs to the UI log panel
                 data.logs.forEach((l: string) => addLog(l));
             }
 
-            if (data.suppliers) {
+            if (data.suppliers && data.suppliers.length > 0) {
                 setDiscoveredSuppliers(data.suppliers);
                 addLog(`Found ${data.suppliers.length} potential suppliers.`);
+
+                if (autoContact) {
+                    addLog(`[Auto-Pilot] 🤖 Starting automated outreach...`);
+                    for (const s of data.suppliers) {
+                        await handleStartChat(s);
+                        await new Promise(r => setTimeout(r, 1500));
+                    }
+                    addLog(`[Auto-Pilot] ✅ Sequence completed.`);
+                }
             } else {
-                addLog('No suppliers found or error occurred.');
+                addLog('No new suppliers found.');
             }
 
         } catch (error) {
@@ -81,7 +90,7 @@ export default function SourcingDashboard() {
             const res = await fetch('/api/debug/sourcing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'initiate_chat', supplier })
+                body: JSON.stringify({ action: 'initiate_chat', supplier, customContext })
             });
             const data = await res.json();
 
@@ -183,6 +192,18 @@ export default function SourcingDashboard() {
                                     >
                                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoContact ? 'translate-x-6' : 'translate-x-0'}`} />
                                     </button>
+                                </div>
+
+                                {/* Custom Instruction */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom AI Sourcing Instruction</label>
+                                    <textarea
+                                        value={customContext}
+                                        onChange={(e) => setCustomContext(e.target.value)}
+                                        placeholder="e.g. Mention we are looking for premium silicone cases for iPhone 15."
+                                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm h-20"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1">This context will be used to personalize the first AI message.</p>
                                 </div>
 
                                 <button
