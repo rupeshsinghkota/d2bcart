@@ -80,16 +80,24 @@ export async function POST(request: NextRequest) {
             // API delivery reports do NOT have text content - only status/direction fields
             const hasTextContent = body.text && typeof body.text === 'string' && body.text.trim().length > 0;
 
+            // Capture which line sent this message (987 or 998)
+            const senderLine = body.integratedNumber || body.integrated_number || body.sender_phone || '';
+
             if (cleanMobile && isDirectionOutbound && hasTextContent) {
                 // This is a MANUAL message sent from MSG91 Dashboard!
-                console.log(`[WhatsApp Webhook] 🛑 MANUAL Outbound Detected! Text: "${body.text}" for ${cleanMobile}. Pausing AI for 4h.`);
+                console.log(`[WhatsApp Webhook] 🛑 MANUAL Outbound from ${senderLine}! Text: "${body.text}" for ${cleanMobile}. Pausing AI for 4h.`);
 
                 await supabaseAdmin.from('whatsapp_chats').insert({
                     mobile: cleanMobile,
                     message: `[Manual: ${body.text.slice(0, 50)}] - AI Paused 4h`,
                     direction: 'outbound',
                     status: 'sent',
-                    metadata: { source: 'manual_detected', wamid: outUuid, originalText: body.text }
+                    metadata: {
+                        source: 'manual_detected',
+                        wamid: outUuid,
+                        originalText: body.text,
+                        integratedNumber: senderLine  // Store which line sent this
+                    }
                 });
 
                 return NextResponse.json({ status: 'registered_manual_takeover' });
@@ -237,8 +245,8 @@ export async function POST(request: NextRequest) {
                 console.error('[WhatsApp Webhook] Failed to auto-save supplier:', err);
             }
 
-            // CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 4h)
-            // IMPORTANT: Only check for ACTUAL manual messages, not messages from other AI bots
+            // CHECK FOR HUMAN TAKEOVER ON SUPPLIER LINE (998)
+            // Only check for manual messages sent FROM this specific line (998)
             try {
                 const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
                 const { data: recentHumanOutbound } = await supabaseAdmin
@@ -247,13 +255,19 @@ export async function POST(request: NextRequest) {
                     .eq('mobile', mobile)
                     .eq('direction', 'outbound')
                     .gt('created_at', fourHoursAgo)
-                    // Only block on ACTUAL MANUAL messages: source is null OR starts with 'manual'
                     .or('metadata->>source.is.null,metadata->>source.ilike.manual%')
-                    .limit(1);
+                    .limit(5);  // Get a few to check integratedNumber
 
-                if (recentHumanOutbound && recentHumanOutbound.length > 0) {
-                    const triggerMsg = recentHumanOutbound[0];
-                    console.log(`[WhatsApp Webhook] 🛑 Sourcing Agent Paused. Manual Chat detected for ${mobile}. Last msg: "${triggerMsg.message?.slice(0, 50)}..."`);
+                // Filter for manual messages from THIS line (998)
+                const manualFromThisLine = recentHumanOutbound?.filter(msg => {
+                    const msgLine = msg.metadata?.integratedNumber || '';
+                    // Match if no line specified (legacy) or matches supplier line
+                    return !msgLine || msgLine.includes('998') || msgLine === SUPPLIER_NUMBER;
+                });
+
+                if (manualFromThisLine && manualFromThisLine.length > 0) {
+                    const triggerMsg = manualFromThisLine[0];
+                    console.log(`[WhatsApp Webhook] 🛑 Sourcing Agent Paused (998). Manual Chat detected for ${mobile}. Last msg: "${triggerMsg.message?.slice(0, 50)}..."`);
                     return NextResponse.json({ status: 'ignored_human_takeover_supplier', trigger_id: triggerMsg.id });
                 }
             } catch (e) {
@@ -369,22 +383,30 @@ export async function POST(request: NextRequest) {
                 console.error("Context check error:", e);
             }
 
-            // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 4h)
+            // 0.B CHECK FOR HUMAN TAKEOVER ON CUSTOMER LINE (987)
+            // Only check for manual messages sent FROM this specific line (987)
             try {
                 const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+                const CUSTOMER_LINE = process.env.MSG91_INTEGRATED_NUMBER || '917557777987';
                 const { data: recentHumanOutbound } = await supabaseAdmin
                     .from('whatsapp_chats')
                     .select('id, message, metadata')
                     .eq('mobile', mobile)
                     .eq('direction', 'outbound')
                     .gt('created_at', fourHoursAgo)
-                    // Only block on ACTUAL MANUAL messages: source is null OR starts with 'manual'
                     .or('metadata->>source.is.null,metadata->>source.ilike.manual%')
-                    .limit(1);
+                    .limit(5);  // Get a few to check integratedNumber
 
-                if (recentHumanOutbound && recentHumanOutbound.length > 0) {
-                    const triggerMsg = recentHumanOutbound[0];
-                    console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Triggered by msg: "${triggerMsg.message?.slice(0, 50)}..." (ID: ${triggerMsg.id})`);
+                // Filter for manual messages from THIS line (987)
+                const manualFromThisLine = recentHumanOutbound?.filter(msg => {
+                    const msgLine = msg.metadata?.integratedNumber || '';
+                    // Match if no line specified (legacy) or matches customer line
+                    return !msgLine || msgLine.includes('987') || msgLine === CUSTOMER_LINE;
+                });
+
+                if (manualFromThisLine && manualFromThisLine.length > 0) {
+                    const triggerMsg = manualFromThisLine[0];
+                    console.log(`[WhatsApp Webhook] 🛑 Human Takeover (987) for ${mobile}. Msg: "${triggerMsg.message?.slice(0, 50)}..."`);
                     return NextResponse.json({ status: 'ignored_human_takeover', trigger_id: triggerMsg.id });
                 }
             } catch (e) {

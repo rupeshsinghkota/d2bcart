@@ -9,48 +9,51 @@ const supabase = createClient(
 );
 
 async function check() {
-    // Check most recent debug logs
-    console.log('\n=== Recent DEBUG logs (last 5 mins) ===\n');
+    const mobile = '918651567003';
 
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Check last 10 messages for this phone
+    console.log(`\n=== Last 10 messages for ${mobile} ===\n`);
 
     const { data } = await supabase
         .from('whatsapp_chats')
-        .select('message, created_at, metadata')
-        .eq('mobile', '000_DEBUG_RAW')
-        .gt('created_at', fiveMinAgo)
+        .select('message, direction, created_at, metadata')
+        .eq('mobile', mobile)
         .order('created_at', { ascending: false })
         .limit(10);
 
-    if (!data || data.length === 0) {
-        console.log('No debug logs in last 5 mins');
-        return;
-    }
-
-    data?.forEach((msg, i) => {
+    data?.reverse().forEach((msg, i) => {
         const time = new Date(msg.created_at).toLocaleTimeString();
-        const payload = msg.metadata?.payload;
-        const dir = payload?.direction;
-        const text = payload?.text?.slice(0, 15) || payload?.body?.slice(0, 15) || '[no text]';
-        console.log(`${i + 1}. [${time}] dir:${dir} | "${text}" | mobile:${payload?.customerNumber?.slice(-4) || 'N/A'}`);
+        const dir = msg.direction === 'inbound' ? '⬅️ IN ' : '➡️ OUT';
+        const source = msg.metadata?.source || '';
+        const isManual = source.includes('manual');
+        console.log(`${time} ${dir} [${source}] ${isManual ? '🛑' : ''}`);
+        console.log(`   "${msg.message?.slice(0, 60)}..."`);
     });
 
-    // Check for ANY manual_detected entries
-    console.log('\n=== Any manual_detected entries (ever)? ===\n');
-    const { data: manuals } = await supabase
-        .from('whatsapp_chats')
-        .select('message, created_at, metadata, mobile')
-        .ilike('metadata->>source', 'manual%')
-        .order('created_at', { ascending: false })
-        .limit(3);
+    // Check takeover status
+    console.log('\n=== Human Takeover Status ===\n');
 
-    if (manuals && manuals.length > 0) {
-        console.log(`Found ${manuals.length} manual entries!`);
-        manuals.forEach(m => {
-            console.log(`  - [${new Date(m.created_at).toLocaleTimeString()}] ${m.mobile}: ${m.metadata?.source}`);
-        });
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+    const { data: manualMsgs } = await supabase
+        .from('whatsapp_chats')
+        .select('message, metadata, created_at')
+        .eq('mobile', mobile)
+        .eq('direction', 'outbound')
+        .gt('created_at', fourHoursAgo)
+        .or('metadata->>source.is.null,metadata->>source.ilike.manual%')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (manualMsgs && manualMsgs.length > 0) {
+        const m = manualMsgs[0];
+        const manualTime = new Date(m.created_at);
+        const resumeTime = new Date(manualTime.getTime() + 4 * 60 * 60 * 1000);
+        console.log('✅ TAKEOVER IS ACTIVE!');
+        console.log(`   Manual msg: "${m.message?.slice(0, 40)}..."`);
+        console.log(`   Time: ${manualTime.toLocaleTimeString()}`);
+        console.log(`   AI resumes at: ${resumeTime.toLocaleTimeString()}`);
     } else {
-        console.log('No manual_detected entries found ever');
+        console.log('❌ Takeover NOT active - AI will respond');
     }
 }
 
