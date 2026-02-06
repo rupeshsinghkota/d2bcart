@@ -1,13 +1,7 @@
+import OpenAI from 'openai';
 
-/**
- * Supplier Research Module (Free Version)
- * Uses DuckDuckGo HTML scraping to find potential suppliers.
- * Extracts: Name, Phone, Website, Location.
- */
-
-// import * as cheerio from 'cheerio'; // We might need to install this or use regex
-// If cheerio isn't available, we'll use basic regex parsing for now to avoid install steps if possible.
-// Actually, standard regex is often enough for simple DDG HTML.
+// Helper to sleep
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export interface DiscoveredSupplier {
     name: string;
@@ -18,8 +12,70 @@ export interface DiscoveredSupplier {
     source: string;
 }
 
-// Helper to sleep
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+let openai: OpenAI | null = null;
+function getOpenAI() {
+    if (!openai) {
+        openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return openai;
+}
+
+async function generateSearchQueries(category: string, location: string, addLog: (msg: string) => void): Promise<string[]> {
+    addLog(`[Research] 🤖 Asking AI to generate best search queries for "${category}" in "${location}"...`);
+    try {
+        const response = await getOpenAI().chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: `You are a Sourcing Expert in India. Generate 3 specific DuckDuckGo search queries to find WHOLESALERS or MANUFACTURERS for the given category and location.
+                    Focus on finding phone numbers. Use terms like "Gaffar Market", "Wholesale Market", "Contact Number", "Manufacturer".
+                    
+                    Return a JSON object with a single key "queries" containing an array of strings.
+                    Example: { "queries": ["Mobile Covers wholesaler Karol Bagh contact", "Gaffar Market mobile accessories list"] }`
+                },
+                { role: "user", content: `Category: ${category}, Location: ${location}` }
+            ],
+            response_format: { type: "json_object" } // Using json object based on previous patterns but prompt asks for array. 
+            // Actually gpt-4o-mini supports structured outputs or we can just ask for a JSON object with a key 'queries'
+        });
+
+        // Better to ask for an object
+        const content = response.choices[0].message.content || "{}";
+        let parsed;
+        try {
+            parsed = JSON.parse(content);
+        } catch {
+            // fallback
+            return [
+                `Top wholesalers for ${category} in ${location} contact number`,
+                `${category} supplier phone number ${location}`
+            ];
+        }
+
+        // If the checking model returns { "queries": [...] } or just the array if we prompted right.
+        // Let's refine the prompt in the next step or handle both.
+        // For safety/speed, I will update the prompt above to return { "queries": [...] }
+
+        let queries = [];
+        if (Array.isArray(parsed)) queries = parsed;
+        else if (parsed.queries && Array.isArray(parsed.queries)) queries = parsed.queries;
+        else queries = [
+            `Top wholesalers for ${category} in ${location} contact number`,
+            `${category} manufacturer ${location} contact`
+        ];
+
+        addLog(`[Research] 🤖 AI suggested: ${queries.join(", ")}`);
+        return queries;
+
+    } catch (e) {
+        addLog(`[Research] AI Query Generation Failed: ${(e as Error).message}. Using fallback.`);
+        return [
+            `Top wholesalers for ${category} in ${location} contact number`,
+            `${category} wholesale market ${location} phone number`
+        ];
+    }
+}
 
 export async function findSuppliers(category: string, location: string = "India"): Promise<{ suppliers: DiscoveredSupplier[], logs: string[] }> {
     const logs: string[] = [];
@@ -32,12 +88,9 @@ export async function findSuppliers(category: string, location: string = "India"
     const results: DiscoveredSupplier[] = [];
 
     try {
-        // Search Queries - Reduced count to avoid rate limits
-        const queries = [
-            `Top wholesalers for ${category} in ${location} contact number`,
-            `Manufacturers of ${category} in ${location} contact`,
-            `${category} wholesale market ${location} phone number`
-        ];
+        // 1. Generate Queries via AI
+        // We need to update the prompt inside the function above to ensure valid JSON object response.
+        const queries = await generateSearchQueries(category, location, addLog);
 
         for (const q of queries) {
             try {
