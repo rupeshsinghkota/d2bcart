@@ -259,10 +259,12 @@ export async function POST(request: NextRequest) {
                     .limit(5);  // Get a few to check integratedNumber
 
                 // Filter for manual messages from THIS line (998)
+                // For 998: Only match if integratedNumber explicitly contains '998'
+                // Legacy messages (no integratedNumber) should NOT block 998
                 const manualFromThisLine = recentHumanOutbound?.filter(msg => {
                     const msgLine = msg.metadata?.integratedNumber || '';
-                    // Match if no line specified (legacy) or matches supplier line
-                    return !msgLine || msgLine.includes('998') || msgLine === SUPPLIER_NUMBER;
+                    // Only match if explicit 998 - ignore legacy messages
+                    return msgLine.includes('998') || msgLine === SUPPLIER_NUMBER;
                 });
 
                 if (manualFromThisLine && manualFromThisLine.length > 0) {

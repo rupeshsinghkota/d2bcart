@@ -9,52 +9,62 @@ const supabase = createClient(
 );
 
 async function check() {
-    const mobile = '918651567003';
+    console.log('\n=== Checking debug logs for 998 routing issues ===\n');
 
-    // Check last 10 messages for this phone
-    console.log(`\n=== Last 10 messages for ${mobile} ===\n`);
+    // Check recent debug logs with receiver info
+    const { data: debugLogs } = await supabase
+        .from('whatsapp_chats')
+        .select('message, created_at, metadata')
+        .eq('mobile', '000_DEBUG_RAW')
+        .order('created_at', { ascending: false })
+        .limit(15);
 
-    const { data } = await supabase
+    console.log('=== Raw Webhook DEBUG logs (last 15) ===\n');
+    debugLogs?.forEach((msg, i) => {
+        const time = new Date(msg.created_at).toLocaleTimeString();
+        const payload = msg.metadata?.payload;
+        const receiver = payload?.integratedNumber || payload?.receiver || payload?.integrated_number || 'N/A';
+        const mobile = payload?.customerNumber?.slice(-4) || payload?.mobile?.slice(-4) || 'N/A';
+        const text = payload?.text?.slice(0, 15) || payload?.content?.slice(0, 15) || '[no text]';
+        console.log(`${i + 1}. [${time}] receiver:${receiver} | mobile:...${mobile} | "${text}"`);
+    });
+
+    // Check for any sourcing_agent responses in last hour
+    console.log('\n=== Sourcing Agent Responses (last 1 hour) ===\n');
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: agentMsgs } = await supabase
+        .from('whatsapp_chats')
+        .select('mobile, message, created_at')
+        .eq('direction', 'outbound')
+        .ilike('metadata->>source', 'sourcing_agent')
+        .gt('created_at', oneHourAgo)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    if (agentMsgs && agentMsgs.length > 0) {
+        agentMsgs.forEach(msg => {
+            const time = new Date(msg.created_at).toLocaleTimeString();
+            console.log(`[${time}] To: ${msg.mobile}: "${msg.message?.slice(0, 50)}..."`);
+        });
+    } else {
+        console.log('❌ No Sourcing Agent responses in last hour');
+    }
+
+    // Check supplier 918651567003
+    console.log('\n=== Last messages for 918651567003 on 998 line ===\n');
+    const { data: supplierMsgs } = await supabase
         .from('whatsapp_chats')
         .select('message, direction, created_at, metadata')
-        .eq('mobile', mobile)
+        .eq('mobile', '918651567003')
         .order('created_at', { ascending: false })
         .limit(10);
 
-    data?.reverse().forEach((msg, i) => {
+    supplierMsgs?.forEach(msg => {
         const time = new Date(msg.created_at).toLocaleTimeString();
         const dir = msg.direction === 'inbound' ? '⬅️ IN ' : '➡️ OUT';
         const source = msg.metadata?.source || '';
-        const isManual = source.includes('manual');
-        console.log(`${time} ${dir} [${source}] ${isManual ? '🛑' : ''}`);
-        console.log(`   "${msg.message?.slice(0, 60)}..."`);
+        console.log(`${time} ${dir} [${source}] "${msg.message?.slice(0, 40)}..."`);
     });
-
-    // Check takeover status
-    console.log('\n=== Human Takeover Status ===\n');
-
-    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-    const { data: manualMsgs } = await supabase
-        .from('whatsapp_chats')
-        .select('message, metadata, created_at')
-        .eq('mobile', mobile)
-        .eq('direction', 'outbound')
-        .gt('created_at', fourHoursAgo)
-        .or('metadata->>source.is.null,metadata->>source.ilike.manual%')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-    if (manualMsgs && manualMsgs.length > 0) {
-        const m = manualMsgs[0];
-        const manualTime = new Date(m.created_at);
-        const resumeTime = new Date(manualTime.getTime() + 4 * 60 * 60 * 1000);
-        console.log('✅ TAKEOVER IS ACTIVE!');
-        console.log(`   Manual msg: "${m.message?.slice(0, 40)}..."`);
-        console.log(`   Time: ${manualTime.toLocaleTimeString()}`);
-        console.log(`   AI resumes at: ${resumeTime.toLocaleTimeString()}`);
-    } else {
-        console.log('❌ Takeover NOT active - AI will respond');
-    }
 }
 
 check();
