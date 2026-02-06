@@ -66,10 +66,11 @@ export default function SourcingDashboard() {
                 addLog(`Found ${data.suppliers.length} potential suppliers.`);
 
                 if (autoContact) {
-                    addLog(`[Auto-Pilot] 🤖 Starting automated outreach...`);
+                    addLog(`[Auto-Pilot] 🤖 Starting outreach with 30s safety delay...`);
                     for (const s of data.suppliers) {
                         await handleStartChat(s);
-                        await new Promise(r => setTimeout(r, 1500));
+                        // Increase delay to 30s to avoid Meta blocking (Error 131026)
+                        await new Promise(r => setTimeout(r, 30000));
                     }
                     addLog(`[Auto-Pilot] ✅ Sequence completed.`);
                 }
@@ -114,6 +115,20 @@ export default function SourcingDashboard() {
                 <Search className="w-8 h-8 text-blue-600" />
                 Supplier AI Agent
             </h1>
+
+            {/* Meta Quality Warning */}
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start">
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-xl">⚠️</span>
+                </div>
+                <div>
+                    <h3 className="font-bold text-amber-900 leading-none mb-1">Meta Quality Safety Alert</h3>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                        To avoid **Error 131026 (Message Undeliverable)**, we've increased the outreach delay to **30 seconds**.
+                        If your messages continue to fail, please check your **Meta Business Suite** and pause outreach until your Quality Score recovers.
+                    </p>
+                </div>
+            </div>
 
             {/* Tabs */}
             <div className="flex gap-4 mb-6 border-b">
