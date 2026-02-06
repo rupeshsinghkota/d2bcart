@@ -116,6 +116,34 @@ export async function POST(request: NextRequest) {
         if (isSupplierFlow) {
             console.log(`[WhatsApp Webhook] 🟢 Routing to SOURCING AGENT (Receiver: ${receiver})`);
 
+            // AUTO-SAVE LOGIC: If this is a supplier replying, ensure they are in our DB
+            try {
+                const { data: existingSup } = await supabaseAdmin
+                    .from('suppliers')
+                    .select('id, status')
+                    .eq('phone', mobile)
+                    .single();
+
+                if (!existingSup) {
+                    // New Supplier Responding! Save them.
+                    await supabaseAdmin.from('suppliers').insert({
+                        name: `Supplier ${mobile.slice(-4)}`, // Temporary name until we know
+                        phone: mobile,
+                        status: 'responded',
+                        source: 'whatsapp_inbound',
+                        notes: 'Auto-saved on first reply'
+                    });
+                    console.log(`[WhatsApp Webhook] Auto-saved new supplier: ${mobile}`);
+                } else if (existingSup.status === 'discovered') {
+                    // Update status to responded
+                    await supabaseAdmin.from('suppliers')
+                        .update({ status: 'responded', updated_at: new Date() })
+                        .eq('id', existingSup.id);
+                }
+            } catch (err) {
+                console.error('[WhatsApp Webhook] Failed to auto-save supplier:', err);
+            }
+
             // LAZY IMPORT TO AVOID CIRCULAR DEPS IF ANY
             const { getSourcingAgentResponse } = await import('@/lib/sourcing_agent');
 
