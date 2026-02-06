@@ -29,6 +29,17 @@ export async function POST(request: NextRequest) {
             console.error('Debug Log Failed:', e);
         }
 
+        // FALLBACK DEBUG: Also log raw webhook to whatsapp_chats for inspection
+        try {
+            const parsed = JSON.parse(rawBody);
+            await supabaseAdmin.from('whatsapp_chats').insert({
+                mobile: '000_DEBUG_RAW',
+                message: `Keys: ${Object.keys(parsed).join(',')} | status: ${parsed.status} | message_uuid: ${parsed.message_uuid} | direction: ${parsed.direction}`,
+                direction: 'inbound',
+                metadata: { source: 'raw_webhook_debug', payload: parsed }
+            });
+        } catch (e) { /* ignore */ }
+
         let body: any = {}
         try {
             body = JSON.parse(rawBody)
