@@ -18,6 +18,15 @@ export async function POST(request: NextRequest) {
         const rawBody = await request.text()
         console.log('[WhatsApp Webhook] Raw Body:', rawBody)
 
+        // DEBUG: Log everything to DB to find "Hidden" user events
+        try {
+            await supabaseAdmin.from('debug_webhook_events').insert({
+                payload: JSON.parse(rawBody)
+            });
+        } catch (e) {
+            console.error('Debug Log Failed:', e);
+        }
+
         let body: any = {}
         try {
             body = JSON.parse(rawBody)
