@@ -143,8 +143,7 @@ export async function POST(request: NextRequest) {
         const isOutboundEvent =
             (status && outboundStatuses.includes(status)) ||
             body.direction === 'outbound' ||
-            body.message_uuid ||
-            body.uuid; // UUID usually implies a report, but be careful.
+            body.message_uuid; // Only use message_uuid, not generic uuid which might exist in inbound
 
         if (isOutboundEvent) {
             console.log(`[WhatsApp Webhook] Processing Outbound Event. UUID: ${body.message_uuid || body.uuid}`);

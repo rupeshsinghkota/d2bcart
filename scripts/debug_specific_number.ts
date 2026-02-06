@@ -9,49 +9,48 @@ const supabase = createClient(
 );
 
 async function checkNumber() {
-    const mobile = '919155149597';
-    console.log(`Checking logs for ${mobile}...`);
+    const mobile = '918651567003';
+    console.log(`\n=== Checking ${mobile} ===\n`);
 
-    // 1. Check Main Chat Table
+    // Check chats
     const { data: chats } = await supabase
         .from('whatsapp_chats')
         .select('*')
         .eq('mobile', mobile)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(15);
 
-    console.log(`\n--- Main Chats ---`);
+    console.log(`--- Chat History ---`);
     if (chats && chats.length) {
         chats.forEach(c => {
-            console.log(`[${new Date(c.created_at).toLocaleTimeString()}] ${c.direction} (${c.status})`);
-            console.log(`   MSG: ${c.message}`);
-            console.log(`   SRC: ${c.metadata?.source || '?'}`);
+            const time = new Date(c.created_at).toLocaleTimeString();
+            const src = c.metadata?.source || 'NULL';
+            console.log(`[${time}] ${c.direction.toUpperCase()} | Source: ${src}`);
+            console.log(`   MSG: ${c.message?.substring(0, 80)}`);
         });
     } else {
-        console.log("No chats found.");
+        console.log("No chats found for this number.");
     }
 
-    // 2. Check Debug Webhooks (Did we receive raw data?)
-    const { data: events } = await supabase
-        .from('debug_webhook_events')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+    // Check if any takeover is active
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+    const { data: takeover } = await supabase
+        .from('whatsapp_chats')
+        .select('id, message, metadata, created_at')
+        .eq('mobile', mobile)
+        .eq('direction', 'outbound')
+        .gt('created_at', fourHoursAgo)
+        .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant');
 
-    console.log(`\n--- Recent Webhooks (Last 20) ---`);
-    let found = false;
-    events?.forEach(e => {
-        const payloadStr = JSON.stringify(e.payload);
-        if (payloadStr.includes(mobile)) {
-            found = true;
-            const p = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
-            console.log(`[${new Date(e.created_at).toLocaleTimeString()}] Found Payload!`);
-            console.log(`   Status: ${p.status || p.message_status}`);
-            console.log(`   Direction: ${p.direction}`);
-            console.log(`   UUID: ${p.message_uuid}`);
-        }
-    });
-    if (!found) console.log("No raw webhook events found for this number.");
+    console.log(`\n--- Takeover Check (last 4h, non-AI outbound) ---`);
+    if (takeover && takeover.length) {
+        console.log(`⚠️ TAKEOVER ACTIVE! Found ${takeover.length} blocking messages:`);
+        takeover.forEach(t => {
+            console.log(`   [${new Date(t.created_at).toLocaleTimeString()}] ${t.message?.substring(0, 50)} | Source: ${t.metadata?.source}`);
+        });
+    } else {
+        console.log("✅ No takeover active.");
+    }
 }
 
 checkNumber();
