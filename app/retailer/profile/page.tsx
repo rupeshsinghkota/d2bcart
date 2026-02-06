@@ -48,35 +48,49 @@ export default function RetailerProfile() {
     }, [])
 
     const fetchProfile = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            router.push('/login')
-            return
-        }
+        try {
+            const { data, error: authError } = await supabase.auth.getUser()
 
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single() as { data: any, error: any }
+            if (authError) {
+                console.error('[Profile] Auth Error:', authError)
+                router.push('/login')
+                return
+            }
 
-        if (error) {
-            console.error('Error fetching profile:', error)
-            setMessage({ type: 'error', text: 'Failed to load profile' })
-        } else if (data) {
-            setProfile({
-                id: data.id,
-                business_name: data.business_name || '',
-                email: data.email || '',
-                phone: data.phone || '',
-                address: data.address || '',
-                city: data.city || '',
-                state: data.state || '',
-                pincode: data.pincode || '',
-                gst_number: data.gst_number || ''
-            })
+            const user = data?.user
+            if (!user) {
+                router.push('/login')
+                return
+            }
+
+            const { data: profileData, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single() as { data: any, error: any }
+
+            if (error) {
+                console.error('Error fetching profile:', error)
+                setMessage({ type: 'error', text: 'Failed to load profile' })
+            } else if (profileData) {
+                setProfile({
+                    id: profileData.id,
+                    business_name: profileData.business_name || '',
+                    email: profileData.email || '',
+                    phone: profileData.phone || '',
+                    address: profileData.address || '',
+                    city: profileData.city || '',
+                    state: profileData.state || '',
+                    pincode: profileData.pincode || '',
+                    gst_number: profileData.gst_number || ''
+                })
+            }
+        } catch (err) {
+            console.error('[Profile] Unexpected error:', err)
+            setMessage({ type: 'error', text: 'An unexpected error occurred' })
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -9,61 +9,49 @@ const supabase = createClient(
 );
 
 async function check() {
-    console.log('\n=== Checking debug logs for 998 routing issues ===\n');
+    console.log('\n=== Messages between 987 and 998 ===\n');
 
-    // Check recent debug logs with receiver info
-    const { data: debugLogs } = await supabase
+    // Check for messages where mobile is 998 or 987
+    const { data } = await supabase
         .from('whatsapp_chats')
-        .select('message, created_at, metadata')
-        .eq('mobile', '000_DEBUG_RAW')
+        .select('mobile, message, direction, created_at, metadata')
+        .or('mobile.eq.917557777998,mobile.eq.917557777987')
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(20);
 
-    console.log('=== Raw Webhook DEBUG logs (last 15) ===\n');
-    debugLogs?.forEach((msg, i) => {
-        const time = new Date(msg.created_at).toLocaleTimeString();
-        const payload = msg.metadata?.payload;
-        const receiver = payload?.integratedNumber || payload?.receiver || payload?.integrated_number || 'N/A';
-        const mobile = payload?.customerNumber?.slice(-4) || payload?.mobile?.slice(-4) || 'N/A';
-        const text = payload?.text?.slice(0, 15) || payload?.content?.slice(0, 15) || '[no text]';
-        console.log(`${i + 1}. [${time}] receiver:${receiver} | mobile:...${mobile} | "${text}"`);
-    });
+    console.log(`Found ${data?.length || 0} messages:\n`);
 
-    // Check for any sourcing_agent responses in last hour
-    console.log('\n=== Sourcing Agent Responses (last 1 hour) ===\n');
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: agentMsgs } = await supabase
-        .from('whatsapp_chats')
-        .select('mobile, message, created_at')
-        .eq('direction', 'outbound')
-        .ilike('metadata->>source', 'sourcing_agent')
-        .gt('created_at', oneHourAgo)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    if (agentMsgs && agentMsgs.length > 0) {
-        agentMsgs.forEach(msg => {
-            const time = new Date(msg.created_at).toLocaleTimeString();
-            console.log(`[${time}] To: ${msg.mobile}: "${msg.message?.slice(0, 50)}..."`);
-        });
-    } else {
-        console.log('❌ No Sourcing Agent responses in last hour');
-    }
-
-    // Check supplier 918651567003
-    console.log('\n=== Last messages for 918651567003 on 998 line ===\n');
-    const { data: supplierMsgs } = await supabase
-        .from('whatsapp_chats')
-        .select('message, direction, created_at, metadata')
-        .eq('mobile', '918651567003')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-    supplierMsgs?.forEach(msg => {
+    data?.reverse().forEach(msg => {
         const time = new Date(msg.created_at).toLocaleTimeString();
         const dir = msg.direction === 'inbound' ? '⬅️ IN ' : '➡️ OUT';
         const source = msg.metadata?.source || '';
-        console.log(`${time} ${dir} [${source}] "${msg.message?.slice(0, 40)}..."`);
+        const intLine = msg.metadata?.integratedNumber || '';
+        console.log(`${time} | Mobile: ${msg.mobile} | ${dir} | Source: ${source} | Line: ${intLine}`);
+        console.log(`   "${msg.message?.slice(0, 50)}..."\n`);
+    });
+
+    // Also check debug logs for these numbers
+    console.log('\n=== Debug logs for 987/998 cross-communication ===\n');
+
+    const { data: debugLogs } = await supabase
+        .from('whatsapp_chats')
+        .select('created_at, metadata')
+        .eq('mobile', '000_DEBUG_RAW')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    debugLogs?.filter(log => {
+        const payload = log.metadata?.payload;
+        const mobile = payload?.customerNumber || payload?.mobile || '';
+        return mobile.includes('987') || mobile.includes('998');
+    }).forEach(log => {
+        const time = new Date(log.created_at).toLocaleTimeString();
+        const payload = log.metadata?.payload;
+        const receiver = payload?.integratedNumber || payload?.receiver || 'N/A';
+        const mobile = payload?.customerNumber || payload?.mobile || 'N/A';
+        const dir = payload?.direction;
+        const text = payload?.text?.slice(0, 20) || '[no text]';
+        console.log(`[${time}] receiver:${receiver} | from:${mobile} | dir:${dir} | "${text}"`);
     });
 }
 

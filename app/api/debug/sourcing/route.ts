@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { findSuppliers } from '@/lib/research';
+import { findSuppliers } from '@/lib/research_openai';  // Using OpenAI with Scrapers fallback
 import { getSourcingAgentResponse } from '@/lib/sourcing_agent';
 import { sendWhatsAppMessage } from '@/lib/msg91';
 

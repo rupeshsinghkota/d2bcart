@@ -128,21 +128,36 @@ export default function CartPage() {
     }
 
     const checkUser = async () => {
-        if (!isSupabaseConfigured) {
+        try {
+            if (!isSupabaseConfigured) {
+                return
+            }
+            const { data, error: authError } = await supabase.auth.getUser()
+
+            if (authError) {
+                console.error('[Cart] Auth Error:', authError)
+                return
+            }
+
+            if (data?.user) {
+                const { data: profile, error: profileError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single()
+
+                if (profileError) {
+                    console.error('[Cart] Profile Fetch Error:', profileError)
+                } else {
+                    setUser(profile)
+                    if ((profile as any)?.pincode) setShippingPincode((profile as any).pincode)
+                }
+            }
+        } catch (err) {
+            console.error('[Cart] Unexpected error in checkUser:', err)
+        } finally {
             setLoading(false)
-            return
         }
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-            const { data: profile } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', user.id)
-                .single()
-            setUser(profile)
-            if ((profile as any)?.pincode) setShippingPincode((profile as any).pincode)
-        }
-        setLoading(false)
     }
 
     // Effect to auto-calculate shipping when Pincode & Cart are ready
