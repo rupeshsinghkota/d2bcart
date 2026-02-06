@@ -45,17 +45,24 @@ export async function findSuppliers(category: string, location: string = "India"
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://duckduckgo.com/',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'same-origin',
+                        'Sec-Fetch-User': '?1'
                     },
-                    cache: 'no-store'  // Ensure we don't hit Next.js cache
+                    cache: 'no-store'
                 });
                 const html = await response.text();
                 addLog(`[Research] Query: "${q}" | HTML Length: ${html.length}`);
 
                 // Check for block
                 if (html.length < 500) {
-                    addLog(`[Research] WARNING: Blocked or Empty response (<500 chars).`);
+                    addLog(`[Research] WARNING: Blocked. content: ${html.substring(0, 200)}`);
                 }
 
                 // Simple Regex Extraction from HTML text
