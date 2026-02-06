@@ -15,8 +15,10 @@ const processedCache = new Map<string, number>();
 export async function POST(request: NextRequest) {
     try {
 
-        const rawBody = await request.text()
-        console.log('[WhatsApp Webhook] Raw Body:', rawBody)
+        const rawBody = await request.text();
+        console.log('[WhatsApp Webhook] Raw Body:', rawBody);
+
+
 
         // DEBUG: Log everything to DB to find "Hidden" user events
         try {
@@ -112,12 +114,17 @@ export async function POST(request: NextRequest) {
         }
 
         // ============================================================
-        // 0.C CHECK FOR OUTBOUND SENDER (Did the User send this manually?)
+        // 0.C STRONG OUTBOUND EVENT INTERCEPTOR
         // ============================================================
-        // If we receive an 'outbound' status report, check if we sent it via API.
-        // If NOT in DB -> It's a manual message from App -> Trigger Takeover.
-        if (body.status === 'sent' || body.message_status === 'sent') {
+        // Detect if this is an Outbound Report (Delivery Report) or Listen Event
+        const isOutboundEvent = body.status || body.message_status || body.message_uuid || body.uuid || body.direction === 'outbound';
+
+        if (isOutboundEvent) {
+            console.log(`[WhatsApp Webhook] Processing Outbound Event. UUID: ${body.message_uuid || body.uuid}`);
             const outUuid = body.message_uuid || body.uuid || body.id;
+            // Get the destination number from various fields
+            const outMobile = body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+
             if (outUuid) {
                 const { data: knownOutbound } = await supabaseAdmin
                     .from('whatsapp_chats')
@@ -128,9 +135,6 @@ export async function POST(request: NextRequest) {
                 if (!knownOutbound) {
                     console.log(`[WhatsApp Webhook] 🛑 Manual Outbound Detected (ID: ${outUuid}). Pausing AI.`);
 
-                    // Get the destination number from various fields
-                    const outMobile = body.mobile || body.recipient_id || body.customer_number || "";
-
                     if (outMobile) {
                         await supabaseAdmin.from('whatsapp_chats').insert({
                             mobile: outMobile,
@@ -140,10 +144,17 @@ export async function POST(request: NextRequest) {
                             metadata: { source: 'manual_app_outbound_webhook', message_id: outUuid, raw: body }
                         });
                         return NextResponse.json({ status: 'registered_manual_takeover' });
+                    } else {
+                        console.warn("[WhatsApp Webhook] Manual Outbound detected but no mobile number found in payload.");
+                        return NextResponse.json({ status: 'ignored_no_mobile' });
                     }
                 } else {
-                    return NextResponse.json({ status: 'ignored_api_outbound' });
+                    return NextResponse.json({ status: 'ignored_api_outbound_update' });
                 }
+            } else {
+                // Outbound event without UUID? Unlikely but safe to ignore to prevent Loop
+                console.log("[WhatsApp Webhook] Outbound event without UUID ignored.");
+                return NextResponse.json({ status: 'ignored_outbound_no_uuid' });
             }
         }
 

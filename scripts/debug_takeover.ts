@@ -62,20 +62,23 @@ async function debugTakeover(mobile: string) {
 // So I need to know the CUSTOMER number the user was testing with.
 // I will just list the latest chats generally.
 
-async function listRecentChats() {
+async function checkSpecificNumber() {
+    const mobile = "918000421913";
+    console.log(`\n--- Checking Chats for ${mobile} ---`);
     const { data: chats } = await supabase
         .from('whatsapp_chats')
-        .select('mobile, created_at, message, direction')
+        .select('id, created_at, message, direction, metadata, status')
+        .eq('mobile', mobile)
         .order('created_at', { ascending: false })
         .limit(10);
 
-    console.log('\n--- Latest Global Chats ---');
-    chats?.forEach(c => console.log(`${c.created_at} | ${c.direction} | ${c.mobile} | ${c.message.substring(0, 30)}`));
+    chats?.forEach(c => {
+        const source = c.metadata?.source || 'NULL';
+        console.log(`[${c.created_at}] ${c.direction.toUpperCase()} | Status: ${c.status} | Source: ${source}`);
+        console.log(`   Message: "${c.message?.substring(0, 100)}..."`);
+    });
 }
 
-// Run checks
 (async () => {
-    await listRecentChats();
-    // Assuming the latest interacted mobile is the one we want to debug.
-    // I will pick the first mobile from the list to debug details.
+    await checkSpecificNumber();
 })();
