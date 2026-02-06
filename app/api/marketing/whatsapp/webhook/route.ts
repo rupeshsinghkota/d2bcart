@@ -211,6 +211,41 @@ export async function POST(request: NextRequest) {
             // ============================================================
             console.log(`[WhatsApp Webhook] 🔵 Routing to SALES ASSISTANT`);
 
+            // 0.A CHECK FOR "UNKNOWN CONTEXT" (Reply to a message we didn't send?)
+            // If the user replies to a specific message, Meta sends 'context'.
+            // If that context ID is NOT in our DB, it implies the User sent it manually from Mobile/Dashboard.
+            try {
+                // Try to extract context ID from various payload structures
+                let contextId = body.context?.id ||
+                    body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.context?.id ||
+                    body.reply_to_message_id; // MSG91 might normalize this
+
+                if (contextId) {
+                    const { data: knownMsg } = await supabaseAdmin
+                        .from('whatsapp_chats')
+                        .select('id')
+                        .or(`metadata->>messageId.eq.${contextId},metadata->data->>message_uuid.eq.${contextId}`)
+                        .single();
+
+                    if (!knownMsg) {
+                        console.log(`[WhatsApp Webhook] 🛑 Supply Agent Paused. User replied to Unknown Message (ID: ${contextId}). Assuming Human Manual Chat.`);
+
+                        // Insert a placeholder "Manual Message" to ensure the 4h blocking logic persists for future messages
+                        await supabaseAdmin.from('whatsapp_chats').insert({
+                            mobile: mobile,
+                            message: "[Manual Intervention Detected via Context]",
+                            direction: 'outbound',
+                            status: 'sent',
+                            metadata: { source: 'manual_app_inference', context_id: contextId }
+                        });
+
+                        return NextResponse.json({ status: 'ignored_human_takeover_context', context_id: contextId });
+                    }
+                }
+            } catch (e) {
+                console.error("Context check error:", e);
+            }
+
             // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 4h)
             try {
                 const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
