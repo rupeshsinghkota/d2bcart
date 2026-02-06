@@ -53,7 +53,8 @@ async function generateSearchQueries(category: string, location: string, addLog:
             messages: [
                 {
                     role: "system",
-                    content: `Generate 3 search queries to find mobile/electronics wholesalers/manufacturers in India.
+                    content: `Generate 4 diverse search queries to find mobile/electronics wholesalers/manufacturers in India.
+                    Mix general terms with specific market names like "Gaffar Market", "Karol Bagh", "Nehru Place" if relevant to the category.
                     Focus on: ${category} in ${location}. Focus on contact numbers. Return as JSON: { "queries": [] }`
                 },
                 { role: "user", content: `Category: ${category}, Location: ${location}` }
@@ -72,7 +73,9 @@ async function safeFetch(url: string, referer: string = 'https://www.google.com/
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                'Referer': referer
+                'Referer': referer,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
             }
         });
         return response.ok ? await response.text() : null;
@@ -80,8 +83,12 @@ async function safeFetch(url: string, referer: string = 'https://www.google.com/
 }
 
 async function extractSuppliersWithAI(html: string, category: string, location: string, sourceName: string, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
-    // Very simple cleaning: just remove tags but keep context
-    const cleanText = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 20000);
+    const cleanText = html.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gmi, " ")
+        .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gmi, " ")
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 25000);
 
     if (cleanText.length < 500) return [];
 
@@ -111,7 +118,6 @@ async function extractSuppliersWithAI(html: string, category: string, location: 
     } catch { return []; }
 }
 
-// AI Knowledge Fallback
 async function getSuppliersFromAIKnowledge(category: string, location: string, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
     addLog(`[Research] 🧠 Fetching top recommendations from AI knowledge base...`);
     try {
@@ -120,10 +126,10 @@ async function getSuppliersFromAIKnowledge(category: string, location: string, a
             messages: [
                 {
                     role: "system",
-                    content: `You are a Sourcing Expert. Provide a list of 5 well-known mobile/electronics wholesalers or manufacturers specifically in the given location in India. 
+                    content: `You are a Sourcing Expert. Provide a comprehensive list of 15 well-known mobile/electronics wholesalers or manufacturers specifically in the given location in India. 
                     Focus on: ${category}. 
                     Include their 10-digit Indian phone numbers. 
-                    IMPORTANT: Only provide REAL businesses if possible, or very realistic examples if not. 
+                    IMPORTANT: Provide REAL businesses that are famous in the wholesale markets. 
                     Return as JSON: { "suppliers": [ { "name": "...", "phone": "...", "description": "..." } ] }`
                 },
                 { role: "user", content: `Category: ${category}, Location: ${location}` }
@@ -150,9 +156,9 @@ export async function findSuppliers(category: string, location: string = "India"
 
     addLog(`[Research] 🔍 Initiating deep research for "${category}" in "${location}"...`);
 
-    // 1. Check Local Database first
+    // 1. Check Local Database
     try {
-        addLog(`[Research] 📂 Checking local database for existing suppliers...`);
+        addLog(`[Research] 📂 Checking local database...`);
         const { data: dbSuppliers } = await getSupabase()
             .from('suppliers')
             .select('name, phone, location')
@@ -168,38 +174,47 @@ export async function findSuppliers(category: string, location: string = "India"
                 description: "Previously discovered supplier.",
                 source: "Database"
             })));
-            addLog(`[Research] ✅ Found ${dbSuppliers.length} matching suppliers in database.`);
+            addLog(`[Research] ✅ Found ${dbSuppliers.length} matching in database.`);
         }
     } catch (e) {
         addLog(`[Research] DB Check skipped: ${(e as Error).message}`);
     }
 
-    // 2. Try Scraping (if key results missing)
-    if (results.length < 5) {
+    // 2. Scraping with better fallback
+    if (results.length < 10) {
         const queries = await generateSearchQueries(category, location, addLog);
 
         for (const q of queries) {
             addLog(`[Research] 🌐 Searching: ${q}`);
-            const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
-            const html = await safeFetch(url);
 
-            if (html && !html.includes('anomaly.js')) {
-                const found = await extractSuppliersWithAI(html, category, location, "DuckDuckGo", addLog);
+            // Try Google Basic first
+            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}&gbv=1`;
+            let html = await safeFetch(googleUrl, 'https://www.google.com/');
+            let source = "Google Search";
+
+            if (!html || html.includes('detected unusual traffic')) {
+                // Try DuckDuckGo
+                source = "DuckDuckGo";
+                html = await safeFetch(`https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`);
+            }
+
+            if (html && !html.includes('anomaly.js') && !html.includes('redirect')) {
+                const found = await extractSuppliersWithAI(html, category, location, source, addLog);
                 if (found.length > 0) {
-                    addLog(`[Research] ✅ Found ${found.length} live results.`);
+                    addLog(`[Research] ✅ Found ${found.length} items from ${source}.`);
                     results.push(...found);
                 }
             } else {
-                addLog(`[Research] ⚠️ Search engine challenged the request (Bot detection).`);
+                addLog(`[Research] ⚠️ ${source} blocked the request (Bot detection).`);
             }
 
-            if (results.length >= 10) break;
-            await sleep(1500);
+            if (results.length >= 15) break;
+            await sleep(2000);
         }
     }
 
-    // 3. AI Knowledge Fallback
-    if (results.length < 3) {
+    // 3. AI Knowledge Fallback (Increased volume)
+    if (results.length < 10) {
         const aiKnowledge = await getSuppliersFromAIKnowledge(category, location, addLog);
         results.push(...aiKnowledge);
     }

@@ -54,14 +54,18 @@ export async function POST(request: NextRequest) {
                 // Reuse d2b_ai_response template
                 const msgBody = `Hello, this is the sourcing team from D2BCart.\n\n${aiRes.message}\n\nRegards,\nD2BCart Team`;
 
-                await sendWhatsAppMessage({
+                const waRes = await sendWhatsAppMessage({
                     mobile: normalizedPhone,
                     templateName: 'd2b_ai_response',
                     integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
                     components: {
                         body_1: { type: 'text', value: msgBody }
                     }
-                }).catch(e => console.error("Failed to send initial template:", e));
+                });
+
+                if (!waRes.success) {
+                    console.error("[Debug Sourcing] WhatsApp Send Failed:", waRes.error);
+                }
 
                 // 2. MARK AS CONTACTED (Save to DB)
                 if (!existing) {
