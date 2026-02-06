@@ -10,7 +10,8 @@ import {
     LogOut,
     Users,
     Package,
-    Folder
+    Folder,
+    Search
 } from 'lucide-react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -59,6 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: 'Payouts', href: '/admin/payouts', icon: CreditCard },
         { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'Categories', href: '/admin/categories', icon: Folder },
+        { name: 'Sourcing Agent', href: '/admin/sourcing', icon: Search },
     ]
 
     return (
