@@ -93,87 +93,34 @@ export async function findSuppliers(category: string, location: string = "India"
         const queries = await generateSearchQueries(category, location, addLog);
 
         for (const q of queries) {
-            try {
-                // Use LITE version which is often less blocked
-                // Query param is 'q'
-                const url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(q)}`;
+            const delay = Math.floor(Math.random() * 2000) + 1000;
+            await sleep(delay);
 
-                // Random delay between 2s and 5s
-                const delay = Math.floor(Math.random() * 3000) + 2000;
-                addLog(`[Research] Waiting ${delay}ms before next query...`);
-                await sleep(delay);
+            // 1. Try DuckDuckGo Lite
+            let html = await safeFetch(`https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(q)}`, 'https://lite.duckduckgo.com/');
+            let source = "DuckDuckGo Lite";
 
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.5',
-                        'Referer': 'https://lite.duckduckgo.com/',
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    cache: 'no-store'
-                });
+            if (!html || html.length < 1000 || html.includes('If this persists')) {
+                addLog(`[Research] DDG Blocked/Empty. Switching to Bing for query: "${q}"`);
 
-                const html = await response.text();
-                addLog(`[Research] Query: "${q}" | HTML Length: ${html.length}`);
+                // 2. Failover to Bing
+                await sleep(1000); // Wait a bit before hitting Bing
+                html = await safeFetch(`https://www.bing.com/search?q=${encodeURIComponent(q)}`, 'https://www.bing.com/');
+                source = "Bing Search";
 
-                if (html.length < 1000) {
-                    addLog(`[Research] WARNING: Blocked. Body snippet: ${html.substring(0, 100)}`);
+                if (!html || html.length < 2000) {
+                    addLog(`[Research] Bing also potentially blocked/empty for query: "${q}"`);
+                    continue; // Skip if both fail
                 }
-
-                // Lite version parsing
-                // Search for phone numbers in the entire raw text first
-                // Then try to extract context
-                const phoneMatch = Array.from(html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g));
-                addLog(`[Research] matches found: ${phoneMatch.length}`);
-
-                const phonesFoundInThisStep = new Set<string>();
-
-                for (const match of phoneMatch) {
-                    const rawPhone = match[0];
-                    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-
-                    if (cleanPhone.length >= 10 && cleanPhone.length <= 12) {
-                        if (phonesFoundInThisStep.has(cleanPhone)) continue;
-                        phonesFoundInThisStep.add(cleanPhone);
-
-                        const index = match.index || 0;
-                        const surroundingText = html.substring(Math.max(0, index - 150), Math.min(html.length, index + 150));
-
-                        // Clean up text
-                        const cleanText = surroundingText
-                            .replace(/<[^>]*>/g, ' ') // Strip HTML
-                            .replace(/&nbsp;/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim();
-
-                        // Fallback name logic
-                        let name = `${category} Supplier`;
-                        // Try to find a capitalized sequence before the number
-                        const nameMatch = cleanText.split(rawPhone)[0].match(/([A-Z][a-zA-Z0-9&]+(?:\s[A-Z][a-zA-Z0-9&]+){0,4})/g);
-                        if (nameMatch && nameMatch.length > 0) {
-                            // Pick the last realistic looking name part before the phone
-                            name = nameMatch[nameMatch.length - 1];
-                        }
-
-                        results.push({
-                            name: name.substring(0, 50), // Truncate if too long
-                            phone: cleanPhone,
-                            website: null,
-                            location: location,
-                            description: cleanText.substring(0, 200),
-                            source: "DuckDuckGo Lite"
-                        });
-                    }
-                }
-
-            } catch (err) {
-                addLog(`[Research] Failed query: ${q} - ${(err as Error).message}`);
             }
+
+            addLog(`[Research] Parsing results from ${source} (Length: ${html.length})`);
+            const found = extractSuppliersFromHtml(html, category, location, source);
+            addLog(`[Research] found ${found.length} contacts in this step.`);
+            results.push(...found);
         }
 
-        // De-duplicate by phone across all queries
+        // De-duplicate
         const unique = new Map();
         for (const item of results) {
             if (!unique.has(item.phone)) {
@@ -181,8 +128,8 @@ export async function findSuppliers(category: string, location: string = "India"
             }
         }
 
-        const finalResults = Array.from(unique.values()).slice(0, 10); // increased limit
-        addLog(`[Research] Found ${finalResults.length} unique suppliers.`);
+        const finalResults = Array.from(unique.values()).slice(0, 15);
+        addLog(`[Research] Total ${finalResults.length} unique suppliers found.`);
         return { suppliers: finalResults, logs };
 
     } catch (error) {
