@@ -58,17 +58,37 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
 
     if (aiRes.message && normalizedPhone) {
         const { sendWhatsAppMessage } = await import('@/lib/msg91');
-        // MSG91 templates do NOT support newlines in body variables
         const msgBody = aiRes.message.replace(/\n+/g, ' ').trim();
 
-        const waRes = await sendWhatsAppMessage({
-            mobile: normalizedPhone,
-            templateName: 'd2b_ai_response',
-            integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
-            components: {
-                body_1: { type: 'text', value: msgBody }
+        let waRes: any = { success: false };
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            waRes = await sendWhatsAppMessage({
+                mobile: normalizedPhone,
+                templateName: 'd2b_ai_response',
+                integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
+                components: {
+                    body_1: { type: 'text', value: msgBody }
+                }
+            });
+
+            if (waRes.success) break;
+
+            // Check for permanent blocks (Meta Error 131026) -> DO NOT RETRY
+            const errorMsg = JSON.stringify(waRes.error || "");
+            if (errorMsg.includes("131026") || errorMsg.includes("engagement")) {
+                console.warn(`[Sourcing API] Permanent block detected (131026). Stopping retries for ${normalizedPhone}`);
+                break;
             }
-        });
+
+            if (attempts < maxAttempts) {
+                console.log(`[Sourcing API] Attempt ${attempts} failed for ${normalizedPhone}. Retrying in 2s...`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
 
         // ALWAYS log to whatsapp_chats for visibility, regardless of success
         try {
@@ -80,6 +100,7 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
                 metadata: {
                     ...waRes,
                     source: 'sourcing_initiation',
+                    attempts: attempts, // Log number of attempts
                     reasoning: aiRes.reasoning,
                     template: 'd2b_ai_response',
                     error: waRes.success ? null : waRes.error
@@ -90,7 +111,7 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
         }
 
         if (waRes.success) {
-            console.log(`[Debug Sourcing] ✅ Message sent to ${normalizedPhone}`);
+            console.log(`[Sourcing API] ✅ Message delivered to ${normalizedPhone} on attempt ${attempts}`);
             if (!existing) {
                 await supabase.from('suppliers').insert({
                     name: name || `Supplier ${normalizedPhone.slice(-4)}`,
@@ -105,7 +126,7 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
                     .eq('id', existing.id);
             }
         } else {
-            console.error(`[Debug Sourcing] ❌ Message failed for ${normalizedPhone}:`, waRes.error);
+            console.error(`[Sourcing API] ❌ Message failed finally for ${normalizedPhone} after ${attempts} attempts:`, waRes.error);
             // Mark as failed so we can retry from dashboard
             if (!existing) {
                 await supabase.from('suppliers').insert({
@@ -114,7 +135,7 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
                     status: 'failed',
                     source: 'admin_dashboard',
                     updated_at: new Date(),
-                    notes: `Failed: ${JSON.stringify(waRes.error)}`
+                    notes: `Failed after ${attempts} attempts: ${JSON.stringify(waRes.error)}`
                 });
             } else {
                 await supabase.from('suppliers')
