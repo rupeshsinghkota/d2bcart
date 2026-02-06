@@ -36,11 +36,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Expanded MSG91 Inbound Structure Support
-        // structure can be complex: entry[0].changes[0].value.messages[0] (Meta style) or direct fields (MSG91 style)
-
+        // Expanded MSG91/Meta Inbound Structure Support
         let messageText = body.content || body.message || body.data?.message || body.text || ""
         let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || body.from || body.waId || ""
+        let receiver = body.receiver || body.display_phone_number || "" // MSG91 often sends 'receiver' or 'integrated_number'
         const eventName = body.eventName || ""
 
         // Deep check for Meta/WhatsApp Cloud API structure
@@ -50,16 +49,20 @@ export async function POST(request: NextRequest) {
                 messageText = msg.text.body
             }
             mobile = msg.from
+            // Try to find receiver in Meta payload
+            const metadata = body.entry[0].changes[0].value.metadata
+            if (metadata && metadata.display_phone_number) {
+                receiver = metadata.display_phone_number
+            }
         }
 
-        console.log(`[WhatsApp Webhook] Parsed - Event: ${eventName}, Mobile: ${mobile}, Message: ${messageText}`)
+        console.log(`[WhatsApp Webhook] Parsed - Event: ${eventName}, Mobile: ${mobile}, Receiver: ${receiver}, Message: ${messageText}`)
 
         if (!mobile) {
             console.warn('[WhatsApp Webhook] Missing mobile. Payload keys:', Object.keys(body))
             return NextResponse.json({ status: 'ignored', reason: 'No mobile found' })
         }
 
-        // Treat checking for message as optional for now - if empty, assume greeting
         if (!messageText) messageText = "Hi"
 
         // 0. MEMORY CACHE CHECK (Fastest)
@@ -73,14 +76,13 @@ export async function POST(request: NextRequest) {
 
         // IDEMPOTENCY: Check db to prevent loops
         try {
-            // 1. Check if processed recently
             const { data: existing } = await supabaseAdmin
                 .from('whatsapp_chats')
                 .select('id')
                 .eq('mobile', mobile)
                 .eq('message', messageText)
                 .eq('direction', 'inbound')
-                .gt('created_at', new Date(Date.now() - 60000).toISOString()) // 1 min check
+                .gt('created_at', new Date(Date.now() - 60000).toISOString())
                 .limit(1)
                 .single()
 
@@ -89,7 +91,6 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ success: true, duplicate: true })
             }
 
-            // 2. Log Inbound
             await supabaseAdmin.from('whatsapp_chats').insert({
                 mobile,
                 message: messageText,
@@ -100,84 +101,102 @@ export async function POST(request: NextRequest) {
             console.log('Chat logging failed (Table missing?):', e)
         }
 
-        // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 2h)
-        try {
-            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-            const { data: recentHumanOutbound } = await supabaseAdmin
-                .from('whatsapp_chats')
-                .select('id, message, metadata')
-                .eq('mobile', mobile)
-                .eq('direction', 'outbound')
-                .gt('created_at', twoHoursAgo)
-                .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant') // Explicitly handle null source
-                .limit(1);
+        // ============================================================
+        // ROUTING LOGIC: SUPPLIER vs CUSTOMER
+        // ============================================================
+        // Check if the message was sent to the SUPPLIER LINE
+        // You can define this in ENV or just check the number directly
+        const SUPPLIER_NUMBER = process.env.SUPPLIER_WA_NUMBER || "917557777998"; // Updated to user's supplier number
 
-            if (recentHumanOutbound && recentHumanOutbound.length > 0) {
-                const triggerMsg = recentHumanOutbound[0];
-                console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Triggered by msg: "${triggerMsg.message?.slice(0, 50)}..." (ID: ${triggerMsg.id})`);
-                return NextResponse.json({ status: 'ignored_human_takeover', trigger_id: triggerMsg.id });
-            }
-        } catch (e) {
-            console.error('Takeover check failed:', e);
+        let isSupplierFlow = false;
+        if (receiver && receiver.includes(SUPPLIER_NUMBER)) {
+            isSupplierFlow = true;
         }
 
-        // Get AI Response (returns array of structured messages)
-        const { messages: aiMessages, escalate } = await getSalesAssistantResponse({
-            message: messageText,
-            phone: mobile
-        })
+        if (isSupplierFlow) {
+            console.log(`[WhatsApp Webhook] 🟢 Routing to SOURCING AGENT (Receiver: ${receiver})`);
 
-        // Handle Escalation (Emergency Contact)
-        if (escalate) {
-            const adminMobile = "919155149597"; // Chandan
-            console.log(`[WhatsApp Webhook] Escalating ${mobile} to Admin ${adminMobile}`);
+            // LAZY IMPORT TO AVOID CIRCULAR DEPS IF ANY
+            const { getSourcingAgentResponse } = await import('@/lib/sourcing_agent');
 
-            const alertText = `SUPPORT REQ: From ${mobile}. Msg: ${messageText.slice(0, 100)}`;
-
-            // Send Alert to Admin using a TEMPLATE (Template delivers even if no session)
-            // Using d2b_ai_response as requested
-            const alertResult = await sendWhatsAppMessage({
-                mobile: adminMobile,
-                templateName: 'd2b_ai_response',
-                components: {
-                    body_1: { type: 'text', value: alertText }
-                }
-            }).catch(e => {
-                console.error("Escalation failed", e);
-                return { success: false, error: e };
+            const aiResult = await getSourcingAgentResponse({
+                message: messageText,
+                phone: mobile
             });
 
-            // Log the alert to DB so it shows up in dashboard
-            try {
-                await supabaseAdmin.from('whatsapp_chats').insert({
-                    mobile: adminMobile,
-                    message: alertText,
-                    direction: 'outbound',
-                    status: alertResult.success ? 'sent' : 'failed',
-                    metadata: { type: 'escalation_alert', ...alertResult }
-                });
-            } catch (dbErr) {
-                console.error("Failed to log alert to DB", dbErr);
-            }
-        }
+            console.log(`[WhatsApp Webhook] Sourcing Agent Action: ${aiResult.action}, Reply: ${aiResult.message}`);
 
-        console.log(`[WhatsApp Webhook] AI Response for ${mobile}:`, aiMessages)
-
-        // Send each message based on type
-        const results = []
-        for (const msg of aiMessages) {
-            const cleanText = msg.text.trim()
-            console.log(`[WhatsApp Webhook] Sending to ${mobile} [${msg.type}]:`, cleanText.slice(0, 50))
-
-            // Unified Session Message Logic (Supports Text & Images directly)
+            // Send Reply via Supplier Number
             const result = await sendWhatsAppSessionMessage({
                 mobile: mobile,
-                message: cleanText,
-                imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined
-            })
+                message: aiResult.message,
+                integratedNumber: SUPPLIER_NUMBER // Important: Reply from same line
+            });
 
             // Log Outbound
             try {
+                await supabaseAdmin.from('whatsapp_chats').insert({
+                    mobile,
+                    message: aiResult.message,
+                    direction: 'outbound',
+                    status: result.success ? 'sent' : 'failed',
+                    metadata: { ...result, source: 'sourcing_agent', action: aiResult.action }
+                })
+            } catch (e) { }
+
+            return NextResponse.json({ success: true, agent: 'sourcing', result });
+
+        } else {
+            // ============================================================
+            // EXISTING CUSTOMER SALES FLOW
+            // ============================================================
+            console.log(`[WhatsApp Webhook] 🔵 Routing to SALES ASSISTANT`);
+
+            // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 2h)
+            try {
+                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                const { data: recentHumanOutbound } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id, message, metadata')
+                    .eq('mobile', mobile)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', twoHoursAgo)
+                    .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant')
+                    .limit(1);
+
+                if (recentHumanOutbound && recentHumanOutbound.length > 0) {
+                    const triggerMsg = recentHumanOutbound[0];
+                    console.log(`[WhatsApp Webhook] Human Takeover detected for ${mobile}. Triggered by msg: "${triggerMsg.message?.slice(0, 50)}..." (ID: ${triggerMsg.id})`);
+                    return NextResponse.json({ status: 'ignored_human_takeover', trigger_id: triggerMsg.id });
+                }
+            } catch (e) {
+                console.error('Takeover check failed:', e);
+            }
+
+            const { messages: aiMessages, escalate } = await getSalesAssistantResponse({
+                message: messageText,
+                phone: mobile
+            })
+
+            // Handle Escalation
+            if (escalate) {
+                const adminMobile = "919155149597";
+                const alertText = `SUPPORT REQ: From ${mobile}. Msg: ${messageText.slice(0, 100)}`;
+                await sendWhatsAppMessage({
+                    mobile: adminMobile,
+                    templateName: 'd2b_ai_response',
+                    components: { body_1: { type: 'text', value: alertText } }
+                }).catch(e => console.error(e));
+            }
+
+            const results = []
+            for (const msg of aiMessages) {
+                const cleanText = msg.text.trim()
+                const result = await sendWhatsAppSessionMessage({
+                    mobile: mobile,
+                    message: cleanText,
+                    imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined
+                })
                 await supabaseAdmin.from('whatsapp_chats').insert({
                     mobile,
                     message: cleanText,
@@ -185,17 +204,13 @@ export async function POST(request: NextRequest) {
                     status: result.success ? 'sent' : 'failed',
                     metadata: { ...result, source: 'ai_assistant' }
                 })
-            } catch (e) { }
 
-            results.push({ type: msg.type, result })
-            await new Promise(r => setTimeout(r, 500))
+                results.push({ type: msg.type, result })
+                await new Promise(r => setTimeout(r, 500))
+            }
+
+            return NextResponse.json({ success: true, ai_responses: aiMessages, msg91_results: results })
         }
-
-        return NextResponse.json({
-            success: true,
-            ai_responses: aiMessages,
-            msg91_results: results
-        })
 
     } catch (error: any) {
         console.error('[WhatsApp Webhook] Error:', error)

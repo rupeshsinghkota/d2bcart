@@ -27,6 +27,7 @@ export async function sendWhatsAppMessage({
     integratedNumber?: string
 }) {
     const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY
+    // PRIORITIZE PASSED NUMBER -> THEN ENV VAR -> THEN DEFAULT
     const MSG91_INTEGRATED_NUMBER = integratedNumber || process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
 
     if (!MSG91_AUTH_KEY) return { success: false, error: 'Configuration missing' }
@@ -68,8 +69,8 @@ export async function sendWhatsAppMessage({
  * Sends a FREE-FORM text message (Session Message).
  * Only works if the customer has messaged you in the last 24 hours.
  */
-export async function sendWhatsAppSessionMessage(params: { mobile: string, message: string, imageUrl?: string }) {
-    const { mobile, message, imageUrl } = params
+export async function sendWhatsAppSessionMessage(params: { mobile: string, message: string, imageUrl?: string, integratedNumber?: string }) {
+    const { mobile, message, imageUrl, integratedNumber } = params
     let cleanPhone = mobile.replace('+', '').replace(/\s/g, '')
 
     // Auto-fix for India: If 10 digits, add '91'
@@ -78,10 +79,10 @@ export async function sendWhatsAppSessionMessage(params: { mobile: string, messa
     }
 
     const namespace = process.env.MSG91_NAMESPACE
-    const integratedNumber = process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
+    const FINAL_INTEGRATED_NUMBER = integratedNumber || process.env.MSG91_INTEGRATED_NUMBER || "917557777987"
 
     let payload: any = {
-        integrated_number: integratedNumber,
+        integrated_number: FINAL_INTEGRATED_NUMBER,
         recipient_number: cleanPhone,
     }
 
