@@ -119,9 +119,7 @@ export async function POST(request: NextRequest) {
 
         const isOutboundEvent =
             (status && outboundStatuses.includes(status)) ||
-            isDirectionOutbound ||
-            body.message_uuid ||
-            body.uuid; // MSG91 uses 'uuid' for message ID
+            isDirectionOutbound;
 
         if (isOutboundEvent) {
             console.log(`[WhatsApp Webhook] Processing Outbound Event. Direction: ${directionValue}, UUID: ${body.uuid || body.message_uuid}`);
