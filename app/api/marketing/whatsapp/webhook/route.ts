@@ -122,44 +122,48 @@ export async function POST(request: NextRequest) {
             isDirectionOutbound;
 
         if (isOutboundEvent) {
-            // Check ALL possible ID fields that MSG91 might use
             const outUuid = body.wamid || body.uuid || body.message_uuid || body.id || body.msg_id;
             const outMobile = body.customerNumber || body.mobile || body.recipient_id || body.customer_number || body.destination || "";
+            const cleanMobile = outMobile.replace('+', '').replace(/\s/g, '');
 
-            console.log(`[WhatsApp Webhook] Processing Outbound Event. Direction: ${directionValue}, Status: ${status}`);
-            console.log(`[WhatsApp Webhook] Outbound IDs - wamid: ${body.wamid}, uuid: ${body.uuid}, message_uuid: ${body.message_uuid}, id: ${body.id}`);
-            console.log(`[WhatsApp Webhook] Outbound Mobile: ${outMobile}`);
+            console.log(`[WhatsApp Webhook] Processing Outbound Event. Status: ${status}, Mobile: ${outMobile}`);
+            console.log(`[WhatsApp Webhook] Outbound IDs - wamid: ${body.wamid}, uuid: ${body.uuid}, message_uuid: ${body.message_uuid}`);
 
-            if (outUuid) {
-                const { data: knownOutbound } = await supabaseAdmin
+            // TIME-BASED DETECTION: If we sent an API message to this phone in the last 30 seconds, 
+            // this is likely a delivery report for that message. Otherwise, it's manual.
+            if (cleanMobile && (status === 'sent' || status === 'dispatched')) {
+                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+
+                const { data: recentApiMessage } = await supabaseAdmin
                     .from('whatsapp_chats')
-                    .select('id')
-                    .or(`metadata->>messageId.eq.${outUuid},metadata->>wamid.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
-                    .single();
+                    .select('id, metadata')
+                    .eq('mobile', cleanMobile)
+                    .eq('direction', 'outbound')
+                    .gt('created_at', thirtySecondsAgo)
+                    .not('metadata->>source', 'ilike', 'manual%')
+                    .limit(1);
 
-                if (!knownOutbound) {
-                    console.log(`[WhatsApp Webhook] 🛑 Manual Outbound Detected (ID: ${outUuid}). Pausing AI for ${outMobile}.`);
+                if (!recentApiMessage || recentApiMessage.length === 0) {
+                    console.log(`[WhatsApp Webhook] 🛑 MANUAL Outbound Detected! No API message in last 30s for ${cleanMobile}. Pausing AI.`);
 
-                    if (outMobile) {
-                        await supabaseAdmin.from('whatsapp_chats').insert({
-                            mobile: outMobile,
-                            message: "[Manual Outbound Message Detected]",
-                            direction: 'outbound',
-                            status: 'sent',
-                            metadata: { source: 'manual_app_outbound_webhook', message_id: outUuid, raw: body }
-                        });
-                        return NextResponse.json({ status: 'registered_manual_takeover' });
-                    } else {
-                        console.warn("[WhatsApp Webhook] Manual Outbound detected but no mobile number found.");
-                        return NextResponse.json({ status: 'ignored_no_mobile' });
-                    }
+                    await supabaseAdmin.from('whatsapp_chats').insert({
+                        mobile: cleanMobile,
+                        message: "[Manual Outbound Detected - AI Paused for 4h]",
+                        direction: 'outbound',
+                        status: 'sent',
+                        metadata: { source: 'manual_detected', wamid: outUuid, timestamp: new Date().toISOString() }
+                    });
+
+                    return NextResponse.json({ status: 'registered_manual_takeover' });
                 } else {
-                    console.log(`[WhatsApp Webhook] Outbound is known API message, ignoring.`);
-                    return NextResponse.json({ status: 'ignored_api_outbound_update' });
+                    // This is a delivery report for an API-sent message, ignore it
+                    console.log(`[WhatsApp Webhook] Delivery report for API message, ignoring.`);
+                    return NextResponse.json({ status: 'ignored_api_delivery_report' });
                 }
             } else {
-                console.log("[WhatsApp Webhook] Outbound event without UUID ignored.");
-                return NextResponse.json({ status: 'ignored_outbound_no_uuid' });
+                // Non-sent statuses (delivered, read) - always ignore
+                console.log(`[WhatsApp Webhook] Ignoring ${status} delivery report.`);
+                return NextResponse.json({ status: 'ignored_delivery_report' });
             }
         }
 
