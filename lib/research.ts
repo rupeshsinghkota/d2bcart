@@ -37,11 +37,20 @@ export async function findSuppliers(category: string, location: string = "India"
                 const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
 
                 const response = await fetch(url, {
+                    method: 'GET',
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
-                    }
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                    },
+                    cache: 'no-store'  // Ensure we don't hit Next.js cache
                 });
                 const html = await response.text();
+                console.log(`[Research] Query: "${q}" | HTML Length: ${html.length}`);
+
+                // Check for block
+                if (html.includes('Please verify you are a human') || html.length < 500) {
+                    console.warn(`[Research] Potential Block or Empty response for query: ${q}`);
+                }
 
                 // Simple Regex Extraction from HTML text
                 // Look for snippets that have 10 digit numbers
@@ -52,7 +61,8 @@ export async function findSuppliers(category: string, location: string = "India"
                 // We'll just scan the raw HTML for phone patterns + context
 
                 const phonesFound = new Set<string>();
-                const phoneMatch = html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g);
+                const phoneMatch = Array.from(html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g));
+                console.log(`[Research] matches found: ${phoneMatch.length}`);
 
                 for (const match of phoneMatch) {
                     const rawPhone = match[0];
