@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
         // Expanded MSG91/Meta Inbound Structure Support
         let messageText = body.content || body.message || body.data?.message || body.text || ""
         let mobile = body.customerNumber || body.mobile || body.data?.mobile || body.sender || body.from || body.waId || ""
-        // Fix: MSG91 often calls it 'integrated_number' in the root
-        let receiver = body.receiver || body.integrated_number || body.display_phone_number || ""
+        // Fix: MSG91 sends it as 'integratedNumber' (camelCase)
+        let receiver = body.receiver || body.integratedNumber || body.integrated_number || body.display_phone_number || ""
         const eventName = body.eventName || ""
 
         // Deep check for Meta/WhatsApp Cloud API structure
