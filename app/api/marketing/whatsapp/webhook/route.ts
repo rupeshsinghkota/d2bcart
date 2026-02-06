@@ -136,7 +136,15 @@ export async function POST(request: NextRequest) {
         // 0.C STRONG OUTBOUND EVENT INTERCEPTOR
         // ============================================================
         // Detect if this is an Outbound Report (Delivery Report) or Listen Event
-        const isOutboundEvent = body.status || body.message_status || body.message_uuid || body.uuid || body.direction === 'outbound';
+        // We strictly check for KNOWN outbound statuses to avoid false positives on Inbound messages that might have a 'status' field.
+        const outboundStatuses = ['sent', 'delivered', 'read', 'failed', 'dispatched', 'queued'];
+        const status = body.status || body.message_status;
+
+        const isOutboundEvent =
+            (status && outboundStatuses.includes(status)) ||
+            body.direction === 'outbound' ||
+            body.message_uuid ||
+            body.uuid; // UUID usually implies a report, but be careful.
 
         if (isOutboundEvent) {
             console.log(`[WhatsApp Webhook] Processing Outbound Event. UUID: ${body.message_uuid || body.uuid}`);
