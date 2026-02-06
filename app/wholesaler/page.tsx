@@ -65,7 +65,7 @@ export default function WholesalerDashboard() {
 
         if (productsData) setProducts(productsData as Product[])
 
-        // Fetch orders
+        // Fetch orders for stats and recent list
         const { data: ordersData } = await supabase
             .from('orders')
             .select(`
@@ -75,7 +75,7 @@ export default function WholesalerDashboard() {
       `)
             .eq('manufacturer_id', user.id)
             .order('created_at', { ascending: false })
-            .limit(10)
+        // Removed limit(10) so stats are calculated correctly across ALL orders
 
         if (ordersData) setOrders(ordersData as Order[])
 

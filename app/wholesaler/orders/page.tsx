@@ -35,8 +35,12 @@ const OrdersContent = () => {
     // Filters State
     const [filter, setFilter] = useState<string>(searchParams.get('status') || 'all')
     const [searchTerm, setSearchTerm] = useState('')
-    // Default to Today
-    const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0])
+    // Default to Last 7 Days for visibility
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date()
+        d.setDate(d.getDate() - 7)
+        return d.toISOString().split('T')[0]
+    })
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
 
