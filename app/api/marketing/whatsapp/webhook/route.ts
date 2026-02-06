@@ -350,11 +350,26 @@ export async function POST(request: NextRequest) {
             if (escalate) {
                 const adminMobile = "919155149597";
                 const alertText = `SUPPORT REQ: From ${mobile}. Msg: ${messageText.slice(0, 100)}`;
-                await sendWhatsAppMessage({
-                    mobile: adminMobile,
-                    templateName: 'd2b_ai_response',
-                    components: { body_1: { type: 'text', value: alertText } }
-                }).catch(e => console.error(e));
+
+                try {
+                    // Send first, capture the response with UUID
+                    const alertResult = await sendWhatsAppMessage({
+                        mobile: adminMobile,
+                        templateName: 'd2b_ai_response',
+                        components: { body_1: { type: 'text', value: alertText } }
+                    });
+
+                    // Log AFTER sending, including the response (which contains message_uuid)
+                    await supabaseAdmin.from('whatsapp_chats').insert({
+                        mobile: adminMobile,
+                        message: alertText,
+                        direction: 'outbound',
+                        status: alertResult.success ? 'sent' : 'failed',
+                        metadata: { ...alertResult, source: 'system_alert' }
+                    });
+                } catch (e) {
+                    console.error('Escalation failed:', e);
+                }
             }
 
             const results = []
