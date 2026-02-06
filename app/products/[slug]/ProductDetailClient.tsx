@@ -188,14 +188,32 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
         if (variations.length > 0) {
             // Bulk Add
             let addedCount = 0
+            const itemsToAdd = []
+
             for (const v of variations) {
                 const qty = quantities[v.id] || 0
                 if (qty > 0) {
-                    addToCart(v, qty)
+                    const moq = v.moq || 1
+                    if (qty < moq) {
+                        toast.error(`${v.name} requires at least ${moq} units`)
+                        setAddingToCart(false)
+                        return
+                    }
+                    if (qty % moq !== 0) {
+                        toast.error(`${v.name} quantity must be a multiple of ${moq}`)
+                        setAddingToCart(false)
+                        return
+                    }
+                    itemsToAdd.push({ product: v, quantity: qty })
                     addedCount++
                 }
             }
+
             if (addedCount > 0) {
+                // Use addItems for bulk sync efficiency if available, or just loop
+                for (const item of itemsToAdd) {
+                    addToCart(item.product, item.quantity)
+                }
                 toast.success(`${addedCount} types added to cart!`)
                 // Reset quantities
                 setQuantities({})
@@ -205,6 +223,17 @@ export default function ProductDetailClient({ product, manufacturerProducts, var
         } else {
             // Single Product Add
             if (!currentProduct) return
+            const moq = currentProduct.moq || 1
+            if (quantity < moq) {
+                toast.error(`Minimum order quantity is ${moq}`)
+                setAddingToCart(false)
+                return
+            }
+            if (quantity % moq !== 0) {
+                toast.error(`Quantity must be a multiple of ${moq}`)
+                setAddingToCart(false)
+                return
+            }
             addToCart(currentProduct, quantity)
             toast.success('Added to cart!')
         }

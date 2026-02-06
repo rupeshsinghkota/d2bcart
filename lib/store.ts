@@ -33,8 +33,21 @@ export const useStore = create<AppState>()(
 
             addToCart: (product, quantity) => {
                 const cart = get().cart
+                const moq = product.moq || 1
                 const existing = cart.find(item => item.product.id === product.id)
                 let newCart;
+
+                // Enforce MOQ - can't add less than MOQ
+                if (quantity < moq) {
+                    toast.error(`Minimum order quantity for this item is ${moq}`)
+                    return
+                }
+
+                // Enforce Multiples of MOQ
+                if (quantity % moq !== 0) {
+                    toast.error(`Quantity must be a multiple of ${moq}`)
+                    return
+                }
 
                 if (existing) {
                     newCart = cart.map(item =>
@@ -57,7 +70,25 @@ export const useStore = create<AppState>()(
             },
 
             updateQuantity: (productId, quantity) => {
-                const newCart = get().cart.map(item =>
+                const cart = get().cart
+                const item = cart.find(i => i.product.id === productId)
+                if (!item) return
+
+                const moq = item.product.moq || 1
+
+                // Enforce MOQ - can't reduce below MOQ
+                if (quantity < moq) {
+                    toast.error(`Minimum order quantity is ${moq}`)
+                    return
+                }
+
+                // Enforce Multiples of MOQ
+                if (quantity % moq !== 0) {
+                    toast.error(`Quantity must be a multiple of ${moq}`)
+                    return
+                }
+
+                const newCart = cart.map(item =>
                     item.product.id === productId ? { ...item, quantity } : item
                 )
                 set({ cart: newCart })

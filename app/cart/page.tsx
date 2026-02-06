@@ -79,7 +79,6 @@ export default function CartPage() {
         return items.reduce((sum, item) => sum + (item.product.display_price * item.quantity), 0)
     }
 
-    // Check if all sellers meet the minimum order value
     const getSellersBelowMinimum = () => {
         const itemsByMfr = getItemsByManufacturer()
         const belowMinimum: { mfId: string; total: number; shortfall: number }[] = []
@@ -98,7 +97,15 @@ export default function CartPage() {
         return belowMinimum
     }
 
+    const getItemsBelowMOQ = () => {
+        return cart.filter(item => {
+            const moq = item.product.moq || 1
+            return item.quantity < moq || item.quantity % moq !== 0
+        })
+    }
+
     const allSellersMeetMinimum = () => getSellersBelowMinimum().length === 0
+    const allItemsMeetMOQ = () => getItemsBelowMOQ().length === 0
 
     useEffect(() => {
         checkUser()
@@ -486,6 +493,13 @@ export default function CartPage() {
             return
         }
 
+        // Check for items below MOQ
+        const belowMOQ = getItemsBelowMOQ()
+        if (belowMOQ.length > 0) {
+            toast.error(`Some items are below their minimum order quantity.`)
+            return
+        }
+
         // Wait for shipping calculation (one estimate per manufacturer)
         if (Object.keys(shippingEstimates).length < manufacturerIds.length) {
             toast.error('Please wait for shipping estimates to load')
@@ -848,13 +862,19 @@ export default function CartPage() {
                                                                         </button>
                                                                     </div>
 
-                                                                    <div className="mt-2 flex items-baseline gap-2">
+                                                                    <div className="mt-2 flex items-center gap-2 flex-wrap">
                                                                         <span className="font-black text-xl text-gray-900">
                                                                             {formatCurrency(item.product.display_price)}
                                                                         </span>
-                                                                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-100 px-2 py-0.5 rounded-md">
-                                                                            MOQ: {item.product.moq}
+                                                                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md ${item.quantity < (item.product.moq || 1) ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
+                                                                            MOQ: {item.product.moq || 1}
                                                                         </span>
+                                                                        {item.quantity < (item.product.moq || 1) && (
+                                                                            <span className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                                                                                <AlertTriangle className="w-3 h-3" />
+                                                                                Below Minimum
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
 
@@ -1199,7 +1219,7 @@ export default function CartPage() {
                                     {/* Pay Button */}
                                     <button
                                         onClick={handlePlaceOrder}
-                                        disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
+                                        disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum() || !allItemsMeetMOQ()}
                                         className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-emerald-600/20"
                                     >
                                         {placingOrder ? (
@@ -1254,7 +1274,7 @@ export default function CartPage() {
                             {/* Pay Button - Swipe Style */}
                             <button
                                 onClick={handlePlaceOrder}
-                                disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum()}
+                                disabled={placingOrder || cart.length === 0 || calculatingShipping || !allSellersMeetMinimum() || !allItemsMeetMOQ()}
                                 className="flex-shrink-0 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-gray-900 px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95"
                             >
                                 {placingOrder ? (
