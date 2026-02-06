@@ -105,6 +105,82 @@ async function safeFetch(url: string, referer: string = 'https://www.google.com/
     }
 }
 
+// AI Extraction Helper
+async function extractSuppliersWithAI(html: string, category: string, location: string, sourceName: string, addLog: (msg: string) => void): Promise<DiscoveredSupplier[]> {
+    addLog(`[Research] 🧠 AI Analyzing ${sourceName} content for quality suppliers...`);
+
+    // 1. Pre-processing: Extract relevant chunks (text with phone numbers) to reduce token usage
+    // We roughly grab text around numbers, but wider context
+    const phoneMatches = Array.from(html.matchAll(/((\+91|91|0)?[6-9][0-9]{9})/g));
+    if (phoneMatches.length === 0) return [];
+
+    let relevantText = "";
+    const processedIndices = new Set<number>();
+
+    for (const match of phoneMatches) {
+        const index = match.index || 0;
+        // Check if we already covered this area
+        let alreadyCovered = false;
+        for (const i of processedIndices) {
+            if (Math.abs(index - i) < 300) { alreadyCovered = true; break; }
+        }
+        if (alreadyCovered) continue;
+        processedIndices.add(index);
+
+        const chunk = html.substring(Math.max(0, index - 250), Math.min(html.length, index + 250));
+        // Strip HTML tags for clean text
+        const cleanChunk = chunk.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        relevantText += `... ${cleanChunk} ...\n`;
+    }
+
+    if (relevantText.length < 50) return [];
+
+    try {
+        const response = await getOpenAI().chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: `You are an expert Data Extractor. Your goal is to Identify WHOLESALERS and MANUFACTURERS from the provided text snippets.
+                    
+                    CRITERIA:
+                    1.  **Ignore** Repair Shops, Service Centers, Retailers (unless they explicitly say Wholesale).
+                    2.  **Ignore** Generic directory listings (Justdial, Indiamart) unless a specific vendor name is clear.
+                    3.  **Extract**: Business Name, Phone Number, Description.
+                    4.  **Format**: Return a JSON Object with a key "suppliers" containing an array.
+                    
+                    Example: { "suppliers": [ { "name": "Royal Traders", "phone": "9999999999", "description": "Wholesaler of mobile covers" } ] }`
+                },
+                {
+                    role: "user",
+                    content: `Category: ${category}, Location: ${location}\n\nInput Text:\n${relevantText.substring(0, 15000)}`
+                }
+            ],
+            response_format: { type: "json_object" }
+        });
+
+        const content = response.choices[0].message.content || "{}";
+        const parsed = JSON.parse(content);
+
+        if (parsed.suppliers && Array.isArray(parsed.suppliers)) {
+            return parsed.suppliers.map((s: any) => ({
+                name: s.name,
+                phone: s.phone.replace(/[^0-9]/g, ''),
+                website: null,
+                location: location,
+                description: s.description,
+                source: `${sourceName} + AI Filter`
+            }));
+        }
+        return [];
+
+    } catch (e) {
+        addLog(`[Research] AI Extraction Failed: ${(e as Error).message}`);
+        // Fallback to regex if AI fails?
+        return extractSuppliersFromHtml(html, category, location, sourceName);
+    }
+}
+
 // Generic Phone Extractor from HTML
 function extractSuppliersFromHtml(html: string, category: string, location: string, sourceName: string): DiscoveredSupplier[] {
     const extracted: DiscoveredSupplier[] = [];
@@ -158,7 +234,7 @@ export async function findSuppliers(category: string, location: string = "India"
         logs.push(msg);
     };
 
-    addLog(`[Research] Searching for suppliers in category (Free Mode): ${category} in ${location}`);
+    addLog(`[Research] Searching for suppliers in category (AI Enhanced): ${category} in ${location}`);
     const results: DiscoveredSupplier[] = [];
 
     try {
@@ -189,8 +265,11 @@ export async function findSuppliers(category: string, location: string = "India"
             }
 
             addLog(`[Research] Parsing results from ${source} (Length: ${html.length})`);
-            const found = extractSuppliersFromHtml(html, category, location, source);
-            addLog(`[Research] found ${found.length} contacts in this step.`);
+
+            // USE AI EXTRACTION INSTEAD OF REGEX
+            const found = await extractSuppliersWithAI(html, category, location, source, addLog);
+
+            addLog(`[Research] 🧠 AI identified ${found.length} valid wholesalers.`);
             results.push(...found);
         }
 
