@@ -75,6 +75,25 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'ignored', reason: 'No mobile found' })
         }
 
+        // 🛑 LOOP PREVENTION 1: Ignore messages that look like JSON (Outbound Echoes)
+        if (typeof messageText === 'string' && (messageText.trim().startsWith('{') || messageText.includes('"text":'))) {
+            console.warn('[WhatsApp Webhook] Ignored JSON-like message text (Outbound Echo Loop):', messageText);
+            return NextResponse.json({ status: 'ignored_loop_json' });
+        }
+
+        // 🛑 LOOP PREVENTION 2: Ignore messages FROM our own numbers
+        const OWN_NUMBERS = [
+            process.env.MSG91_INTEGRATED_NUMBER,
+            process.env.SUPPLIER_WA_NUMBER,
+            receiver,
+            "917557777998",
+            "917557777987"
+        ];
+        if (OWN_NUMBERS.includes(mobile)) {
+            console.warn('[WhatsApp Webhook] Ignored message FROM own number (Self-Loop):', mobile);
+            return NextResponse.json({ status: 'ignored_own_number' });
+        }
+
         if (!messageText) messageText = "Hi"
 
         // 0. MEMORY CACHE CHECK (Fastest)
