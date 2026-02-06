@@ -96,15 +96,50 @@ export async function POST(request: NextRequest) {
                         source: 'manual_detected',
                         wamid: outUuid,
                         originalText: body.text,
-                        integratedNumber: senderLine  // Store which line sent this
+                        integratedNumber: senderLine
                     }
                 });
 
                 return NextResponse.json({ status: 'registered_manual_takeover' });
             }
 
-            // Delivery reports (no text content) - ignore silently
-            console.log(`[WhatsApp Webhook] Ignoring outbound delivery report.`);
+            // DELIVERY REPORTS (No text content)
+            if (outUuid && msgStatus) {
+                console.log(`[WhatsApp Webhook] 📊 Status Report: ${msgStatus} for UUID: ${outUuid}`);
+
+                // Update original message status in DB
+                // We search by UUID in metadata (wamid or message_uuid)
+                const { data: originalMsg, error: findError } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id, metadata')
+                    .or(`metadata->>wamid.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid},metadata->>message_uuid.eq.${outUuid}`)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (originalMsg) {
+                    const finalStatus = (msgStatus === 'failed' || msgStatus === 'undelivered') ? 'failed' : msgStatus;
+                    const errorReason = body.reason || body.error || body.message || null;
+
+                    await supabaseAdmin.from('whatsapp_chats')
+                        .update({
+                            status: finalStatus,
+                            metadata: {
+                                ...originalMsg.metadata,
+                                delivery_status: msgStatus,
+                                delivery_report: body,
+                                delivery_error: errorReason,
+                                updated_at: new Date().toISOString()
+                            }
+                        })
+                        .eq('id', originalMsg.id);
+
+                    console.log(`[WhatsApp Webhook] ✅ Updated Message ${originalMsg.id} status to: ${finalStatus} (${errorReason || 'No error'})`);
+                    return NextResponse.json({ status: 'updated', id: originalMsg.id });
+                }
+            }
+
+            console.log(`[WhatsApp Webhook] Ignoring outbound report (No UUID or record found).`);
             return NextResponse.json({ status: 'ignored_outbound' });
         }
 
