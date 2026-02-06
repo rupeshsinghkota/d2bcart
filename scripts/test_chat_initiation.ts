@@ -36,14 +36,16 @@ async function testChatInitiation() {
             phone: payload.supplier.phone
         });
 
-        console.log("AI Message:", aiRes.message);
+        const cleanAiMsg = aiRes.message.replace(/\n+/g, ' ').trim();
+        const msgBody = `Hello, this is the sourcing team from D2BCart. ${cleanAiMsg} Regards, D2BCart Team`;
+        console.log("AI Message (Sanitized):", msgBody);
 
         const waRes = await sendWhatsAppMessage({
             mobile: payload.supplier.phone,
             templateName: 'd2b_ai_response',
-            integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777987",
+            integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
             components: {
-                body_1: { type: 'text', value: aiRes.message }
+                body_1: { type: 'text', value: msgBody }
             }
         });
 

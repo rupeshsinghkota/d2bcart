@@ -78,7 +78,9 @@ async function initiateSupplierChat(supplier: any) {
 
     if (aiRes.message && normalizedPhone) {
         const { sendWhatsAppMessage } = await import('@/lib/msg91');
-        const msgBody = `Hello, this is the sourcing team from D2BCart.\n\n${aiRes.message}\n\nRegards,\nD2BCart Team`;
+        // MSG91 templates do NOT support newlines in body variables
+        const cleanAiMsg = aiRes.message.replace(/\n+/g, ' ').trim();
+        const msgBody = `Hello, this is the sourcing team from D2BCart. ${cleanAiMsg} Regards, D2BCart Team`;
 
         const waRes = await sendWhatsAppMessage({
             mobile: normalizedPhone,
@@ -89,27 +91,27 @@ async function initiateSupplierChat(supplier: any) {
             }
         });
 
-        if (waRes.success) {
-            console.log(`[Debug Sourcing] Message sent to ${normalizedPhone}`);
-            // Log to whatsapp_chats for UI visibility
-            try {
-                const { error: logErr } = await supabase.from('whatsapp_chats').insert({
-                    mobile: normalizedPhone,
-                    message: aiRes.message,
-                    direction: 'outbound',
-                    status: 'sent',
-                    metadata: {
-                        ...waRes,
-                        source: 'sourcing_initiation',
-                        reasoning: aiRes.reasoning,
-                        template: 'd2b_ai_response'
-                    }
-                });
-                if (logErr) console.error("DB Log Error:", logErr);
-            } catch (err) {
-                console.error("Failed to log chat to DB:", err);
-            }
+        // ALWAYS log to whatsapp_chats for visibility, regardless of success
+        try {
+            await supabase.from('whatsapp_chats').insert({
+                mobile: normalizedPhone,
+                message: aiRes.message,
+                direction: 'outbound',
+                status: waRes.success ? 'sent' : 'failed',
+                metadata: {
+                    ...waRes,
+                    source: 'sourcing_initiation',
+                    reasoning: aiRes.reasoning,
+                    template: 'd2b_ai_response',
+                    error: waRes.success ? null : waRes.error
+                }
+            });
+        } catch (err) {
+            console.error("Failed to log chat to DB:", err);
+        }
 
+        if (waRes.success) {
+            console.log(`[Debug Sourcing] ✅ Message sent to ${normalizedPhone}`);
             if (!existing) {
                 await supabase.from('suppliers').insert({
                     name: name || `Supplier ${normalizedPhone.slice(-4)}`,
@@ -123,6 +125,8 @@ async function initiateSupplierChat(supplier: any) {
                     .update({ status: 'contacted', updated_at: new Date() })
                     .eq('id', existing.id);
             }
+        } else {
+            console.error(`[Debug Sourcing] ❌ Message failed for ${normalizedPhone}:`, waRes.error);
         }
     }
 
