@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSuppliers } from '@/lib/research';
 import { getSourcingAgentResponse } from '@/lib/sourcing_agent';
-import { sendWhatsAppSessionMessage } from '@/lib/msg91';
+import { sendWhatsAppMessage } from '@/lib/msg91';
 
 export async function POST(request: NextRequest) {
     try {
@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
         if (action === 'initiate_chat') {
             const { name, phone } = supplier;
             // Simulate initiating chat via Agent Logic
-            // In reality, we would send a template message FIRST.
-            // But for debug, let's see what the AI *would* say to start.
 
             const aiRes = await getSourcingAgentResponse({
                 message: "", // Empty to trigger greeting
@@ -28,15 +26,17 @@ export async function POST(request: NextRequest) {
                 supplierId: supplier.id
             });
 
-            // Simulate Sending
+            // Simulate Sending using TEMPLATE for first contact (Reliable)
             if (aiRes.message && phone) {
-                // UNCOMMENT TO ACTUALLY SEND IF YOU HAVE THE SUPPLIER NUMBER CONFIGURED
-
-                // const result = await sendWhatsAppSessionMessage({
-                //    mobile: phone,
-                //    message: aiRes.message,
-                //    integratedNumber: process.env.SUPPLIER_WA_NUMBER
-                // });
+                // Reuse d2b_ai_response template 
+                await sendWhatsAppMessage({
+                    mobile: phone,
+                    templateName: 'd2b_ai_response',
+                    integratedNumber: process.env.SUPPLIER_WA_NUMBER || "917557777998",
+                    components: {
+                        body_1: { type: 'text', value: aiRes.message }
+                    }
+                }).catch(e => console.error("Failed to send initial template:", e));
             }
 
             return NextResponse.json({
