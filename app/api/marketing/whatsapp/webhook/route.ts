@@ -300,9 +300,10 @@ export async function POST(request: NextRequest) {
 
         } else {
             // ============================================================
-            // EXISTING CUSTOMER SALES FLOW
+            // CUSTOMER SALES FLOW - Completely Separate from Supplier Flow
             // ============================================================
-            console.log(`[WhatsApp Webhook] 🔵 Routing to SALES ASSISTANT`);
+            const CUSTOMER_NUMBER = process.env.MSG91_INTEGRATED_NUMBER || "917557777987";
+            console.log(`[WhatsApp Webhook] 🔵 Routing to SALES ASSISTANT (Via: ${CUSTOMER_NUMBER})`);
 
             // 0.A CHECK FOR "UNKNOWN CONTEXT" (Reply to a message we didn't send?)
             // If the user replies to a specific message, Meta sends 'context'.
@@ -348,7 +349,8 @@ export async function POST(request: NextRequest) {
                     .eq('mobile', mobile)
                     .eq('direction', 'outbound')
                     .gt('created_at', fourHoursAgo)
-                    .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant')
+                    // Only block on ACTUAL MANUAL messages: source is null OR starts with 'manual'
+                    .or('metadata->>source.is.null,metadata->>source.ilike.manual%')
                     .limit(1);
 
                 if (recentHumanOutbound && recentHumanOutbound.length > 0) {
@@ -397,7 +399,8 @@ export async function POST(request: NextRequest) {
                 const result = await sendWhatsAppSessionMessage({
                     mobile: mobile,
                     message: cleanText,
-                    imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined
+                    imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined,
+                    integratedNumber: CUSTOMER_NUMBER // Explicit: Reply from Customer Line
                 })
                 await supabaseAdmin.from('whatsapp_chats').insert({
                     mobile,
