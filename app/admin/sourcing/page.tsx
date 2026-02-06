@@ -106,7 +106,30 @@ export default function SourcingDashboard() {
             }
         } catch (error) {
             addLog(`❌ Chat Error: ${error}`);
+            // Update local state to show failure
+            setDiscoveredSuppliers(prev =>
+                prev.map(s => s.phone === supplier.phone ? { ...s, status: 'failed' } : s)
+            );
         }
+    };
+
+    const handleRetryAllFailed = async () => {
+        const failedSuppliers = discoveredSuppliers.filter(s => s.status === 'failed');
+        if (failedSuppliers.length === 0) {
+            addLog("No failed suppliers to retry.");
+            return;
+        }
+
+        addLog(`[Retry-Loop] 🤖 Retrying ${failedSuppliers.length} failed contacts with 30s delay...`);
+        setIsLoading(true);
+
+        for (const s of failedSuppliers) {
+            await handleStartChat(s);
+            await new Promise(r => setTimeout(r, 30000));
+        }
+
+        addLog(`[Retry-Loop] ✅ Retry sequence completed.`);
+        setIsLoading(false);
     };
 
     return (
@@ -251,7 +274,18 @@ export default function SourcingDashboard() {
                             <>
                                 <h2 className="text-lg font-semibold mb-4 flex justify-between items-center">
                                     <span>Discovered Results</span>
-                                    <span className="text-sm font-normal text-gray-500">{discoveredSuppliers.length} found</span>
+                                    <div className="flex gap-2">
+                                        {discoveredSuppliers.some(s => s.status === 'failed') && (
+                                            <button
+                                                onClick={handleRetryAllFailed}
+                                                disabled={isLoading}
+                                                className="text-xs px-3 py-1 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                                            >
+                                                Retry All Failed
+                                            </button>
+                                        )}
+                                        <span className="text-sm font-normal text-gray-500">{discoveredSuppliers.length} found</span>
+                                    </div>
                                 </h2>
                                 {discoveredSuppliers.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -324,13 +358,15 @@ export default function SourcingDashboard() {
 
 function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void }) {
     const isContacted = supplier.status === 'contacted';
+    const isFailed = supplier.status === 'failed';
 
     return (
-        <div className={`flex flex-col sm:flex-row gap-4 p-4 border rounded-lg transition-colors ${isContacted ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}>
+        <div className={`flex flex-col sm:flex-row gap-4 p-4 border rounded-lg transition-colors ${isContacted ? 'bg-gray-50 opacity-75' : isFailed ? 'bg-red-50 border-red-100' : 'hover:bg-gray-50'}`}>
             <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-gray-900">{supplier.name}</h3>
                     {isContacted && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">CONTACTED</span>}
+                    {isFailed && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">FAILED</span>}
                 </div>
                 <p className="text-sm text-gray-600 flex items-center gap-2">
                     <span className="font-mono bg-gray-100 px-1 rounded">{supplier.phone}</span>
@@ -343,10 +379,10 @@ function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void 
                 <button
                     onClick={onChat}
                     disabled={isContacted}
-                    className={`px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 ${isContacted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 ${isContacted ? 'bg-gray-400 cursor-not-allowed' : isFailed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                     <MessageSquare className="w-4 h-4" />
-                    {isContacted ? 'Message Sent' : 'Contact'}
+                    {isContacted ? 'Message Sent' : isFailed ? 'Retry Contact' : 'Contact'}
                 </button>
             </div>
         </div>

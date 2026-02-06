@@ -106,6 +106,21 @@ async function initiateSupplierChat(supplier: any, customContext?: string) {
             }
         } else {
             console.error(`[Debug Sourcing] ❌ Message failed for ${normalizedPhone}:`, waRes.error);
+            // Mark as failed so we can retry from dashboard
+            if (!existing) {
+                await supabase.from('suppliers').insert({
+                    name: name || `Supplier ${normalizedPhone.slice(-4)}`,
+                    phone: normalizedPhone,
+                    status: 'failed',
+                    source: 'admin_dashboard',
+                    updated_at: new Date(),
+                    notes: `Failed: ${JSON.stringify(waRes.error)}`
+                });
+            } else {
+                await supabase.from('suppliers')
+                    .update({ status: 'failed', updated_at: new Date() })
+                    .eq('id', existing.id);
+            }
         }
     }
 
