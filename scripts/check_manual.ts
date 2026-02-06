@@ -9,42 +9,48 @@ const supabase = createClient(
 );
 
 async function check() {
-    console.log('\n=== DEBUG LOGS - Last 10 (checking direction:1 events) ===\n');
+    // Check most recent debug logs
+    console.log('\n=== Recent DEBUG logs (last 5 mins) ===\n');
+
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
     const { data } = await supabase
         .from('whatsapp_chats')
         .select('message, created_at, metadata')
         .eq('mobile', '000_DEBUG_RAW')
+        .gt('created_at', fiveMinAgo)
         .order('created_at', { ascending: false })
         .limit(10);
+
+    if (!data || data.length === 0) {
+        console.log('No debug logs in last 5 mins');
+        return;
+    }
 
     data?.forEach((msg, i) => {
         const time = new Date(msg.created_at).toLocaleTimeString();
         const payload = msg.metadata?.payload;
         const dir = payload?.direction;
-        console.log(`${i + 1}. [${time}] dir:${dir} | text:"${payload?.text?.slice(0, 20) || '[no text]'}" | mobile:${payload?.customerNumber || payload?.mobile}`);
+        const text = payload?.text?.slice(0, 15) || payload?.body?.slice(0, 15) || '[no text]';
+        console.log(`${i + 1}. [${time}] dir:${dir} | "${text}" | mobile:${payload?.customerNumber?.slice(-4) || 'N/A'}`);
     });
 
-    // Now check - when we get direction:1, is there a recent API message?
-    console.log('\n=== Testing: Recent API messages in last 30s ===\n');
-
-    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
-    const { data: recentApi } = await supabase
+    // Check for ANY manual_detected entries
+    console.log('\n=== Any manual_detected entries (ever)? ===\n');
+    const { data: manuals } = await supabase
         .from('whatsapp_chats')
-        .select('message, created_at, metadata')
-        .eq('mobile', '918651567003')
-        .eq('direction', 'outbound')
-        .gt('created_at', thirtySecondsAgo)
-        .not('metadata->>source', 'ilike', 'manual%')
-        .limit(5);
+        .select('message, created_at, metadata, mobile')
+        .ilike('metadata->>source', 'manual%')
+        .order('created_at', { ascending: false })
+        .limit(3);
 
-    if (recentApi && recentApi.length > 0) {
-        console.log(`Found ${recentApi.length} API messages in last 30s:`);
-        recentApi.forEach(m => {
-            console.log(`  - [${new Date(m.created_at).toLocaleTimeString()}] ${m.metadata?.source}: "${m.message?.slice(0, 30)}..."`);
+    if (manuals && manuals.length > 0) {
+        console.log(`Found ${manuals.length} manual entries!`);
+        manuals.forEach(m => {
+            console.log(`  - [${new Date(m.created_at).toLocaleTimeString()}] ${m.mobile}: ${m.metadata?.source}`);
         });
     } else {
-        console.log('No API messages in last 30s - manual detection SHOULD trigger');
+        console.log('No manual_detected entries found ever');
     }
 }
 
