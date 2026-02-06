@@ -202,15 +202,15 @@ export async function POST(request: NextRequest) {
             // ============================================================
             console.log(`[WhatsApp Webhook] 🔵 Routing to SALES ASSISTANT`);
 
-            // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 2h)
+            // 0.B CHECK FOR HUMAN TAKEOVER (Pause AI if manual message sent in last 4h)
             try {
-                const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+                const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
                 const { data: recentHumanOutbound } = await supabaseAdmin
                     .from('whatsapp_chats')
                     .select('id, message, metadata')
                     .eq('mobile', mobile)
                     .eq('direction', 'outbound')
-                    .gt('created_at', twoHoursAgo)
+                    .gt('created_at', fourHoursAgo)
                     .or('metadata->>source.is.null,metadata->>source.neq.ai_assistant')
                     .limit(1);
 
