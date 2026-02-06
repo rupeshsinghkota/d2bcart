@@ -112,6 +112,42 @@ export async function POST(request: NextRequest) {
         }
 
         // ============================================================
+        // 0.C CHECK FOR OUTBOUND SENDER (Did the User send this manually?)
+        // ============================================================
+        // If we receive an 'outbound' status report, check if we sent it via API.
+        // If NOT in DB -> It's a manual message from App -> Trigger Takeover.
+        if (body.status === 'sent' || body.message_status === 'sent') {
+            const outUuid = body.message_uuid || body.uuid || body.id;
+            if (outUuid) {
+                const { data: knownOutbound } = await supabaseAdmin
+                    .from('whatsapp_chats')
+                    .select('id')
+                    .or(`metadata->>messageId.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid}`)
+                    .single();
+
+                if (!knownOutbound) {
+                    console.log(`[WhatsApp Webhook] 🛑 Manual Outbound Detected (ID: ${outUuid}). Pausing AI.`);
+
+                    // Get the destination number from various fields
+                    const outMobile = body.mobile || body.recipient_id || body.customer_number || "";
+
+                    if (outMobile) {
+                        await supabaseAdmin.from('whatsapp_chats').insert({
+                            mobile: outMobile,
+                            message: "[Manual Outbound Message Detected]",
+                            direction: 'outbound',
+                            status: 'sent',
+                            metadata: { source: 'manual_app_outbound_webhook', message_id: outUuid, raw: body }
+                        });
+                        return NextResponse.json({ status: 'registered_manual_takeover' });
+                    }
+                } else {
+                    return NextResponse.json({ status: 'ignored_api_outbound' });
+                }
+            }
+        }
+
+        // ============================================================
         // ROUTING LOGIC: SUPPLIER vs CUSTOMER
         // ============================================================
         // Check if the message was sent to the SUPPLIER LINE
