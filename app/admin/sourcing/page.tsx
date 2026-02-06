@@ -43,6 +43,16 @@ export default function SourcingDashboard() {
 
     const [autoContact, setAutoContact] = useState(false);
 
+    // Human-like delay helper with countdown
+    const waitWithLog = async (seconds: number, nextSupplierName: string) => {
+        for (let i = seconds; i > 0; i--) {
+            if (i % 5 === 0 || i <= 5) {
+                addLog(`[Safety-Wait] ⏳ ${i}s until contacting ${nextSupplierName}...`);
+            }
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    };
+
     const handleSearch = async (location: string = "India") => {
         if (!category) return;
         setIsLoading(true);
@@ -66,11 +76,17 @@ export default function SourcingDashboard() {
                 addLog(`Found ${data.suppliers.length} potential suppliers.`);
 
                 if (autoContact) {
-                    addLog(`[Auto-Pilot] 🤖 Starting outreach with 30s safety delay...`);
-                    for (const s of data.suppliers) {
+                    addLog(`[Auto-Pilot] 🤖 Sequence started for ${data.suppliers.length} suppliers.`);
+                    for (let i = 0; i < data.suppliers.length; i++) {
+                        const s = data.suppliers[i];
                         await handleStartChat(s);
-                        // Increase delay to 30s to avoid Meta blocking (Error 131026)
-                        await new Promise(r => setTimeout(r, 30000));
+
+                        // If not the last one, wait with randomized delay
+                        if (i < data.suppliers.length - 1) {
+                            const nextS = data.suppliers[i + 1];
+                            const randomDelay = Math.floor(Math.random() * (45 - 30 + 1)) + 30; // 30-45 seconds
+                            await waitWithLog(randomDelay, nextS.name);
+                        }
                     }
                     addLog(`[Auto-Pilot] ✅ Sequence completed.`);
                 }
@@ -120,12 +136,18 @@ export default function SourcingDashboard() {
             return;
         }
 
-        addLog(`[Retry-Loop] 🤖 Retrying ${failedSuppliers.length} failed contacts with 30s delay...`);
+        addLog(`[Retry-Loop] 🤖 Retrying ${failedSuppliers.length} failed contacts...`);
         setIsLoading(true);
 
-        for (const s of failedSuppliers) {
+        for (let i = 0; i < failedSuppliers.length; i++) {
+            const s = failedSuppliers[i];
             await handleStartChat(s);
-            await new Promise(r => setTimeout(r, 30000));
+
+            if (i < failedSuppliers.length - 1) {
+                const nextS = failedSuppliers[i + 1];
+                const randomDelay = Math.floor(Math.random() * (45 - 30 + 1)) + 30;
+                await waitWithLog(randomDelay, nextS.name);
+            }
         }
 
         addLog(`[Retry-Loop] ✅ Retry sequence completed.`);
