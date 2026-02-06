@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function initiateSupplierChat(supplier: any) {
-    const { name, phone } = supplier;
+    const { name, phone, description } = supplier;
     const normalizedPhone = phone.replace(/[^0-9]/g, '');
 
     const supabase = createClient(
@@ -72,7 +72,8 @@ async function initiateSupplierChat(supplier: any) {
     const aiRes = await getSourcingAgentResponse({
         message: "",
         phone: normalizedPhone,
-        supplierId: supplier.id
+        supplierId: supplier.id,
+        description: description // NEW: Pass discovered description
     });
 
     if (aiRes.message && normalizedPhone) {
@@ -89,17 +90,24 @@ async function initiateSupplierChat(supplier: any) {
         });
 
         if (waRes.success) {
+            console.log(`[Debug Sourcing] Message sent to ${normalizedPhone}`);
             // Log to whatsapp_chats for UI visibility
             try {
-                await supabase.from('whatsapp_chats').insert({
+                const { error: logErr } = await supabase.from('whatsapp_chats').insert({
                     mobile: normalizedPhone,
                     message: aiRes.message,
                     direction: 'outbound',
                     status: 'sent',
-                    metadata: { ...waRes, source: 'sourcing_initiation', reasoning: aiRes.reasoning }
+                    metadata: {
+                        ...waRes,
+                        source: 'sourcing_initiation',
+                        reasoning: aiRes.reasoning,
+                        template: 'd2b_ai_response'
+                    }
                 });
-            } catch (logErr) {
-                console.error("Failed to log chat to DB:", logErr);
+                if (logErr) console.error("DB Log Error:", logErr);
+            } catch (err) {
+                console.error("Failed to log chat to DB:", err);
             }
 
             if (!existing) {

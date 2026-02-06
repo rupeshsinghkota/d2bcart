@@ -84,9 +84,18 @@ export default function SourcingDashboard() {
                 body: JSON.stringify({ action: 'initiate_chat', supplier })
             });
             const data = await res.json();
-            addLog(`Chat Result: ${data.message || 'Sent'}`);
+
+            if (data.success) {
+                addLog(`✅ SUCCESS: ${data.message.slice(0, 50)}...`);
+                // Update local status in discovered results
+                setDiscoveredSuppliers(prev =>
+                    prev.map(s => s.phone === supplier.phone ? { ...s, status: 'contacted' } : s)
+                );
+            } else {
+                addLog(`⚠️ ALERT: ${data.message}`);
+            }
         } catch (error) {
-            addLog(`Chat Error: ${error}`);
+            addLog(`❌ Chat Error: ${error}`);
         }
     };
 
@@ -278,10 +287,15 @@ export default function SourcingDashboard() {
 }
 
 function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void }) {
+    const isContacted = supplier.status === 'contacted';
+
     return (
-        <div className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+        <div className={`flex flex-col sm:flex-row gap-4 p-4 border rounded-lg transition-colors ${isContacted ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}>
             <div className="flex-1">
-                <h3 className="font-bold text-gray-900">{supplier.name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-gray-900">{supplier.name}</h3>
+                    {isContacted && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">CONTACTED</span>}
+                </div>
                 <p className="text-sm text-gray-600 flex items-center gap-2">
                     <span className="font-mono bg-gray-100 px-1 rounded">{supplier.phone}</span>
                     <span className="text-gray-400">•</span>
@@ -292,10 +306,11 @@ function SupplierCard({ supplier, onChat }: { supplier: any, onChat: () => void 
             <div className="flex flex-col gap-2 justify-center">
                 <button
                     onClick={onChat}
-                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-2"
+                    disabled={isContacted}
+                    className={`px-4 py-2 text-white text-sm rounded-lg flex items-center gap-2 ${isContacted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                     <MessageSquare className="w-4 h-4" />
-                    Contact
+                    {isContacted ? 'Message Sent' : 'Contact'}
                 </button>
             </div>
         </div>

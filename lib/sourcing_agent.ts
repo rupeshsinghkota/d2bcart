@@ -122,10 +122,11 @@ function calculateDealScore(supplier: any): number {
 export async function getSourcingAgentResponse(params: {
     message: string,
     phone: string,
-    imageUrl?: string, // NEW: Image URL if message contains image
-    supplierId?: string
+    imageUrl?: string,
+    supplierId?: string,
+    description?: string // NEW: Discovered description
 }): Promise<SourcingResponse> {
-    const { message, phone, imageUrl, supplierId } = params;
+    const { message, phone, imageUrl, supplierId, description } = params;
 
     // 1. Gather Enhanced Context
     const supplier = await getSupplierContext(phone);
@@ -193,6 +194,7 @@ Extracted ${prices.length} prices: ${prices.slice(0, 5).map(p => `${p.product}: 
     let contextStr = `SUPPLIER INFO:
 - Name: ${supplier?.name || 'Unknown'}
 - Category: ${category}
+- Description: ${description || supplier?.description || 'Mobile accessories wholesaler'}
 - Status: ${supplier?.status || 'new'}
 - Verified: ${supplier?.is_verified ? 'Yes ✅' : 'No ❌'}
 - Deal Score: ${supplier?.deal_score || 0}/100
@@ -221,7 +223,12 @@ CONVERSATION HISTORY:
 ${history.join('\n')}
 
 YOUR OBJECTIVES (IN ORDER):
-1. FIRST CONTACT: Introduce as "Sourcing Team from D2BCart" and ask for catalog
+1. FIRST CONTACT (VERY IMPORTANT): 
+   - Introduce yourself as the "Sourcing Team from D2BCart".
+   - Use the supplier's name if available.
+   - Mention their specific specialty from the "Description" provided (e.g., "I see you are a major manufacturer of tempered glass in Karol Bagh").
+   - Be hyper-personalized to show you've done your research.
+   - Ask for their latest wholesale catalog/price list.
 2. RECEIVED IMAGES: 
    - If visiting card/GST → Thank them and ask for product catalog
    - If product images → Ask for WHOLESALE PRICE and MOQ
