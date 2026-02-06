@@ -76,7 +76,6 @@ async function generateSearchQueries(category: string, location: string, addLog:
         ];
     }
 }
-}
 
 // Helper to perform a robust fetch with browser headers
 async function safeFetch(url: string, referer: string = 'https://www.google.com/'): Promise<string | null> {
