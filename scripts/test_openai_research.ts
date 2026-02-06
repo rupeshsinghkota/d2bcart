@@ -6,8 +6,8 @@ import { findSuppliers } from '../lib/research_openai';
 async function testOpenAIResearch() {
     console.log("🔍 Testing OpenAI Supplier Research...");
 
-    const category = "mobile accessories";
-    const location = "Delhi";
+    const category = process.argv[2] || "mobile accessories";
+    const location = process.argv[3] || "Delhi";
 
     console.log(`Searching for ${category} in ${location}...`);
 
