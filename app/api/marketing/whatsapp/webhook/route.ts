@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
                 const { data: originalMsg, error: findError } = await supabaseAdmin
                     .from('whatsapp_chats')
                     .select('id, metadata')
-                    .or(`metadata->>wamid.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid},metadata->>message_uuid.eq.${outUuid}`)
+                    .or(`metadata->>wamid.eq.${outUuid},metadata->data->>message_uuid.eq.${outUuid},metadata->>message_uuid.eq.${outUuid},metadata->data->data->>message_uuid.eq.${outUuid}`)
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .single();
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         // 0. MEMORY CACHE CHECK (Fastest)
         const cacheKey = `${mobile}:${messageText}`;
         const now = Date.now();
-        if (processedCache.has(cacheKey) && (now - processedCache.get(cacheKey)!) < 60000) {
+        if (processedCache.has(cacheKey) && (now - processedCache.get(cacheKey)!) < 300000) { // 5 minutes
             console.warn('[WhatsApp Route] Memory Cache Hit - Dropping Duplicate');
             return NextResponse.json({ status: 'ignored_memory' });
         }
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
                 .eq('mobile', mobile)
                 .eq('message', messageText)
                 .eq('direction', 'inbound')
-                .gt('created_at', new Date(Date.now() - 60000).toISOString())
+                .gt('created_at', new Date(Date.now() - 300000).toISOString()) // 5 minutes
                 .limit(1)
                 .single()
 
@@ -480,25 +480,45 @@ export async function POST(request: NextRequest) {
                     console.error('Escalation failed:', e);
                 }
             }
-
             const results = []
-            for (const msg of aiMessages) {
-                const cleanText = msg.text.trim()
+            // CONSOLIDATE: Send all text messages as one, and images separately
+            const textMessages = aiMessages.filter(m => m.type === 'text')
+            const imageMessages = aiMessages.filter(m => m.type === 'image')
+
+            // 1. Send Consolidated Text
+            if (textMessages.length > 0) {
+                const combinedText = textMessages.map(m => m.text.trim()).join('\n\n')
                 const result = await sendWhatsAppSessionMessage({
                     mobile: mobile,
-                    message: cleanText,
-                    imageUrl: (msg.type === 'image' && msg.imageUrl) ? msg.imageUrl : undefined,
-                    integratedNumber: CUSTOMER_NUMBER // Explicit: Reply from Customer Line
+                    message: combinedText,
+                    integratedNumber: CUSTOMER_NUMBER
                 })
                 await supabaseAdmin.from('whatsapp_chats').insert({
                     mobile,
-                    message: cleanText,
+                    message: combinedText,
+                    direction: 'outbound',
+                    status: result.success ? 'sent' : 'failed',
+                    metadata: { ...result, source: 'ai_assistant', consolidated: true }
+                })
+                results.push({ type: 'text', result })
+            }
+
+            // 2. Send Images Separately
+            for (const msg of imageMessages) {
+                const result = await sendWhatsAppSessionMessage({
+                    mobile: mobile,
+                    message: msg.text.trim(),
+                    imageUrl: msg.imageUrl,
+                    integratedNumber: CUSTOMER_NUMBER
+                })
+                await supabaseAdmin.from('whatsapp_chats').insert({
+                    mobile,
+                    message: msg.text.trim(),
                     direction: 'outbound',
                     status: result.success ? 'sent' : 'failed',
                     metadata: { ...result, source: 'ai_assistant' }
                 })
-
-                results.push({ type: msg.type, result })
+                results.push({ type: 'image', result })
                 await new Promise(r => setTimeout(r, 500))
             }
 

@@ -65,7 +65,9 @@ export async function POST(req: Request) {
 
             if (attemptError) {
                 console.error('Failed to save payment attempt:', attemptError)
-                // We don't block the user, but we log it. Webhook won't work for this order if DB fails.
+                // CRITICAL: If we can't save the tracking attempt, we MUST NOT allow the payment to proceed.
+                // Otherwise, we risk a "Ghost Order" where money is deducted but we have no record to verify against.
+                return NextResponse.json({ error: 'Order initialization failed. Please try again.' }, { status: 500 })
             }
         }
 

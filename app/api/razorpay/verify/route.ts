@@ -42,17 +42,88 @@ export async function POST(req: Request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        console.log(`[Verify] Processing payload for User: ${user_id}, CartItems: ${cart_payload?.length}`)
+        // 1. Idempotency Check: Check if orders already exist for this payment_id
+        // This handles cases where verify is called multiple times or webhook already processed it.
+        const { data: existingOrders } = await supabaseAdmin
+            .from('orders')
+            .select('id')
+            .eq('payment_id', razorpay_payment_id)
+            .limit(1)
+
+        if (existingOrders && existingOrders.length > 0) {
+            console.log(`[Verify] Orders for payment ${razorpay_payment_id} already exist. Skipping creation.`)
+            return NextResponse.json({ success: true, message: 'Already processed' })
+        }
+
+        // 2. Lock / Fetch Context from Payment Attempt
+        // We try to lock the attempt.
+        let processingAttempt: any = null
+
+        const { data: lockResult, error: lockError } = await supabaseAdmin
+            .from('payment_attempts')
+            .update({ status: 'processing' })
+            .eq('razorpay_order_id', razorpay_order_id)
+            .eq('status', 'pending')
+            .select()
+
+        if (lockResult && lockResult.length > 0) {
+            processingAttempt = lockResult[0]
+        } else {
+            // Lock failed. 
+            // Scenario A: It's already 'completed' or 'processing' -> Idempotency check above should have caught 'completed' via orders check, but maybe it's stuck in processing?
+            // Scenario B: The record DOES NOT EXIST (The issue we are fixing).
+
+            // Let's check if the record exists at all
+            const { data: attemptCheck } = await supabaseAdmin
+                .from('payment_attempts')
+                .select('status')
+                .eq('razorpay_order_id', razorpay_order_id)
+                .single()
+
+            if (attemptCheck) {
+                // Record exists but status is not pending.
+                console.log(`[Verify] Payment attempt exists but status is ${attemptCheck.status}. Assuming processed.`)
+                return NextResponse.json({ success: true, message: 'Already processed' })
+            } else {
+                // Scenario B confirmed: Record missing.
+                console.warn(`[Verify] CRITICAL: Payment attempt record MISSING for order ${razorpay_order_id}. Attempting recovery from payload.`)
+
+                // If we have the payload from the frontend, we can proceed!
+                if (cart_payload && user_id && payment_breakdown && user_address) {
+                    // RECOVERY MODE
+                    processingAttempt = {
+                        user_id,
+                        cart_payload,
+                        payment_breakdown,
+                        shipping_address: user_address
+                    }
+                } else {
+                    console.error('[Verify] Recovery failed. Payload missing.')
+                    return NextResponse.json({ error: 'Order context missing and recovery failed' }, { status: 400 })
+                }
+            }
+        }
+
+        // 3. Create Orders (Logic extracted mostly from previous code, but mapped to processingAttempt)
+        const current_user_id = processingAttempt.user_id
+        const current_cart_payload = processingAttempt.cart_payload
+        const current_payment_breakdown = processingAttempt.payment_breakdown
+        const current_shipping_address = processingAttempt.shipping_address
+
+        // Validate payload again just in case
+        if (!current_cart_payload || !current_user_id) {
+            return NextResponse.json({ error: 'Invalid order data' }, { status: 400 })
+        }
+
+
+        console.log(`[Verify] Processing payload for User: ${current_user_id}, CartItems: ${current_cart_payload?.length}`)
 
         const manufacturerOrderNumbers = new Map<string, string>()
         const formattedOrders = []
 
-        // Re-calculate some totals for safety or rely on breakdown?
-        // Using breakdown for distribution logic
-        const { total_product_amount, remaining_balance } = payment_breakdown
+        const { total_product_amount, remaining_balance } = current_payment_breakdown
 
-        for (const item of cart_payload) {
-            // ... existing loop ...
+        for (const item of current_cart_payload) {
             const mfId = item.manufacturer_id
 
             if (!manufacturerOrderNumbers.has(mfId)) {
@@ -74,13 +145,19 @@ export async function POST(req: Request) {
             const itemPendingRatio = itemTotal / total_product_amount
             const itemPendingAmount = Math.round(remaining_balance * itemPendingRatio)
 
-            const paidAmount = payment_option === 'advance'
+            // Determine payment option from breakdown (if balance > 0, it's advance)
+            // We can utilize the 'payment_option' passed from frontend if available, or infer it.
+            // Using inferred for safety.
+            const isAdvance = remaining_balance > 0
+            const computedPaymentOption = isAdvance ? 'advance' : 'full'
+
+            const paidAmount = computedPaymentOption === 'advance'
                 ? Math.ceil((itemTotal * ADVANCE_PAYMENT_PERCENT / 100)) + shipCost
                 : itemTotal + shipCost
 
             formattedOrders.push({
                 order_number: orderNumber,
-                retailer_id: user_id,
+                retailer_id: current_user_id,
                 manufacturer_id: mfId,
                 product_id: item.product_id,
                 quantity: item.quantity,
@@ -91,11 +168,11 @@ export async function POST(req: Request) {
                 manufacturer_payout: manufacturerPayout,
                 platform_profit: platformProfit + (shipCost * 0.1),
                 status: 'paid', // Immediately PAID
-                shipping_address: `${user_address.address}, ${user_address.city}, ${user_address.state} - ${user_address.pincode}`,
+                shipping_address: `${current_shipping_address.address}, ${current_shipping_address.city}, ${current_shipping_address.state} - ${current_shipping_address.pincode}`,
                 shipping_cost: shipCost,
                 courier_name: item.courier_name,
                 courier_company_id: item.courier_company_id,
-                payment_type: payment_option,
+                payment_type: computedPaymentOption,
                 paid_amount: paidAmount,
                 pending_amount: itemPendingAmount,
                 payment_id: razorpay_payment_id,
@@ -114,37 +191,34 @@ export async function POST(req: Request) {
             console.error('[Verify] No orders formatted. Payload empty?')
             return NextResponse.json({ error: 'No orders created from payload' }, { status: 400 })
         }
-        // Mark Attempt as Processing (Atomic Lock)
-        const { data: lockResult, error: lockError } = await supabaseAdmin
-            .from('payment_attempts')
-            .update({ status: 'processing' })
-            .eq('razorpay_order_id', razorpay_order_id)
-            .eq('status', 'pending')
-            .select()
 
-        if (lockError || !lockResult || lockResult.length === 0) {
-            console.log(`[Verify] Order ${razorpay_order_id} already being processed or completed. Skipping order creation.`)
-            return NextResponse.json({ success: true, message: 'Already processed' })
-        }
+        // However, if lockResult was valid, we might want to use ITs data? 
+        // Actually, the payload from frontend (cart_payload) is the source of truth for the verify call too.
+        // The attempt table was just for webhook recovery. 
+        // So we can safely rely on the BODY params `cart_payload`, `user_id` etc.
 
         const { error } = await supabaseAdmin.from('orders').insert(formattedOrders)
         if (error) {
             console.error('[Verify] DB Insert Error:', error)
-            // Rollback lock if insert fails so webhook or retry can pick it up
-            await supabaseAdmin.from('payment_attempts').update({ status: 'pending' }).eq('razorpay_order_id', razorpay_order_id)
+            // Rollback lock if insert fails so webhook or retry can pick it up (ONLY if we managed to lock it)
+            if (lockResult && lockResult.length > 0) {
+                await supabaseAdmin.from('payment_attempts').update({ status: 'pending' }).eq('razorpay_order_id', razorpay_order_id)
+            }
             throw error
         }
 
         // ... tracking and notifications ...
 
-        // Mark Attempt as Completed
-        try {
-            await supabaseAdmin
-                .from('payment_attempts')
-                .update({ status: 'completed', payment_id: razorpay_payment_id })
-                .eq('razorpay_order_id', razorpay_order_id)
-        } catch (updateError) {
-            console.error('[Verify] Failed to update payment_attempt status:', updateError)
+        // Mark Attempt as Completed (only if we had a valid lock)
+        if (lockResult && lockResult.length > 0) {
+            try {
+                await supabaseAdmin
+                    .from('payment_attempts')
+                    .update({ status: 'completed', payment_id: razorpay_payment_id })
+                    .eq('razorpay_order_id', razorpay_order_id)
+            } catch (updateError) {
+                console.error('[Verify] Failed to update payment_attempt status:', updateError)
+            }
         }
 
         return NextResponse.json({ success: true })

@@ -45,7 +45,19 @@ export async function POST(req: Request) {
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
             )
 
-            // 1. Check & Lock Attempt (Atomic)
+            // 1. Idempotency Check: Check if orders already exist (Verify/Frontend might have won the race)
+            const { data: existingOrders } = await supabaseAdmin
+                .from('orders')
+                .select('id')
+                .eq('payment_id', razorpay_payment_id) // Or use razorpay_order_id if payment_id structure varies
+                .limit(1)
+
+            if (existingOrders && existingOrders.length > 0) {
+                console.log(`[Webhook] Orders for payment ${razorpay_payment_id} already exist. Skipping.`)
+                return NextResponse.json({ message: 'Already processed' })
+            }
+
+            // 2. Check & Lock Attempt (Atomic)
             const { data: lockResult, error: lockError } = await supabaseAdmin
                 .from('payment_attempts')
                 .update({ status: 'processing' })
@@ -54,8 +66,11 @@ export async function POST(req: Request) {
                 .select()
 
             if (lockError || !lockResult || lockResult.length === 0) {
-                console.log(`[Webhook] Order ${razorpay_order_id} already being processed or completed. Skipping.`)
-                return NextResponse.json({ message: 'Already processed' })
+                // If lock failed, it COULD mean it's processing, completed, OR MISSING.
+                // Since Webhook cannot "Recover" payload (it doesn't have it), we effectively have to stop.
+                // We assume Verify handled it or it's genuinely missing (which is bad, but nothing webhook can do).
+                console.log(`[Webhook] Order ${razorpay_order_id} already being processed, completed, or missing attempt. Skipping.`)
+                return NextResponse.json({ message: 'Already processed or missing context' })
             }
 
             const attempt = lockResult[0]
