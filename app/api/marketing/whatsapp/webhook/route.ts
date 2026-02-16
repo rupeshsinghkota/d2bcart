@@ -175,6 +175,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'ignored', reason: 'No mobile found' })
         }
 
+        // 🛑 MULTI-TENANT FILTER: Ignore messages NOT meant for D2BCart
+        // D2BCart Number: 917557777987 (and Supplier: 917557777998)
+        // If receiver is explicitly the AbcToyz number, IGNORE IT.
+        const ABCTOYZ_NUMBER = "918239269217";
+        if (receiver === ABCTOYZ_NUMBER) {
+            console.log(`[WhatsApp Webhook] 🛑 Ignoring message for AbcToyz (${receiver}). I am D2BCart.`);
+            return NextResponse.json({ status: 'ignored_cross_tenant_abctoyz' });
+        }
+
+
         // 🛑 LOOP PREVENTION 1: Ignore messages that look like JSON (Outbound Echoes)
         if (typeof messageText === 'string' && (messageText.trim().startsWith('{') || messageText.includes('"text":'))) {
             console.warn('[WhatsApp Webhook] Ignored JSON-like message text (Outbound Echo Loop):', messageText);
