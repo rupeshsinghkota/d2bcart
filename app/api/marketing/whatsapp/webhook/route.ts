@@ -185,14 +185,35 @@ export async function POST(request: NextRequest) {
             console.log(`[WhatsApp Webhook] 🔀 Forwarding AbcToyz message to their own webhook...`);
 
             try {
-                // Background fetch so we don't delay MSG91
-                fetch('https://abctoyz.in/api/webhooks/whatsapp', {
+                // Use await to ensure it completes, and log the result
+                const forwardRes = await fetch('https://abctoyz.in/api/webhooks/whatsapp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: rawBody
-                }).catch(e => console.error('Forwarding failed:', e));
-            } catch (e) {
+                });
+
+                if (!forwardRes.ok) {
+                    const errorText = await forwardRes.text();
+                    console.error(`[WhatsApp Webhook] Forwarding failed with status ${forwardRes.status}: ${errorText}`);
+                    // Log failure to DB for inspection
+                    await supabaseAdmin.from('whatsapp_chats').insert({
+                        mobile: '000_FORWARD_FAIL',
+                        message: `Failed to forward to AbcToyz: ${forwardRes.status} | ${errorText.slice(0, 100)}`,
+                        direction: 'inbound',
+                        metadata: { source: 'forwarding_error', payload: body }
+                    });
+                } else {
+                    console.log(`[WhatsApp Webhook] ✅ Forwarding successful!`);
+                }
+
+            } catch (e: any) {
                 console.error('Forwarding logic error:', e);
+                await supabaseAdmin.from('whatsapp_chats').insert({
+                    mobile: '000_FORWARD_ERROR',
+                    message: `Exception forwarding to AbcToyz: ${e.message}`,
+                    direction: 'inbound',
+                    metadata: { source: 'forwarding_exception', error: e }
+                });
             }
 
             return NextResponse.json({ status: 'forwarded_to_abctoyz' });
