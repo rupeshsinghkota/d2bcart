@@ -175,15 +175,27 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'ignored', reason: 'No mobile found' })
         }
 
-        // 🛑 MULTI-TENANT FILTER: Ignore messages NOT meant for D2BCart
+        // 🛑 MULTI-TENANT FILTER: Forward messages meant for AbcToyz
         // D2BCart Number: 917557777987 (and Supplier: 917557777998)
-        // If receiver is explicitly the AbcToyz number, IGNORE IT.
+        // AbcToyz Number: 918239269217
         const ABCTOYZ_CORE = "8239269217";
         const cleanReceiver = typeof receiver === 'string' ? receiver.replace(/\D/g, "") : "";
 
         if (cleanReceiver && cleanReceiver.includes(ABCTOYZ_CORE)) {
-            console.log(`[WhatsApp Webhook] 🛑 Ignoring message for AbcToyz (${receiver}). I am D2BCart.`);
-            return NextResponse.json({ status: 'ignored_cross_tenant_abctoyz' });
+            console.log(`[WhatsApp Webhook] 🔀 Forwarding AbcToyz message to their own webhook...`);
+
+            try {
+                // Background fetch so we don't delay MSG91
+                fetch('https://abctoyz.in/api/webhooks/whatsapp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: rawBody
+                }).catch(e => console.error('Forwarding failed:', e));
+            } catch (e) {
+                console.error('Forwarding logic error:', e);
+            }
+
+            return NextResponse.json({ status: 'forwarded_to_abctoyz' });
         }
 
 
