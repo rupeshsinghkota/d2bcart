@@ -297,6 +297,10 @@ export async function POST(request: NextRequest) {
 
         if (isSupplierFlow) {
             console.log(`[WhatsApp Webhook] 🟢 Routing to SOURCING AGENT (Receiver: ${receiver})`);
+            
+            // IMMEDIATELY STOP AI REPLY FROM +917557777998 AS REQUESTED
+            console.log(`[WhatsApp Webhook] 🛑 AI Reply manually disabled for 7557777998.`);
+            return NextResponse.json({ status: 'ai_disabled_for_supplier_number' });
 
             // AUTO-SAVE LOGIC: If this is a supplier replying, ensure they are in our DB
             try {
@@ -316,11 +320,11 @@ export async function POST(request: NextRequest) {
                         notes: 'Auto-saved on first reply'
                     });
                     console.log(`[WhatsApp Webhook] Auto-saved new supplier: ${mobile}`);
-                } else if (existingSup.status === 'discovered') {
+                } else if (existingSup?.status === 'discovered') {
                     // Update status to responded
                     await supabaseAdmin.from('suppliers')
                         .update({ status: 'responded', updated_at: new Date() })
-                        .eq('id', existingSup.id);
+                        .eq('id', existingSup?.id);
                 }
             } catch (err) {
                 console.error('[WhatsApp Webhook] Failed to auto-save supplier:', err);
@@ -346,7 +350,7 @@ export async function POST(request: NextRequest) {
                     const msgLine = msg.metadata?.integratedNumber || '';
                     // Only match if explicit 998 - ignore legacy messages
                     return msgLine.includes('998') || msgLine === SUPPLIER_NUMBER;
-                });
+                }) || [];
 
                 if (manualFromThisLine && manualFromThisLine.length > 0) {
                     const triggerMsg = manualFromThisLine[0];
@@ -382,14 +386,14 @@ export async function POST(request: NextRequest) {
                     };
 
                     if (aiResult.update_supplier) {
-                        if (aiResult.update_supplier.last_quoted_price) updateData.last_quoted_price = aiResult.update_supplier.last_quoted_price;
-                        if (aiResult.update_supplier.negotiation_stage) updateData.negotiation_stage = aiResult.update_supplier.negotiation_stage;
-                        if (aiResult.update_supplier.conversation_summary) updateData.conversation_summary = aiResult.update_supplier.conversation_summary;
-                        if (aiResult.update_supplier.deal_score) updateData.deal_score = aiResult.update_supplier.deal_score;
+                        if (aiResult.update_supplier!.last_quoted_price) updateData.last_quoted_price = aiResult.update_supplier!.last_quoted_price;
+                        if (aiResult.update_supplier!.negotiation_stage) updateData.negotiation_stage = aiResult.update_supplier!.negotiation_stage;
+                        if (aiResult.update_supplier!.conversation_summary) updateData.conversation_summary = aiResult.update_supplier!.conversation_summary;
+                        if (aiResult.update_supplier!.deal_score) updateData.deal_score = aiResult.update_supplier!.deal_score;
                     }
 
-                    if (aiResult.extracted_data?.gst_number) {
-                        updateData.gst_number = aiResult.extracted_data.gst_number;
+                    if (aiResult.extracted_data && aiResult.extracted_data!.gst_number) {
+                        updateData.gst_number = aiResult.extracted_data!.gst_number;
                         updateData.is_verified = true;
                     }
 
